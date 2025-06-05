@@ -14,7 +14,9 @@ const corsOptions = {
 const port = 5000;
 
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
 
 // In-memory store (latest 100 tweets)
 let tweets = [];
@@ -70,6 +72,8 @@ app.get("/webhook", (req, res) => {
 app.post("/webhook", (req, res) => {
   try {
     const payload = req.body;
+
+    console.log("🔔 Webhook received:", payload);
 
     if (!payload.tweets || !Array.isArray(payload.tweets)) {
       return res.status(200).send("No valid tweets found");
