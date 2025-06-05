@@ -3,15 +3,25 @@ import { MdFullscreen } from "react-icons/md";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+interface Feed {
+  tweetUrl: string;
+  matchedRule?: string;
+  name: string;
+  text: string;
+  timestamp: string;
+}
+
 export default function TwitterFeedsCard() {
-  const [fullscreen, setFullscreen] = useState(false);
-  const [feeds, setFeeds] = useState([]);
+  const [fullscreen, setFullscreen] = useState<boolean>(false);
+  const [feeds, setFeeds] = useState<Feed[]>([]);
   const isTruncated = !fullscreen;
 
   useEffect(() => {
     const fetchTweets = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/tweets");
+        const res = await axios.get<{ data: Feed[] }>(
+          "http://localhost:5000/tweets"
+        );
         setFeeds(res.data.data);
       } catch (error) {
         console.error("Error fetching tweets:", error);
@@ -44,6 +54,7 @@ export default function TwitterFeedsCard() {
         <button
           className="ml-2 p-0 border-none outline-none focus:outline-none cursor-pointer"
           onClick={() => setFullscreen((f) => !f)}
+          type="button"
         >
           <MdFullscreen className="text-gray-400" size={16} />
         </button>
@@ -51,7 +62,11 @@ export default function TwitterFeedsCard() {
 
       {/* Feed List */}
       <div
-        className={`max-h-[420px] ${fullscreen ? "max-h-full overflow-x-auto whitespace-nowrap" : "overflow-x-hidden"}`}
+        className={`max-h-[420px] ${
+          fullscreen
+            ? "max-h-full overflow-x-auto whitespace-nowrap"
+            : "overflow-x-hidden"
+        }`}
       >
         {feeds.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No tweets yet.</div>
@@ -65,7 +80,9 @@ export default function TwitterFeedsCard() {
               className="block"
             >
               <div
-                className={`${fullscreen ? "inline-flex" : "flex"} items-start px-4 py-2 text-[14px] border-b border-[#23272b] last:border-b-0 hover:bg-[#23272b]/60 transition`}
+                className={`${
+                  fullscreen ? "inline-flex" : "flex"
+                } items-start px-4 py-2 text-[14px] border-b border-[#23272b] last:border-b-0 hover:bg-[#23272b]/60 transition`}
               >
                 <span
                   className="rounded font-bold text-[12px] px-2 py-0.5 min-w-[36px] text-center mr-1 text-blue-400 whitespace-nowrap"
@@ -78,11 +95,13 @@ export default function TwitterFeedsCard() {
                     className={`font-bold text-gray-100 mr-1 whitespace-nowrap`}
                   >
                     {isTruncated && feed.name && feed.name.length > 10
-                      ? feed.name.slice(0, 10) + '…'
+                      ? feed.name.slice(0, 10) + "…"
                       : feed.name}
                   </span>
                   <span
-                    className={`text-gray-400 block ${isTruncated ? "truncate" : ""}`}
+                    className={`text-gray-400 block ${
+                      isTruncated ? "truncate" : ""
+                    }`}
                     style={isTruncated ? { minWidth: 0 } : {}}
                   >
                     {feed.text}

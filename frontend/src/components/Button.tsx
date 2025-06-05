@@ -1,5 +1,3 @@
-import React from "react";
-
 const COLORS = {
   cyan: {
     fill: "bg-cyan-400",
@@ -28,7 +26,19 @@ const ArrowRight = () => (
   </svg>
 );
 
-const Button = ({
+type ButtonProps = {
+  className?: string;
+  href?: string;
+  onClick?: (...args: any[]) => void;
+  children?: React.ReactNode;
+  variant?: string;
+  color?: string;
+  px?: string;
+  rightIcon?: boolean;
+  [x: string]: any;
+};
+
+const Button: React.FC<ButtonProps> = ({
   className = "",
   href,
   onClick,
