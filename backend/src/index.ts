@@ -1,6 +1,7 @@
 import cors from "cors";
 import bodyParser from "body-parser";
 import express, { Application, Request, Response } from 'express';
+import { Tweet } from "./interfaces/tweets";
 const app: Application = express();
 
 
@@ -19,7 +20,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 
 // In-memory store (latest 100 tweets)
-let tweets:any[] = [];
+let tweets:Tweet[] = [];
 
 // Helper: format relative time like "2m ago"
 function getRelativeTime(timestamp: string) {
