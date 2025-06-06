@@ -1,8 +1,8 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
+import cors from "cors";
+import bodyParser from "body-parser";
+import express, { Application, Request, Response } from 'express';
+const app: Application = express();
 
-const app = express();
 
 const corsOptions = {
   origin: "*",
@@ -19,13 +19,13 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 
 // In-memory store (latest 100 tweets)
-let tweets = [];
+let tweets:any[] = [];
 
 // Helper: format relative time like "2m ago"
-function getRelativeTime(timestamp) {
+function getRelativeTime(timestamp: string) {
   const now = new Date();
   const then = new Date(timestamp);
-  const diff = (now - then) / 1000;
+  const diff = (now.getTime() - then.getTime()) / 1000;
 
   if (diff < 60) return `${Math.floor(diff)}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
@@ -34,7 +34,7 @@ function getRelativeTime(timestamp) {
 }
 
 // Parse keywords from the rule_value string
-function extractKeywords(ruleValue) {
+function extractKeywords(ruleValue: string) {
   return ruleValue
     .split(/OR|,/i)
     .map((kw) => kw.trim())
@@ -42,7 +42,7 @@ function extractKeywords(ruleValue) {
 }
 
 // Extract matched keyword from tweet text
-function findMatchedKeyword(tweetText, keywordList) {
+function findMatchedKeyword(tweetText: string, keywordList: string[]) {
   const lowerText = tweetText.toLowerCase();
   let firstKeyword = "N/A";
   let firstIndex = Infinity;
@@ -69,7 +69,7 @@ app.get("/webhook", (req, res) => {
 });
 
 // Webhook POST
-app.post("/webhook", (req, res) => {
+app.post("/webhook", (req: Request, res: Response) => {
   try {
     const payload = req.body;
 
