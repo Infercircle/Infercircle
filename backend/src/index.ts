@@ -83,7 +83,7 @@ app.post("/webhook", (req: Request, res: Response) => {
     const ruleValue = payload.rule_value || "";
     const keywordList = extractKeywords(ruleValue);
 
-    const newTweets = payload.tweets.map((tweet) => {
+    const newTweets = payload.tweets.map((tweet: any) => {
       const matched = findMatchedKeyword(tweet.text || "", keywordList);
       return {
         matchedRule: matched.toUpperCase(), // ✅ fixed name here

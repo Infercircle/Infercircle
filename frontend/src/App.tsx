@@ -1,3 +1,4 @@
+import React from "react";
 import TwitterFeedsCard from "./components/TwitterFeedsCard";
 import Navbar from "./components/Header";
 

@@ -1,3 +1,4 @@
+import React from "react";
 import { FaSquareXTwitter } from "react-icons/fa6";
 import { MdFullscreen } from "react-icons/md";
 import { useEffect, useState } from "react";
