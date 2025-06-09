@@ -1,4 +1,3 @@
-import React from "react";
 import { FaSquareXTwitter } from "react-icons/fa6";
 import { MdFullscreen } from "react-icons/md";
 import { useEffect, useState } from "react";
@@ -21,7 +20,7 @@ export default function TwitterFeedsCard() {
     const fetchTweets = async () => {
       try {
         const res = await axios.get<{ data: Feed[] }>(
-          "http://localhost:5000/tweets"
+          "http://localhost:5000/twitter/tweets"
         );
         setFeeds(res.data.data);
       } catch (error) {
