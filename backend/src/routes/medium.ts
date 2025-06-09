@@ -9,7 +9,6 @@ const router = Router();
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY as string;
 const RAPIDAPI_HOST = "medium2.p.rapidapi.com";
-console.log("RAPIDAPI_KEY:", RAPIDAPI_KEY);
 
 // Health check
 router.get("/", (req: Request, res: Response) => {
