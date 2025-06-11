@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-interface MediumArticle {
+interface Article {
   id: string;
   title: string;
   url: string;
@@ -20,7 +20,7 @@ interface MediumArticle {
 }
 
 export default function MediumCard() {
-  const [articles, setArticles] = useState<MediumArticle[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch function

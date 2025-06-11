@@ -1,4 +1,4 @@
-export interface MediumArticle {
+export interface Article {
     id: string;
     title: string;
     url: string;
