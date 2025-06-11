@@ -9,7 +9,7 @@ const BaseURL = "https://data-api.coindesk.com";
 
 // Health check
 router.get("/", (req: Request, res: Response) => {
-  res.send("Medium API Server 🚀");
+  res.send("Media API Server 🚀");
 });
 
 // Search for articles by any query from a source
