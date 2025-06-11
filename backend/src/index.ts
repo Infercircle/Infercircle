@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import mediumRoutes from "./routes/medium";
 import twitterRoutes from "./routes/twitter";
 import articleRoutes from "./routes/article";
+import tokenRoutes from "./routes/tokens";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/twitter", twitterRoutes);
 app.use("/medium", mediumRoutes);
 app.use("/article", articleRoutes);
+app.use("/tokens", tokenRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
