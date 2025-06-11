@@ -1,7 +1,8 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import axios from "axios";
 import { token } from "../interfaces/tokens";
 import dotenv from "dotenv";
+import { asyncHandler } from "../lib/helper";
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 // Search for tokens by symbol, token address, slug(coinmarketcap special names for token), or id(coinmarketcap token id)
-router.get("/search", async (req: Request, res: Response) => {
+router.get("/search", asyncHandler(async (req: Request, res: Response) => {
   const { symbol, slug, address, id } = req.query;
   const params = [symbol, slug, address, id];
   const definedParamsCount = params.filter(Boolean).length;
@@ -60,7 +61,7 @@ router.get("/search", async (req: Request, res: Response) => {
     console.error("Error fetching token data:", error);
     res.status(500).json({ error: "Failed to fetch token details" });
   }
-});
+}));
 
 
 export default router;

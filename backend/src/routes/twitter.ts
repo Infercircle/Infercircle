@@ -1,5 +1,6 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, RequestHandler } from "express";
 import { Tweet } from "../interfaces/tweets";
+import { asyncHandler } from "../lib/helper";
 
 
 const router = Router();
@@ -55,7 +56,7 @@ router.get("/webhook", (req: Request, res: Response) => {
 });
 
 // Webhook POST
-router.post("/webhook", (req: Request, res: Response) => {
+router.post("/webhook", ((req: Request, res: Response) => {
   try {
     const payload = req.body;
 
@@ -85,10 +86,10 @@ router.post("/webhook", (req: Request, res: Response) => {
   } catch (err) {
     res.status(200).send("Webhook error caught");
   }
-});
+}) as RequestHandler);
 
 // Client endpoint to fetch stored tweets
-router.get("/tweets", async(req: Request, res: Response) => {
+router.get("/tweets", asyncHandler(async(req: Request, res: Response) => {
   const { query } = req.query;
 
   if (query && typeof query === "string") {
@@ -127,7 +128,7 @@ router.get("/tweets", async(req: Request, res: Response) => {
     count: tweets.length,
     data: tweets,
   });
-});
+}));
 
 
 export default router;
