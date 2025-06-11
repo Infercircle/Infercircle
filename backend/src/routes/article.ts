@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import axios from "axios";
 import { Article } from "../interfaces/article";
-
+import { asyncHandler } from "../lib/helper";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 // Search for articles by any query from a source
-router.get("/search", async (req, res) => {
+router.get("/search", asyncHandler(async (req: Request, res: Response) => {
   const { source, query, lang } = req.query;
   try {
     const response = await fetch(`${BaseURL}/news/v1/search?source_key=${source}&search_string=${query}&lang=${lang}`);
@@ -21,7 +21,7 @@ router.get("/search", async (req, res) => {
     if (data.Err && data.Data.length<=0) {
         return res.status(500).json({ error: data.Err.message || "Failed to fetch articles" });
     }
-    const articles: Article[] = data.Data.map((article) => ({
+    const articles: Article[] = data.Data.map((article: any) => ({
         id: article.ID,
         title: article.TITLE,
         url: article.URL,
@@ -44,6 +44,6 @@ router.get("/search", async (req, res) => {
     console.log("error message", error);
     res.status(500).json({ error: "Failed to search Medium articles" });
   }
-});
+}));
 
 export default router;
