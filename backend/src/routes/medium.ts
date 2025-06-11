@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import axios from "axios";
-import { MediumArticle } from "../interfaces/medium";
+import { Article } from "../interfaces/article";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -51,7 +51,7 @@ router.get("/search", async (req: Request, res: Response) => {
         .catch(() => null)
     );
     const articles = (await Promise.all(articleDetailPromises)).filter(
-      (a: MediumArticle | null): a is MediumArticle => a !== null
+      (a: Article | null): a is Article => a !== null
     );
 
     res.json({ data: articles });
