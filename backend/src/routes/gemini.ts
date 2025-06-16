@@ -11,92 +11,133 @@ interface GeminiSearchQuery {
 
 const router = express.Router();
 
-router.get('/gemini-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {  
+function extractVideoId(url: string): string | null {
+  const regex =
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
+async function getTranscript(videoId: string): Promise<string> {
+  try {
+    if(!process.env.HELPER_APIS_URL) {
+      throw new Error('HELPER_APIS_URL is not defined in environment variables');
+    }
+    const response = await fetch(`${process.env.HELPER_APIS_URL}/ytTranscript?video_id=${videoId}`);
+    const transcriptData = await response.json();
+
+    if(transcriptData.detail){
+      throw new Error(transcriptData.detail);
+    }
+    return JSON.stringify(transcriptData.transcript.snippets);
+  } catch (error) {
+    console.error(`Error fetching transcript for video ID ${videoId}:`, error);
+    throw new Error('Could not fetch transcript. The video might not have one available.');
+  }
+}
+
+async function summary(transcript:string) {
   const genAI = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY as string,
   });
 
-  const { search_string, lastXDays } = req.query;
+  const prompt = `you are an expert researcher, Given the transcript of a YouTube video, you will summarize the video and extract key highlights from the transcript with the time stamps. The output should be a JSON object with the following structure:
 
-  if (!search_string || !lastXDays) {
-    return res.status(400).json({ error: 'Missing search_string or lastXDays query parameter' });
-  }
-
-  const prompt = `you are an expert researcher, and you can dig up in detail current social sentiments about any projects via tweets, youtube videos etc, Can you please find latest videos realted to or about ${search_string} in Youtube in last ${lastXDays} days today is ${new Date().toISOString()}, with transcript and timestamps of important part and summary of each videos, please get as many videos as possible, minimum of ${Math.min(parseInt((parseFloat(lastXDays) * 25).toString()), 100)} top videos(we must have atleast minimum number of videos but more the merrier, ), under the given timeframe, can you please format the response information into an array of JSON object sorted by most popular and then by date with the following structure:
-
-[
   {
-    "title": "string",
-    "channel": "string",
-    "url": "string",
-    "date": "string",
     "summary": "string",
     "transcript_highlights": [
       {
-        "timestamp": "string",
         "content": "string"
+        "timeStamps": "string"
       }
     ]
   }
-]`;
+
+  This is the transcript of the video: ${transcript}
+`;
 
   try {
+    console.log('Generating content with Gemini API.....................................................');
+    console.log('Prompt:', prompt);
+    console.log("-------------------------------------------------------------------------------------------");
+
     const result = await genAI.models.generateContent({
-        model: "gemini-2.5-flash-preview-05-20",
+        model: "gemini-2.0-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              title: {
-                type: "STRING",
-              },
-              channel: {
-                type: "STRING",
-              },
-              url: {
-                type: "STRING",
-              },
-              date: {
-                type: "STRING",
-              },
-              summary: {
-                type: "STRING",
-              },
-              transcript_highlights: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    timestamp: {
-                      type: "STRING",
-                    },
-                    content: {
-                      type: "STRING",
-                    },
+          type: "OBJECT",
+          properties: {
+            summary: {
+              type: "STRING",
+            },
+            transcript_highlights: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  content: {
+                    type: "STRING",
                   },
-                  propertyOrdering: ["timestamp", "content"],
+                  timeStamps: {
+                    type: "STRING",
+                  }
                 },
+                propertyOrdering: ["content", "timeStamps"],
               },
             },
-            propertyOrdering: ["title", "channel", "url", "date", "summary", "transcript_highlights"],
-          },
+          }
         },
       },
     });
 
     const responseData = result.text;
-    if(!responseData){
-        return res.status(500).json({ error: 'Failed to get response from Gemini API' });
-    }
-    res.json(JSON.parse(responseData));
+    return responseData;
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    res.status(500).json({ error: 'Failed to get response from Gemini API' });
+    console.error('Error generating content with Gemini API:', error);
+    throw new Error('Failed to generate content with Gemini API');
   }
+}
+
+router.post('/gemini-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {  
+  const { videoUrl } = req.body;
+
+  if (!videoUrl) {
+    return res.status(400).json({ error: 'Missing videoUrl in request body' });
+  }
+
+  const result: {
+    url: string;
+    summary: string;
+    transcript_highlights: {
+      content: string;
+    }[];
+  }[] = [];
+
+  for(const url of videoUrl){
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      console.error(`Invalid YouTube URL: ${url}`);
+      continue;
+    }
+    const transcript = await getTranscript(videoId);
+    console.log("-----------------------------------------------------------------");
+    console.log("transcript:", transcript);
+    console.log("-----------------------------------------------------------------");
+    const responseData = await summary(transcript);
+    if(!responseData) {
+      console.error(`Failed to get response for video ID ${videoId}`);
+      continue;
+    }
+    const data = JSON.parse(responseData);
+    result.push({
+      url: url,
+      summary: data.summary,
+      transcript_highlights: data.transcript_highlights
+    });
+  }
+  res.json(result);
 }));
 
 export default router;
