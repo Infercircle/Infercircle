@@ -194,7 +194,7 @@ async function fetchTopYouTubeVideos(
 
 const router = express.Router();
 
-router.get('/gemini-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {  
+router.get('/yt-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {  
   const { search_string, lastXDays, maxResults } = req.query;
 
   if (!search_string || !lastXDays || !maxResults) {

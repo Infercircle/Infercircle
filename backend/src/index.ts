@@ -5,7 +5,7 @@ import mediumRoutes from "./routes/medium";
 import twitterRoutes from "./routes/twitter";
 import articleRoutes from "./routes/article";
 import tokenRoutes from "./routes/tokens";
-import geminiRoutes from "./routes/gemini";
+import ytRoutes from "./routes/Youtube";
 
 dotenv.config();
 
@@ -29,7 +29,7 @@ app.use("/twitter", twitterRoutes);
 app.use("/medium", mediumRoutes);
 app.use("/article", articleRoutes);
 app.use("/tokens", tokenRoutes);
-app.use("/gemini", geminiRoutes);
+app.use("/yt", ytRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
