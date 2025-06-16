@@ -1,5 +1,4 @@
 import express from 'express';
-import axios from 'axios';
 import { GoogleGenAI } from "@google/genai";
 import { Request, Response } from 'express';
 import { asyncHandler } from '../lib/helper';
@@ -39,15 +38,6 @@ interface YouTubeVideoDetailsResponse {
       duration: string;
     };
   }>;
-}
-
-const router = express.Router();
-
-function extractVideoId(url: string): string | null {
-  const regex =
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = url.match(regex);
-  return match ? match[1] : null;
 }
 
 async function getTranscript(videoId: string): Promise<string> {
@@ -200,6 +190,9 @@ async function fetchTopYouTubeVideos(
     throw error;
   }
 }
+
+
+const router = express.Router();
 
 router.get('/gemini-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {  
   const { search_string, lastXDays, maxResults } = req.query;
