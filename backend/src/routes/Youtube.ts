@@ -2,6 +2,7 @@ import express from 'express';
 import { GoogleGenAI } from "@google/genai";
 import { Request, Response } from 'express';
 import { asyncHandler } from '../lib/helper';
+import { gemini } from '../lib/helper';
 
 interface GeminiSearchQuery {
   search_string: string;
@@ -59,10 +60,6 @@ async function getTranscript(videoId: string): Promise<string> {
 }
 
 async function summary(transcript:string) {
-  const genAI = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY as string,
-  });
-
   const prompt = `you are an expert researcher, Given the transcript of a YouTube video, you will summarize the video. The output should be a JSON object with the following structure:
 
   {
@@ -74,24 +71,20 @@ async function summary(transcript:string) {
 
   try {
 
-    const result = await genAI.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            summary: {
-              type: "STRING",
-            },
-          }
-        },
+    const config = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          summary: {
+            type: "STRING",
+          },
+        }
       },
-    });
+    };
 
-    const responseData = result.text;
-    return responseData;
+    const result = await gemini(prompt, config);
+    return result;
   } catch (error) {
     console.error('Error generating content with Gemini API:', error);
     throw new Error('Failed to generate content with Gemini API');
