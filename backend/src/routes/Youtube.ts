@@ -217,7 +217,7 @@ const router = express.Router();
 router.get('/yt-search', asyncHandler(async (req: Request<any, any, any, GeminiSearchQuery>, res: Response) => {
   const { search_string, lastXDays, maxResults } = req.query;
 
-  if (!search_string || !lastXDays || !maxResults) {
+  if (!search_string || !lastXDays) {
     return res.status(400).json({ error: 'search_string and lastXDays are required' });
   }
 
