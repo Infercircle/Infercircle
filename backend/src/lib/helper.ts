@@ -23,7 +23,7 @@ export async function gemini(prompt: string, config: any): Promise<string> {
         config: config,
     });
 
-    const responseData = result.text;
+    const responseData = result.text ?? "";
     return responseData;
   } catch (error) {
     console.error('Error generating content with Gemini API:', error);
