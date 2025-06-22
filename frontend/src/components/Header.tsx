@@ -1,3 +1,4 @@
+"use client"
 import React, { useState } from "react";
 import Button from "./Button";
 // Will Replace with actual logo import after uiux

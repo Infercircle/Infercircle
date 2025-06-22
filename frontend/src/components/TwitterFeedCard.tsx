@@ -1,15 +1,11 @@
+"use client"
+import React from "react";
 import { FaSquareXTwitter } from "react-icons/fa6";
 import { MdFullscreen } from "react-icons/md";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { Feed } from "@/interfaces/tweetcard";
 
-interface Feed {
-  tweetUrl: string;
-  matchedRule?: string;
-  name: string;
-  text: string;
-  timestamp: string;
-}
 
 export default function TwitterFeedsCard() {
   const [fullscreen, setFullscreen] = useState<boolean>(false);

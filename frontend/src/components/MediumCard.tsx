@@ -1,26 +1,9 @@
+"use client"
 import React, { useEffect, useState } from "react";
-
-interface MediumArticle {
-  id: string;
-  title: string;
-  url: string;
-  author?: {
-    id: string;
-    name: string;
-    profileUrl: string;
-  };
-  publication?: {
-    id: string;
-    name: string;
-    url: string;
-  };
-  date: string;
-  content?: string;
-  summary?: string;
-}
+import { Article } from "@/interfaces/medium";
 
 export default function MediumCard() {
-  const [articles, setArticles] = useState<MediumArticle[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch function
