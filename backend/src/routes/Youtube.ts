@@ -156,7 +156,7 @@ async function fetchTopYouTubeVideos(
     }
     
     // Get video IDs for the second API call
-    const videoIds = searchData.items.map(item => item.id.videoId);
+    const videoIds = searchData.items.map((item: any) => item.id.videoId);
     
     // Step 2: Get additional video details (view count, likes, duration)
     const videoDetailsParams = new URLSearchParams({
@@ -175,7 +175,7 @@ async function fetchTopYouTubeVideos(
     const videoDetailsData: YouTubeVideoDetailsResponse = await videoDetailsResponse.json();
     
     // Step 3: Combine search results with video details
-    const videos: YouTubeVideo[] = searchData.items.map(item => {
+    const videos: YouTubeVideo[] = searchData.items.map((item: any) => {
       const videoDetails = videoDetailsData.items.find(detail => detail.id === item.id.videoId);
       
       return {

@@ -24,7 +24,7 @@ export async function gemini(prompt: string, config: any): Promise<string> {
     });
 
     const responseData = result.text;
-    if(!responseData){
+    if (!responseData) {
       throw new Error('No response text received from Gemini API');
     }
     return responseData;
