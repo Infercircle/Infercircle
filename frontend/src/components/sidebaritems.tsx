@@ -2,11 +2,13 @@ const sidebarItems = [
     {
       label: "Market Dashboard",
       icon: "https://c.animaapp.com/mcex44fs90T69B/img/svg-2.svg",
+      href: "https://c.animaapp.com/mcex44fs90T69B/img/svg-2.svg",
       active: true,
     },
     {
       label: "Feeds",
       icon: "https://c.animaapp.com/mcex44fs90T69B/img/svg-3.svg",
+      href: "https://c.animaapp.com/mcex44fs90T69B/img/svg-2.svg",
     },
     {
       label: "MetaSearch",
