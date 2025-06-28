@@ -1,10 +1,11 @@
 "use client"
 import React from "react";
 import { FaSquareXTwitter } from "react-icons/fa6";
-import { MdFullscreen } from "react-icons/md";
+import { LuFullscreen } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Feed } from "@/interfaces/tweetcard";
+
 
 
 export default function TwitterFeedsCard() {
@@ -44,7 +45,7 @@ export default function TwitterFeedsCard() {
           className="rounded mr-3 flex items-center justify-center"
           style={{ width: 28, height: 28 }}
         >
-          <FaSquareXTwitter className="text" size={18} />
+          <FaSquareXTwitter className="text-white w-6 h-6" size={18} />
         </div>
         <span className="text-gray-100 flex-1">Twitter Feeds (CT)</span>
         <button
@@ -52,7 +53,7 @@ export default function TwitterFeedsCard() {
           onClick={() => setFullscreen((f) => !f)}
           type="button"
         >
-          <MdFullscreen className="text-gray-400" size={16} />
+          <LuFullscreen className="text-gray-400" size={16} />
         </button>
       </div>
 

@@ -1,11 +1,11 @@
 const COLORS = {
-    cyan: {
-      fill: "bg-cyan-400",
-      text: "text-black",
-      border: "border-cyan-400",
-      outlineText: "text-cyan-400",
-      hoverFill: "hover:bg-cyan-300",
-    },
+    violet: {
+      fill: "bg-violet-500",
+      text: "text-white",
+      border: "border-violet-500",
+      outlineText: "text-violet-500",
+      hoverFill: "hover:bg-violet-600",
+    }
     // Add more colors if needed
   };
   
@@ -44,13 +44,13 @@ const COLORS = {
     onClick,
     children,
     variant = "outline",
-    color = "cyan",
-    px = "px-7",
+    color = "violet",
+    px = "px-4",
     rightIcon = false,
     ...props
   }) => {
-    const colorSet = COLORS[color] || COLORS.cyan;
-    let baseClasses = `inline-flex items-center justify-center h-11 transition-colors duration-200 rounded px-7 font-semibold text-base border-2 cursor-pointer ${px} ${className}`;
+    const colorSet = COLORS[color as keyof typeof COLORS] || COLORS.violet;
+    let baseClasses = `inline-flex items-center justify-center h-9 transition-colors duration-200 rounded px-4 font-semibold text-sm border-2 cursor-pointer ${px} ${className}`;
   
     if (variant === "filled") {
       baseClasses += ` ${colorSet.fill} ${colorSet.text} border-transparent ${colorSet.hoverFill}`;
