@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import sidebarItems from "./sidebaritems";
@@ -16,27 +16,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   const pathname = usePathname();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [isHovered, setIsHovered] = useState(false);
 
-  // Auto-collapse on smaller screens (controlled by parent)
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) { // md breakpoint
-        setCollapsed(true);
-      } else {
-        setCollapsed(false);
-      }
-    };
-
-    // Set initial state
-    handleResize();
-
-    // Add event listener
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setCollapsed]);
+  // Separate account item from main navigation items
+  const accountItem = sidebarItems.find(item => item.label === "Account");
+  const mainItems = sidebarItems.filter(item => item.label !== "Account");
 
   const toggleGroup = (group: string) => {
     setExpandedGroups((prev) => ({
@@ -45,15 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
     }));
   };
 
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-
-  // Separate account item from main navigation items
-  const accountItem = sidebarItems.find(item => item.label === "Account");
-  const mainItems = sidebarItems.filter(item => item.label !== "Account");
-
-  // Get all icons from grouped items for collapsed view
+  // Get all icons for collapsed view
   const getAllIcons = () => {
     const icons: Array<{
       icon: any;
@@ -61,8 +36,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
       href: string;
       isActive: boolean;
     }> = [];
-    
-    // Add standalone items
     mainItems.forEach(item => {
       if (!item.items) {
         icons.push({
@@ -73,8 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         });
       }
     });
-
-    // Add grouped items
     mainItems.forEach(item => {
       if (item.items) {
         item.items.forEach(subItem => {
@@ -87,66 +58,56 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         });
       }
     });
-
     return icons;
   };
 
   return (
-    <aside 
+    <aside
       className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out ${
         collapsed ? 'w-16 bg-[#191c1f] border-r border-[#1a1d20] shadow-[4px_0px_6px_#00000040]' : 'w-[240px] bg-[#191c1f] border-r border-[#1a1d20] shadow-[4px_0px_6px_#00000040]'
       }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={collapsed ? toggleSidebar : undefined}
-      style={{ cursor: collapsed ? 'e-resize' : 'default' }}
     >
-      {/* Logo Section */}
-      
-      <div className={`flex items-center justify-between px-3 py-3 transition-all duration-300 ${
+      {/* Logo & Collapse Button */}
+      <div className={`flex items-center justify-between px-3 py-4 transition-all duration-300 ${
         collapsed ? 'bg-[rgba(17,20,22,0.4)] backdrop-blur-sm border-b border-[#1a1d20]' : 'bg-[#2a2e35]'
       }`}>
         {!collapsed ? (
-          <img className="cursor-pointer" alt="Infercircle" src="icons/image.svg" />
+          <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
         ) : (
           <div className="w-10 h-8 flex items-center justify-center relative">
             <Tippy content="Expand sidebar" placement="right">
               <div>
                 <BsLayoutSidebarInsetReverse
-                  className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer" 
-                  onClick={toggleSidebar}
+                  className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
+                  onClick={() => setCollapsed(false)}
                 />
               </div>
             </Tippy>
           </div>
         )}
-        
         {!collapsed && (
           <Tippy content="Collapse sidebar" placement="bottom">
             <div>
-              <BsLayoutSidebarInset 
-                className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer" 
-                style={{ cursor: 'w-resize' }} 
-                onClick={toggleSidebar}
+              <BsLayoutSidebarInset
+                className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
+                style={{ cursor: 'w-resize' }}
+                onClick={() => setCollapsed(true)}
               />
             </div>
           </Tippy>
         )}
       </div>
-      
 
       {/* Main Sidebar Navigation */}
-      <nav className="flex flex-col gap-2 mt-3 flex-1 overflow-y-auto">
+      <nav className={`flex flex-col mt-3 flex-1 ${collapsed ? 'gap-1.5' : 'gap-2'}`}>
         {collapsed ? (
-          // Collapsed view - show all icons in order
           getAllIcons().map((item, idx) => (
             <Tippy key={`collapsed-${idx}`} content={item.label} placement="right">
               <Link href={item.href}>
                 <div
-                  className={`flex items-center justify-center p-3 mx-2 rounded cursor-pointer transition-all duration-200 ${
+                  className={`flex items-center justify-center p-2.5 mx-2 rounded cursor-pointer transition-all duration-200 ${
                     item.isActive ? "bg-[#474f5c] text-white" : "hover:bg-[#2a2e35] text-[#ffffff99]"
                   }`}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {React.createElement(item.icon, { className: "w-5 h-5" })}
                 </div>
@@ -154,9 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             </Tippy>
           ))
         ) : (
-          // Expanded view - normal sidebar
           mainItems.map((item, idx) => {
-            // Standalone (not a group)
             if (!item.items) {
               const isActive = pathname === item.href;
               return (
@@ -172,13 +131,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                 </Link>
               );
             }
-
-            // Grouped item
             const isExpanded = expandedGroups[item.group] ?? true;
-
             return (
               <div key={`group-${idx}`} className="px-2 border-t border-[#2a2e35] pt-2">
-                
                 <button
                   className="flex items-center justify-between w-full text-sm font-semibold p-2 rounded mb-2 cursor-pointer hover:bg-[#2a2e35] text-[#ffffff99] transition-all duration-200"
                   onClick={() => toggleGroup(item.group)}
@@ -191,17 +146,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                     <FiChevronDown />
                   </div>
                 </button>
-
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                   <ul className="flex flex-col gap-1 mb-2">
                     {item.items.map((subItem, subIdx) => {
                       const isActive = pathname === subItem.href;
                       return (
-                        <li 
+                        <li
                           key={`item-${idx}-${subIdx}`}
                           className={`transform transition-all duration-300 ease-out ${
-                            isExpanded 
-                              ? 'translate-y-0 opacity-100' 
+                            isExpanded
+                              ? 'translate-y-0 opacity-100'
                               : 'translate-y-2 opacity-0'
                           }`}
                           style={{
@@ -219,7 +173,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                               {React.createElement(subItem.icon, { className: "w-4 h-4" })}
                               {subItem.label}
                             </div>
-                            
                           </Link>
                         </li>
                       );
@@ -239,13 +192,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             <Tippy content={accountItem.label} placement="right">
               <Link href={accountItem.href}>
                 <div
-                  className={`flex items-center justify-center p-3 mx-2 rounded cursor-pointer transition-all duration-200 ${
+                  className={`flex items-center justify-center py-2.5 px-6  rounded cursor-pointer transition-all duration-200 ${
                     pathname === accountItem.href ? "bg-[#474f5c] text-white" : "hover:bg-[#2a2e35] text-[#ffffff99]"
                   }`}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {React.createElement(accountItem.icon, { 
+                    {React.createElement(accountItem.icon, {
                       className: "w-5 h-5",
                       style: { width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }
                     })}

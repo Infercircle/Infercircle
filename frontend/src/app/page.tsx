@@ -1,14 +1,14 @@
 import MediumCard from "@/components/MediumCard";
-import TwitterFeedsCard from "@/components/TwitterFeedCard";
-import Header from "@/components/Navbar";
+import TwitterFeedCard from "@/components/TwitterFeedCard";
+import Navbar from "@/components/Navbar";
 
 
 export default function Home() {
   return (
     <>
    
-      <Header />
-      <TwitterFeedsCard />
+      <Navbar />
+      <TwitterFeedCard />
       <MediumCard />
     </> 
   );

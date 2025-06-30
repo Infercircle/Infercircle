@@ -11,37 +11,37 @@ const sidebarItems = [
   {
     label: "Overview",
     icon: BiSolidCategoryAlt,
-    href: "/",
+    href: "/dashboard",
   },
   {
     
     group: "Social Metrics",
     icon: FiUsers,
     items: [
-      { label: "Browser", icon: FiGlobe, href: "/browser" },
-      { label: "InferAI", icon: GrRobot, href: "/inferai" },
-      { label: "Watchlist", icon: FiBookmark, href: "/watchlist" },
-      { label: "Token Index", icon: FiBarChart2, href: "/token-index" },
-      { label: "Signal Index", icon: FiTrendingUp, href: "/signal-index" },
-      { label: "CT Nerds", icon: FiUsers, href: "/ct-nerds" },
-      { label: "Audio Catalogue", icon: FiVolume2, href: "/audio-catalogue" },
+      { label: "Browser", icon: FiGlobe, href: "/dashboard/browser" },
+      { label: "InferAI", icon: GrRobot, href: "/dashboard/inferai" },
+      { label: "Watchlist", icon: FiBookmark, href: "/dashboard/watchlist" },
+      { label: "Token Index", icon: FiBarChart2, href: "/dashboard/token-index" },
+      { label: "Signal Index", icon: FiTrendingUp, href: "/dashboard/signal-index" },
+      { label: "CT Nerds", icon: FiUsers, href: "/dashboard/ct-nerds" },
+      { label: "Audio Catalogue", icon: FiVolume2, href: "/dashboard/audio-catalogue" },
     ],
   },
   {
     group: "Onchain Metrics",
     icon: FiDatabase,
     items: [
-      { label: "Pre TGE", icon: FiBox, href: "/pre-tge" },
-      { label: "Assets", icon: FiDatabase, href: "/assets" },
-      { label: "Projects Sentiments", icon: FiSmile, href: "/project-sentiment" },
-      { label: "Active IDO Projects", icon: FiLayers, href: "/ido-projects" },
-      { label: "Post TGE Projects", icon: FiLayers, href: "/post-tge-projects" },
+      { label: "Pre TGE", icon: FiBox, href: "/dashboard/pre-tge" },
+      { label: "Assets", icon: FiDatabase, href: "/dashboard/assets" },
+      { label: "Projects Sentiments", icon: FiSmile, href: "/dashboard/project-sentiment" },
+      { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
+      { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
     ],
   },
   {
     label: "Account",
     icon: FaRegUserCircle,
-   href: "/account",
+   href: "/dashboard/account",
   },
 ];
 

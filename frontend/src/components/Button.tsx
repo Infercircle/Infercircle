@@ -1,10 +1,10 @@
 const COLORS = {
     violet: {
-      fill: "bg-violet-500",
+      fill: "bg-violet-800",
       text: "text-white",
       border: "border-violet-500",
-      outlineText: "text-violet-500",
-      hoverFill: "hover:bg-violet-600",
+      outlineText: "text-violet-800",
+      hoverFill: "hover:bg-violet-700",
     }
     // Add more colors if needed
   };

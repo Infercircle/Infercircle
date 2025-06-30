@@ -9,17 +9,17 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false }) => {
   return (
-    <header className={`sticky top-0 z-50 p-0.5 bg-[rgba(17,20,22,0.4)] backdrop-blur-sm border-b border-[#1a1d20] transition-all duration-300 ${
+    <header className={`sticky top-0 z-50 p-1.5 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#1a1d20] transition-all duration-300 ${
       collapsed ? 'left-0 right-0' : 'left-60'
     }`}>
       <div className="flex items-center justify-between px-10 py-1.5">
         {/* Logo */}
         <a href="#home" className={`flex items-center transition-all duration-300 ${
-          collapsed ? 'transform -translate-x-7.5' : 'transform translate-x-0'
+          collapsed ? 'transform -translate-x-9.5' : 'transform translate-x--3'
         }`}>
           {/* <img src={logo} alt="Logo" className="h-8 w-auto" /> */}
           <span className="text-violet-400 font-black text-2xl tracking-widest uppercase">
-            <img src="icons/logo.svg" alt="Infercircle" />
+            <img src="/icons/logo.svg" alt="Infercircle" />
           </span>
         </a>
 
@@ -30,7 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
               variant="filled"
               color="violet"
               href="#connect-wallet"
-              className="uppercase"
+              
             >
               Connect Wallet
             </Button>
