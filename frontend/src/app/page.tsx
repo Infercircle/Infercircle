@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <>
    
-      <Navbar />
+      <Navbar showAuthButtons={true} showConnectWallet={false} showSearch={false} />
       <TwitterFeedCard />
       <MediumCard />
     </> 

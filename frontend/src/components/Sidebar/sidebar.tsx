@@ -68,8 +68,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
       }`}
     >
       {/* Logo & Collapse Button */}
-      <div className={`flex items-center justify-between px-3 py-4 transition-all duration-300 ${
-        collapsed ? 'bg-[rgba(17,20,22,0.4)] backdrop-blur-sm border-b border-[#1a1d20]' : 'bg-[#2a2e35]'
+      <div className={`flex items-center justify-between px-3 py-[0.922rem] transition-all duration-300 border-b ${
+        collapsed
+          ? 'bg-[rgba(17,20,22,0.4)] backdrop-blur-sm border-[#1a1d20]'
+          : 'bg-[#2a2e35] border-transparent'
       }`}>
         {!collapsed ? (
           <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
