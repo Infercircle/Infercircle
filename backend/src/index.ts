@@ -3,6 +3,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mediumRoutes from "./routes/medium";
 import twitterRoutes from "./routes/twitter";
+import articleRoutes from "./routes/article";
+import tokenRoutes from "./routes/tokens";
+import ytRoutes from "./routes/Youtube";
+import twitterspacesRoutes from "./routes/twitterspaces";
 
 dotenv.config();
 
@@ -24,7 +28,10 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // Mount Twitter routes at /twitter
 app.use("/twitter", twitterRoutes);
 app.use("/medium", mediumRoutes);
-
+app.use("/article", articleRoutes);
+app.use("/tokens", tokenRoutes);
+app.use("/yt", ytRoutes);
+app.use("/twitterspaces", twitterspacesRoutes);
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
