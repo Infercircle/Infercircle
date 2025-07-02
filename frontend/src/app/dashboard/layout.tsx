@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar/sidebar";
 import Navbar from "@/components/Navbar";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <>
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div className={`${contentMarginClass} transition-all duration-300`}>
-        <Navbar collapsed={collapsed} showConnectWallet={true} />
+        <Navbar collapsed={collapsed} showConnectWallet={true} showAuthButtons={false} showSearch={true} />
         <main className="pt-6 px-6">
           {children}
         </main>

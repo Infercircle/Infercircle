@@ -1,52 +1,58 @@
 "use client"
 import React from "react";
 import Button from "./Button";
+import { FiSearch, FiBookmark } from "react-icons/fi";
 
 interface NavbarProps {
   collapsed?: boolean;
   showConnectWallet?: boolean;
+  showAuthButtons?: boolean;
+  showSearch?: boolean;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false }) => {
+// Inline SearchBar component
+const SearchBar: React.FC = () => (
+  <form className="relative w-80">
+    <input
+      type="text"
+      placeholder="Search (e.g. Doge)"
+      className="w-full pl-4 pr-10 py-2 rounded bg-[#23272b] text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 border border-[#23272b]"
+    />
+    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400">
+      <FiSearch size={20} />
+    </button>
+  </form>
+);
+
+const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false }) => {
   return (
-    <header className={`sticky top-0 z-50 p-1.5 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#1a1d20] transition-all duration-300 ${
+    <header className={`sticky top-0 z-50 p-1 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#1a1d20] transition-all duration-300 ${
       collapsed ? 'left-0 right-0' : 'left-60'
     }`}>
       <div className="flex items-center justify-between px-10 py-1.5">
         {/* Logo */}
         <a href="#home" className={`flex items-center transition-all duration-300 ${
-          collapsed ? 'transform -translate-x-9.5' : 'transform translate-x--3'
+          collapsed ? 'transform -translate-x-5' : 'transform translate-x--3'
         }`}>
-          {/* <img src={logo} alt="Logo" className="h-8 w-auto" /> */}
           <span className="text-violet-400 font-black text-2xl tracking-widest uppercase">
             <img src="/icons/logo.svg" alt="Infercircle" />
           </span>
         </a>
 
-        {/* Buttons */}
+        {/* Right side: Watchlist, SearchBar, Auth/Wallet buttons */}
         <div className="flex items-center space-x-4">
-          {showConnectWallet ? (
-            <Button
-              variant="filled"
-              color="violet"
-              href="#connect-wallet"
-              
-            >
-              Connect Wallet
-            </Button>
-          ) : (
+          {/* Watchlist button with react-icon */}
+          <button className="text-gray-300 hover:text-violet-400 transition-colors">
+            <FiBookmark size={22} />
+          </button>
+          {showSearch && <SearchBar />}
+          {showConnectWallet && (
+            <Button variant="filled">Connect Wallet</Button>
+          )}
+          {showAuthButtons && (
             <>
-              <Button variant="plain" href="#newaccount" className="uppercase">
-                New Account
-              </Button>
-              <Button
-                variant="outline"
-                color="violet"
-                href="/dashboard"
-                className="uppercase"
-              >
-                Sign In
-              </Button>
+              <Button variant="plain">New Account</Button>
+              <Button variant="outline">Sign In</Button>
             </>
           )}
         </div>

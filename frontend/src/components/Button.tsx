@@ -1,31 +1,15 @@
+import { FiArrowRight } from "react-icons/fi";
 const COLORS = {
     violet: {
-      fill: "bg-violet-800",
+      fill: "bg-violet-700",
       text: "text-white",
       border: "border-violet-500",
       outlineText: "text-violet-800",
-      hoverFill: "hover:bg-violet-700",
+      hoverFill: "hover:bg-violet-600",
     }
     // Add more colors if needed
   };
-  
-  const ArrowRight = () => (
-    <svg
-      className="ml-2 w-5 h-5 inline-block"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M17 8l4 4m0 0l-4 4m4-4H3"
-      />
-    </svg>
-  );
-  
+
   type ButtonProps = {
     className?: string;
     href?: string;
@@ -50,7 +34,7 @@ const COLORS = {
     ...props
   }) => {
     const colorSet = COLORS[color as keyof typeof COLORS] || COLORS.violet;
-    let baseClasses = `inline-flex items-center justify-center h-9 transition-colors duration-200 rounded px-4 font-semibold text-sm border-2 cursor-pointer ${px} ${className}`;
+    let baseClasses = `inline-flex items-center justify-center h-9 transition-colors duration-200 rounded p-4.5 font-semibold text-sm border-2 cursor-pointer ${px} ${className}`;
   
     if (variant === "filled") {
       baseClasses += ` ${colorSet.fill} ${colorSet.text} border-transparent ${colorSet.hoverFill}`;
@@ -63,7 +47,7 @@ const COLORS = {
     const content = (
       <span className="button-content flex items-center">
         {children}
-        {rightIcon && <ArrowRight />}
+        {rightIcon && <FiArrowRight size={16} />}
       </span>
     );
   
