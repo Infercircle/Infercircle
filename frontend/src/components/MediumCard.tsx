@@ -1,28 +1,6 @@
 "use client"
 import React, { useEffect, useState } from "react";
-<<<<<<< HEAD
 import { Article } from "@/interfaces/medium";
-=======
-
-interface Article {
-  id: string;
-  title: string;
-  url: string;
-  author?: {
-    id: string;
-    name: string;
-    profileUrl: string;
-  };
-  publication?: {
-    id: string;
-    name: string;
-    url: string;
-  };
-  date: string;
-  content?: string;
-  summary?: string;
-}
->>>>>>> metasearch
 
 export default function MediumCard() {
   const [articles, setArticles] = useState<Article[]>([]);
