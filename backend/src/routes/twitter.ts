@@ -88,12 +88,46 @@ router.post("/webhook", (req: Request, res: Response) => {
 });
 
 // Client endpoint to fetch stored tweets
-router.get("/tweets", (req: Request, res: Response) => {
-  res.status(200).json({
+router.get("/tweets", async(req: Request, res: Response) => {
+  const { query } = req.query;
+
+  if (query && typeof query === "string") {
+    const lowerQuery = query.toLowerCase();
+    const getTweets = await fetch(`https://api.twitterapi.io/twitter/tweet/advanced_search?queryType=Latest&query=${lowerQuery}`, {
+      method: "GET",
+      headers: {
+        'X-API-Key': process.env.X_API_KEY || "",
+      }
+    });
+    const TweetsJson = await getTweets.json();
+    console.log("TweetsJson", TweetsJson);
+    if (!TweetsJson || !TweetsJson.tweets || !Array.isArray(TweetsJson.tweets)) {
+      return res.status(400).json({
+        status: "error",
+        message: "No tweets found for the given query",
+      });
+    }
+    const newTweets: Tweet[] = TweetsJson.tweets.map((tweet: any) => {
+      return {
+        matchedRule: lowerQuery.toUpperCase(),
+        name: tweet.author?.name || "unknown",
+        text: tweet.text,
+        tweetUrl: tweet.url || tweet.twitterUrl || "https://twitter.com",
+        timestamp: getRelativeTime(tweet.createdAt),
+      };
+    })
+    return res.status(200).json({
+      status: "success",
+      data: newTweets,
+    });
+  }
+
+  return res.status(200).json({
     status: "success",
     count: tweets.length,
     data: tweets,
   });
 });
+
 
 export default router;
