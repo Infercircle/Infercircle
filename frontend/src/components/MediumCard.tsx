@@ -9,7 +9,7 @@ export default function MediumCard() {
   // Fetch function
   const fetchArticles = () => {
     fetch(
-      `http://localhost:5000/medium/search?q=blockchain,defi,web3,bitcoin,ethereum,crypto,&_=${Date.now()}`
+      `http://localhost:8080/medium/search?q=blockchain,defi,web3,bitcoin,ethereum,crypto,&_=${Date.now()}`
     )
       .then((res) => res.json())
       .then((data) => {

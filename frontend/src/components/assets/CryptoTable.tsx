@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import MiniGraph from "./MiniGraph";
 import { FaBitcoin } from "react-icons/fa";
+import axios from "axios";
 
 interface Coin {
   rank: number;
@@ -12,13 +14,38 @@ interface Coin {
   marketCap: string;
   volume24h: string;
   supply: string;
-  icon: string;
-  type?: string;
+  icon?: string;
+  id?: string;
+  coingeckoId?: string;
 }
 
 interface CryptoTableProps {
   coins?: Coin[];
 }
+
+const SparklineCell: React.FC<{ coingeckoId?: string }> = ({ coingeckoId }) => {
+  const [data, setData] = useState<number[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!coingeckoId) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const res = await axios.get<{ prices: number[] }>(`http://localhost:8080/tokens/${coingeckoId}/coingecko-sparkline`);
+        setData(res.data.prices);
+      } catch {
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [coingeckoId]);
+
+  if (loading) return <div className="w-20 h-6 flex items-center justify-center text-xs text-gray-400">...</div>;
+  if (!data || data.length === 0) return <div className="w-20 h-6 bg-[#23272b] rounded" />;
+  return <MiniGraph data={data} />;
+};
 
 const CryptoTable: React.FC<CryptoTableProps> = ({ coins = [] }) => (
   <div className="overflow-x-auto rounded-2xl border border-[#23272b] bg-[#181c20] mt-2">
@@ -42,12 +69,10 @@ const CryptoTable: React.FC<CryptoTableProps> = ({ coins = [] }) => (
           <tr key={coin.rank} className="border-b border-[#23272b] hover:bg-[#23272b]/60 transition">
             <td className="px-4 py-3 font-bold text-gray-400">{coin.rank}</td>
             <td className="px-4 py-3 flex items-center gap-2">
-              {/* Render icon based on coin.icon string */}
-              {coin.icon === "bitcoin" ? (
-                <FaBitcoin className="text-yellow-400 w-5 h-5" />
-              ) : (
-                <img src="/icons/logo.svg" alt={coin.symbol} className="w-5 h-5" />
-              )}
+              {/* Render icon as image if available */}
+              {coin.icon ? (
+                <img src={coin.icon} alt={coin.symbol} className="w-5 h-5" />
+              ) : null}
               <span className="font-semibold text-gray-100">{coin.name}</span>
               <span className="text-gray-400 text-xs">{coin.symbol}</span>
             </td>
@@ -59,10 +84,7 @@ const CryptoTable: React.FC<CryptoTableProps> = ({ coins = [] }) => (
             <td className="px-4 py-3">{coin.volume24h}</td>
             <td className="px-4 py-3">{coin.supply}</td>
             <td className="px-4 py-3">
-              {/* Mini graph placeholder */}
-              <div className="w-20 h-6 bg-[#23272b] rounded overflow-hidden flex items-end">
-                <div className="w-full h-2 bg-red-400 rounded-b"></div>
-              </div>
+              <SparklineCell coingeckoId={coin.coingeckoId} />
             </td>
           </tr>
         ))}
