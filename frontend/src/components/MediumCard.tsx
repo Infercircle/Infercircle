@@ -2,6 +2,16 @@
 import React, { useEffect, useState } from "react";
 import { Article } from "@/interfaces/medium";
 
+interface RawArticle {
+  id: string;
+  title: string;
+  url: string;
+  author: string;
+  publication_id: string;
+  published_at: string;
+  subtitle: string;
+}
+
 export default function MediumCard() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +25,7 @@ export default function MediumCard() {
       .then((data) => {
         console.log("Fetched at", new Date().toLocaleTimeString(), data.data);
         // Transform the data to match the expected structure
-        const articles = (data.data || []).map((article: any) => ({
+        const articles = (data.data || []).map((article: RawArticle) => ({
           id: article.id,
           title: article.title,
           url: article.url,
@@ -36,7 +46,7 @@ export default function MediumCard() {
         setArticles(articles);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setLoading(false);
         alert("Failed to load articles");
       });

@@ -5,7 +5,7 @@ import FearGreedIndex from "./widgets/FearGreedIndex";
 import BitcoinDominance from "./widgets/BitcoinDominance";
 
 const cardClass =
-  "bg-[#181c20] border border-[#23272b] rounded-2xl shadow-lg p-4 sm:p-4 min-h-0 transition-all duration-200 hoverflex flex-col";
+  "bg-[#181A20] border border-[#23272b] rounded-2xl shadow-lg p-4 sm:p-4 min-h-0 transition-all duration-200 hoverflex flex-col";
 
 const AssetCards: React.FC = () => {
   return (

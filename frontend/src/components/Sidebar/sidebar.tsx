@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   // Get all icons for collapsed view
   const getAllIcons = () => {
     const icons: Array<{
-      icon: any;
+      icon: React.ComponentType<{ className?: string }>;
       label: string;
       href: string;
       isActive: boolean;
@@ -64,15 +64,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   return (
     <aside
       className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out ${
-        collapsed ? 'w-16 bg-[#191c1f] border-r border-[#1a1d20] shadow-[4px_0px_6px_#00000040]' : 'w-[240px] bg-[#191c1f] border-r border-[#1a1d20] shadow-[4px_0px_6px_#00000040]'
+        collapsed ? 'w-16 bg-[#181A20] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040]' : 'w-[240px] bg-[#181A20] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040]'
       }`}
     >
       {/* Logo & Collapse Button */}
-      <div className={`flex items-center justify-between px-3 py-[0.922rem] transition-all duration-300 border-b ${
-        collapsed
-          ? 'bg-[rgba(17,20,22,0.4)] backdrop-blur-sm border-[#1a1d20]'
-          : 'bg-[#2a2e35] border-transparent'
-      }`}>
+      <div className="flex items-center justify-between px-3 py-[0.922rem] transition-all duration-300 border-b border-[#2a2e35] bg-[rgba(17,20,22,0.4)] backdrop-blur-sm">
         {!collapsed ? (
           <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
         ) : (
@@ -135,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             }
             const isExpanded = expandedGroups[item.group] ?? true;
             return (
-              <div key={`group-${idx}`} className="px-2 border-t border-[#2a2e35] pt-2">
+              <div key={`group-${idx}`} className="px-2 border-t border-[#23272b] pt-2">
                 <button
                   className="flex items-center justify-between w-full text-sm font-semibold p-2 rounded mb-2 cursor-pointer hover:bg-[#2a2e35] text-[#ffffff99] transition-all duration-200"
                   onClick={() => toggleGroup(item.group)}

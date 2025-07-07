@@ -4,6 +4,39 @@ import Tabs from "./Tabs";
 import CryptoTable from "./CryptoTable";
 import axios from "axios";
 
+interface TokenData {
+  id: number;
+  name: string;
+  symbol: string;
+  circulating_supply: number;
+  quote?: {
+    USD?: {
+      price: number;
+      percent_change_1h: number;
+      percent_change_24h: number;
+      percent_change_7d: number;
+      market_cap: number;
+      volume_24h: number;
+    };
+  };
+}
+
+interface TableToken {
+  id: string;
+  coingeckoId?: string;
+  rank: number;
+  name: string;
+  symbol: string;
+  price: string;
+  change1h: string;
+  change24h: string;
+  change7d: string;
+  marketCap: string;
+  volume24h: string;
+  supply: string;
+  icon?: string;
+}
+
 const tabMap = [
   { label: "All Crypto", type: undefined },
   { label: "Socials", type: "trending" }, // Example: trending for demo
@@ -20,8 +53,8 @@ const coingeckoIdMap: Record<number, string> = {
   // Add more mappings as needed
 };
 
-const mapTokenToTable = (token: any, idx: number) => ({
-  id: token.id,
+const mapTokenToTable = (token: TokenData, idx: number): TableToken => ({
+  id: token.id.toString(),
   coingeckoId: coingeckoIdMap[token.id], // Add CoinGecko id for sparkline
   rank: idx + 1,
   name: token.name,
@@ -38,7 +71,7 @@ const mapTokenToTable = (token: any, idx: number) => ({
 
 const AssetTable: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
-  const [coins, setCoins] = useState<any[]>([]);
+  const [coins, setCoins] = useState<TableToken[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,12 +83,13 @@ const AssetTable: React.FC = () => {
         let url = "http://localhost:8080/tokens/tokens";
         const type = tabMap[activeTab].type;
         if (type) url += `?type=${type}`;
-        const res = await axios.get<any>(url);
+        const res = await axios.get<{ data: TokenData[] }>(url);
         const data = res.data;
         const tokens = data.data || [];
         setCoins(tokens.map(mapTokenToTable));
-      } catch (err: any) {
-        setError(err.message || "Unknown error");
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
         setCoins([]);
       } finally {
         setLoading(false);

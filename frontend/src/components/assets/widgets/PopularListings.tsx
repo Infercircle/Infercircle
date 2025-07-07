@@ -46,7 +46,7 @@ const PopularListings: React.FC = () => {
         ))}
       </div>
 
-      <ul className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+      <ul className="space-y-2 max-h-32 overflow-y-auto pr-1">
         {tabs[activeTab].data.map((coin) => (
           <li
             key={coin.rank}
@@ -62,20 +62,6 @@ const PopularListings: React.FC = () => {
           </li>
         ))}
       </ul>
-
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #a78bfa;
-          border-radius: 6px;
-        }
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #a78bfa #23272b;
-        }
-      `}</style>
     </div>
   );
 };

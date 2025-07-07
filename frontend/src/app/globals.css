@@ -41,10 +41,11 @@ body {
   position: absolute;
   inset: 0;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%) scale(0);
+  top: 0;
+  transform: scale(0);
+  transform-origin: top left;
   width: 100%;
-  height: 200%;
+  height: 100%;
   background: white;
   border-radius: inherit;
   transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
@@ -53,7 +54,7 @@ body {
 }
 
 .button-circle-fill:hover::before {
-  transform: translateY(-50%) scale(1.2);
+  transform: scale(1.2);
 }
 
 .button-circle-fill .button-content {
@@ -65,3 +66,25 @@ body {
 .button-circle-fill:hover .button-content {
   color: #000; /* black text on hover */
 }
+
+
+/* ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 3px;
+  height: 2px!important;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent; 
+  border-radius: 10px;
+ transition: background-color 0.2s ease;
+min-height: 2px;
+
+}
+:hover::-webkit-scrollbar-thumb {
+  background-color: #A259FF66;
+} */

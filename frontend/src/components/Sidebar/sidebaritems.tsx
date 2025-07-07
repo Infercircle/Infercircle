@@ -1,7 +1,7 @@
 import {
-  FiGlobe, FiCpu, FiBookmark, FiBarChart2,
+  FiGlobe, FiBookmark, FiBarChart2,
   FiTrendingUp, FiUsers, FiVolume2, FiBox,
-  FiDatabase, FiSmile, FiLayers, FiGift
+  FiDatabase, FiSmile, FiLayers
 } from "react-icons/fi";
 import { BiSolidCategoryAlt } from "react-icons/bi";
 import { GrRobot } from "react-icons/gr";

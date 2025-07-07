@@ -31,17 +31,7 @@ const TrendingCoins: React.FC = () => (
     </div>
 
     <style jsx>{`
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #a78bfa;
-        border-radius: 6px;
-      }
-      .custom-scrollbar {
-        scrollbar-width: auto;
-        scrollbar-color: #a78bfa transparent;
-      }
+
     `}</style>
   </div>
 );

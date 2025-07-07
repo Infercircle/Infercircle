@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import MiniGraph from "./MiniGraph";
-import { FaBitcoin } from "react-icons/fa";
 import axios from "axios";
 
 interface Coin {
