@@ -7,6 +7,7 @@ import articleRoutes from "./routes/article";
 import tokenRoutes from "./routes/tokens";
 import ytRoutes from "./routes/Youtube";
 import twitterspacesRoutes from "./routes/twitterspaces";
+import suggestionsRoutes from "./routes/suggestions";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/article", articleRoutes);
 app.use("/tokens", tokenRoutes);
 app.use("/yt", ytRoutes);
 app.use("/twitterspaces", twitterspacesRoutes);
+app.use("/suggestions", suggestionsRoutes);
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
