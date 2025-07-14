@@ -20,7 +20,6 @@ const defaultCryptoSuggestions = [
 
 function highlightMatch(suggestion: string, input: string) {
   if (!input) return suggestion;
-  // Escape regex special characters in input
   const safeInput = input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${safeInput})`, 'ig');
   return (
@@ -39,66 +38,48 @@ export default function InferAIPage() {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>(defaultCryptoSuggestions);
+  const [suggestionsToFilterFrom, setSuggestionsToFilterFrom] = useState<string[]>(defaultCryptoSuggestions);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
 
-  // Fetch suggestions from our backend API on mount
   useEffect(() => {
     console.log('Fetching suggestions from backend API...');
-    
+
     fetch('http://localhost:8080/suggestions')
       .then(res => {
         console.log('Response status:', res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then(data => {
-        console.log('API Response:', data);
-        
-        // Always start with default suggestions
         let combinedQuestions = [...defaultCryptoSuggestions];
-        console.log('Starting with default suggestions:', combinedQuestions);
-        
+
         if (data && Array.isArray(data.data)) {
           const apiQuestions = data.data.map((item: any) => item.rawQuestion).filter(Boolean);
-          console.log('Extracted API questions:', apiQuestions);
-          
-          // Add API suggestions to the combined list
           combinedQuestions = [...combinedQuestions, ...apiQuestions];
-          console.log('Combined questions (with API):', combinedQuestions);
-          
         } else if (data.fallback) {
-          console.log('Using fallback suggestions');
           combinedQuestions = [...combinedQuestions, ...data.fallback];
         }
-        
-        // Remove duplicates and set the final list
+
         const uniqueQuestions = [...new Set(combinedQuestions)];
-        console.log('Final unique questions:', uniqueQuestions);
-        
         setAllSuggestions(uniqueQuestions);
-        setFilteredSuggestions(uniqueQuestions);
+        setSuggestionsToFilterFrom(uniqueQuestions);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error('Error fetching suggestions:', error);
-        console.log('Using default suggestions only');
-        setAllSuggestions(defaultCryptoSuggestions);
-        setFilteredSuggestions(defaultCryptoSuggestions);
       });
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInput(value);
-    
+
     if (value.trim()) {
-      const filtered = allSuggestions.filter(suggestion =>
+      const filtered = suggestionsToFilterFrom.filter(suggestion =>
         suggestion.toLowerCase().includes(value.toLowerCase())
       );
       setFilteredSuggestions(filtered);
     } else {
-      setFilteredSuggestions(allSuggestions);
+      setFilteredSuggestions([]);
     }
   };
 
@@ -123,8 +104,8 @@ export default function InferAIPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
             <span>InferAI</span>
@@ -138,7 +119,7 @@ export default function InferAIPage() {
             <textarea
               value={input}
               onChange={handleInputChange}
-              onFocus={() => setShowSuggestions(input.trim().length > 0)}
+              onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               onKeyPress={handleKeyPress}
               placeholder="Ask me anything about crypto markets, trends, or analysis..."
@@ -172,7 +153,7 @@ export default function InferAIPage() {
           </div>
 
           {/* Suggestions */}
-          {showSuggestions && input.trim().length > 0 && filteredSuggestions.length > 0 && (
+          {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-[#181A20] rounded-xl border border-[#23272b] shadow-lg z-10 max-h-64 overflow-y-auto">
               {filteredSuggestions.map((suggestion, index) => (
                 <button
@@ -190,4 +171,4 @@ export default function InferAIPage() {
       </div>
     </div>
   );
-} 
+}
