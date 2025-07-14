@@ -1,22 +1,14 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router, Request, Response } from "express";
 import axios from "axios";
-import { token } from "../interfaces/tokens";
 import dotenv from "dotenv";
 import { asyncHandler } from "../lib/helper";
+import { token } from "../interfaces/tokens";
 
 dotenv.config();
 
 const router = Router();
 
-const CMC_API_KEY = process.env.CMC_API_KEY as string;
-const BASE_URL_CMC = "https://pro-api.coinmarketcap.com";
 
-// Health check
-router.get("/", (req: Request, res: Response) => {
-  res.send("Tokens API Server 🚀");
-});
-
-// Search for tokens by symbol, token address, slug(coinmarketcap special names for token), or id(coinmarketcap token id)
 router.get("/search", asyncHandler(async (req: Request, res: Response) => {
   const { symbol, slug, address, id } = req.query;
   const params = [symbol, slug, address, id];
@@ -30,10 +22,11 @@ router.get("/search", asyncHandler(async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Query parameters 'symbol', 'slug', 'address', or 'id' is required" });
   }
   try {
-    const token = await fetch(`${BASE_URL_CMC}/v1/cryptocurrency/info` + `${symbol? `?symbol=${symbol}`  : slug ? `?slug=${slug}`  : address ? `?address=${address}` : id ? `?id=${id}` : ""}`, {
+    const token = await fetch(`https://api.coingecko.com/api/v3/coins/list` + `${symbol? `?symbol=${symbol}`  : slug ? `?slug=${slug}`  : address ? `?address=${address}` : id ? `?id=${id}` : ""}`, {
       method: "GET",
       headers: {
-        "X-CMC_PRO_API_KEY": CMC_API_KEY,
+        // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
+        // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
       },
     });
     const response = (await token.json());
@@ -41,7 +34,7 @@ router.get("/search", asyncHandler(async (req: Request, res: Response) => {
       return res.status(response.status.error_code).json({ error: response.status.error_message });
     }
     const tokenData = response.data[Object.keys(response.data)[0]];
-    const tokenReturnDTO: token = {
+    const tokenReturnDTO = {
       id: tokenData.id,
       name: tokenData.name,
       description: tokenData.description,
@@ -63,71 +56,30 @@ router.get("/search", asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
-// GET /tokens - List tokens (latest, trending, most-visited, gainers-losers, or by category)
-router.get("/tokens", asyncHandler(async (req: Request, res: Response) => {
-  const { type, category } = req.query;
-  let url = "";
-
-  if (type === "trending") {
-    url = `${BASE_URL_CMC}/v1/cryptocurrency/trending/latest`;
-  } else if (type === "most-visited") {
-    url = `${BASE_URL_CMC}/v1/cryptocurrency/trending/most-visited`;
-  } else if (type === "gainers-losers") {
-    url = `${BASE_URL_CMC}/v1/cryptocurrency/trending/gainers-losers`;
-  } else if (category) {
-    url = `${BASE_URL_CMC}/v1/cryptocurrency/category?category=${category}`;
-  } else {
-    url = `${BASE_URL_CMC}/v1/cryptocurrency/listings/latest`;
-  }
-
+// Change the CoinGecko proxy endpoint from /tokens/coingecko to /asset
+router.get("/assets", async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const per_page = Number(req.query.per_page) || 100;
   try {
-    const response = await fetch(url, {
-      headers: { "X-CMC_PRO_API_KEY": CMC_API_KEY }
+    const response = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
+      params: {
+        vs_currency: "usd",
+        order: "market_cap_desc",
+        per_page,
+        page,
+        sparkline: true,
+        price_change_percentage: "1h,24h,7d"
+      },
+      headers: {
+        // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
+        // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
+      }
     });
-    const data = await response.json();
-    res.json(data);
+    res.json(response.data);
   } catch (error) {
-    console.error("Error fetching tokens list:", error);
-    res.status(500).json({ error: "Failed to fetch tokens list" });
+    console.error("CoinGecko fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch from CoinGecko" });
   }
-}));
-
-// GET /tokens/:id/sparkline - 7-day price sparkline for a token
-router.get("/tokens/:id/sparkline", asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const url = `${BASE_URL_CMC}/v2/cryptocurrency/ohlcv/historical?id=${id}&count=7&interval=1d`;
-  try {
-    const response = await fetch(url, {
-      headers: { "X-CMC_PRO_API_KEY": CMC_API_KEY }
-    });
-    const data = await response.json();
-    console.log('CMC OHLCV data for id', id, ':', JSON.stringify(data)); // Debug log
-    // Extract closing prices
-    const quotes = data.data && data.data[id]?.quotes ? data.data[id].quotes : [];
-    const prices = quotes.map((q: any) => q.close);
-    res.json({ prices });
-  } catch (error) {
-    console.error("Error fetching sparkline data:", error);
-    res.status(500).json({ error: "Failed to fetch sparkline data" });
-  }
-}));
-
-// GET /tokens/:id/coingecko-sparkline - 7-day price sparkline from CoinGecko
-router.get("/tokens/:id/coingecko-sparkline", asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params; // CoinGecko id, e.g., 'bitcoin'
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${id}&sparkline=true`;
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    if (Array.isArray(data) && data.length > 0 && data[0].sparkline_in_7d) {
-      res.json({ prices: data[0].sparkline_in_7d.price });
-    } else {
-      res.json({ prices: [] });
-    }
-  } catch (error) {
-    console.error("Error fetching CoinGecko sparkline data:", error);
-    res.status(500).json({ error: "Failed to fetch CoinGecko sparkline data" });
-  }
-}));
+});
 
 export default router;

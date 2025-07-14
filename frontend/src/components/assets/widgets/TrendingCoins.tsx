@@ -12,19 +12,19 @@ const trendingCoins = [
 
 const TrendingCoins: React.FC = () => (
   <div>
-    <h3 className="text-sm font-bold text-white mb-2">Trending Coins</h3>
+    <h3 className="text-base font-bold text-white mb-2">Trending Coins</h3>
     <div className="h-[170px] overflow-y-scroll pr-1 custom-scrollbar">
       <ul className="space-y-2">
         {trendingCoins.map((coin) => (
           <li
             key={coin.rank}
-            className="flex items-center gap-3 text-sm  rounded-md px-3 py-2"
+            className="flex items-center gap-3 text-base rounded-md px-3 py-2"
           >
-            <span className="w-4 text-gray-400 font-semibold">{coin.rank}</span>
+            <span className="w-4 text-gray-400 font-semibold text-base">{coin.rank}</span>
             <span className="w-5 h-5 flex items-center justify-center">{coin.icon}</span>
-            <span className="font-semibold text-white">{coin.symbol}</span>
-            <span className="text-gray-400">{coin.price}</span>
-            <span className={`ml-auto font-semibold ${coin.changeColor}`}>{coin.change}</span>
+            <span className="font-semibold text-white text-base">{coin.symbol}</span>
+            <span className="text-gray-400 text-base">{coin.price}</span>
+            <span className={`ml-auto font-semibold ${coin.changeColor} text-base`}>{coin.change}</span>
           </li>
         ))}
       </ul>

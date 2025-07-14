@@ -6,7 +6,7 @@ const gaugeLabel = gaugeValue < 40 ? "Fear" : gaugeValue < 60 ? "Neutral" : "Gre
 
 const FearGreedIndex: React.FC = () => (
   <div className="flex flex-col items-center justify-center">
-    <h3 className="text-sm font-semibold text-gray-200 mb-4">Fear & Greed</h3>
+    <h3 className="text-base font-semibold text-gray-200 mb-4">Fear & Greed</h3>
     {/* Gauge */}
     <div className="relative flex items-center justify-center mb-2">
       <svg width="90" height="50" viewBox="0 0 90 50">
@@ -26,11 +26,11 @@ const FearGreedIndex: React.FC = () => (
           strokeLinecap="round"
         />
       </svg>
-      <span className="absolute text-2xl font-bold text-gray-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{gaugeValue}</span>
+      <span className="absolute text-3xl font-bold text-gray-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{gaugeValue}</span>
     </div>
-    <span className="text-xs font-semibold text-gray-300 mb-2">{gaugeLabel}</span>
+    <span className="text-base font-semibold text-gray-300 mb-2">{gaugeLabel}</span>
     {/* Stats */}
-    <div className="flex items-center gap-4 text-xs">
+    <div className="flex items-center gap-4 text-base">
       <div className="flex flex-col items-center">
         <span className="font-bold text-green-400">54%</span>
         <span className="text-gray-400">Yesterday</span>

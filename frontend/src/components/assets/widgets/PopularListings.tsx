@@ -28,13 +28,13 @@ const PopularListings: React.FC = () => {
 
   return (
     <div>
-      <h3 className="text-sm font-bold text-gray-200 mb-4">Popular</h3>
+      <h3 className="text-base font-bold text-gray-200 mb-4">Popular</h3>
 
       <div className="flex space-x-2 mb-3">
         {tabs.map((tab, idx) => (
           <button
             key={tab.label}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-150 focus:outline-none ${
+            className={`px-3 py-1 rounded-full text-base font-semibold transition-colors duration-150 focus:outline-none ${
               activeTab === idx
                 ? "bg-violet-500 text-white"
                 : "bg-[#23272b] text-gray-400 hover:bg-[#23272b]/80"
@@ -50,13 +50,13 @@ const PopularListings: React.FC = () => {
         {tabs[activeTab].data.map((coin) => (
           <li
             key={coin.rank}
-            className="flex items-center gap-3 text-xs px-3 py-2"
+            className="flex items-center gap-3 text-base px-3 py-2"
           >
-            <span className="text-gray-400 w-4 font-semibold">{coin.rank}</span>
+            <span className="text-gray-400 w-4 font-semibold text-base">{coin.rank}</span>
             <span className="w-4 h-4 flex items-center justify-center">{coin.icon}</span>
-            <span className="text-gray-100 font-medium w-12">{coin.symbol}</span>
-            <span className="text-gray-400 w-16">{coin.price}</span>
-            <span className={`ml-auto font-semibold ${coin.changeColor}`}>
+            <span className="text-gray-100 font-medium w-12 text-base">{coin.symbol}</span>
+            <span className="text-gray-400 w-16 text-base">{coin.price}</span>
+            <span className={`ml-auto font-semibold ${coin.changeColor} text-base`}>
               {coin.change}
             </span>
           </li>

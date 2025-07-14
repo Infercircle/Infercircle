@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div className={`${contentMarginClass} transition-all duration-300`}>
         <Navbar collapsed={collapsed} showConnectWallet={true} showAuthButtons={false} showSearch={showSearch} />
-        <main className="pt-6 px-6">
+        <main className="pt-6 px-6 pb-6">
           {children}
         </main>
       </div>
