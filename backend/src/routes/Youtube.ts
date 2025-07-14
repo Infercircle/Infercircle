@@ -1,5 +1,4 @@
 import express from 'express';
-import { GoogleGenAI } from "@google/genai";
 import { Request, Response } from 'express';
 import { asyncHandler } from '../lib/helper';
 import { gemini } from '../lib/helper';
@@ -253,6 +252,8 @@ router.get('/yt-search', asyncHandler(async (req: Request<any, any, any, GeminiS
         url: `https://www.youtube.com/watch?v=${videoId}`,
         summary: data.summary,
         transcript_highlights: data.transcript_highlights,
+        title: video.title,
+        date: video.publishedAt,
       };
     } catch (error) {
       console.error(`Error processing video ID ${videoId}:`, error);
