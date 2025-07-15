@@ -1,14 +1,25 @@
 import React, { useEffect, useRef } from 'react';
-import { useChat } from '../hooks/useChat';
+import { Message } from '../hooks/useChat';
 import ChatMessage from './ChatMessage';
 import { FiTrash2, FiX } from 'react-icons/fi';
 
 interface ChatContainerProps {
+  messages: Message[];
+  isLoading: boolean;
+  error: string | null;
+  onClearChat: () => void;
+  onCancelRequest: () => void;
   className?: string;
 }
 
-const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
-  const { messages, isLoading, error, clearChat, cancelRequest } = useChat();
+const ChatContainer: React.FC<ChatContainerProps> = ({ 
+  messages, 
+  isLoading, 
+  error, 
+  onClearChat, 
+  onCancelRequest,
+  className = '' 
+}) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,7 +42,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
         <div className="flex items-center gap-2">
           {isLoading && (
             <button
-              onClick={cancelRequest}
+              onClick={onCancelRequest}
               className="text-[#A3A3A3] hover:text-white transition-colors p-1 rounded"
               title="Cancel request"
             >
@@ -39,7 +50,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ className = '' }) => {
             </button>
           )}
           <button
-            onClick={clearChat}
+            onClick={onClearChat}
             className="text-[#A3A3A3] hover:text-white transition-colors p-1 rounded"
             title="Clear chat"
           >

@@ -42,7 +42,10 @@ export default function InferAIPage() {
   const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>(defaultCryptoSuggestions);
   
-  const { messages, isLoading, sendMessage } = useChat();
+  const { messages, isLoading, error, sendMessage, clearChat, cancelRequest } = useChat();
+
+  console.log('Messages in page:', messages);
+  console.log('Messages length:', messages.length);
 
   // Fetch suggestions from backend API on mount
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function InferAIPage() {
         console.log('Starting with default suggestions:', combinedQuestions);
         
         if (data && Array.isArray(data.data)) {
-          const apiQuestions = data.data.map((item: any) => item.rawQuestion).filter(Boolean);
+          const apiQuestions = data.data.map((item: { rawQuestion: string }) => item.rawQuestion).filter(Boolean);
           console.log('Extracted API questions:', apiQuestions);
           
           combinedQuestions = [...combinedQuestions, ...apiQuestions];
@@ -138,7 +141,13 @@ export default function InferAIPage() {
         {/* Chat Container */}
         {messages.length > 0 && (
           <div className="mb-6">
-            <ChatContainer />
+            <ChatContainer 
+              messages={messages}
+              isLoading={isLoading}
+              error={error}
+              onClearChat={clearChat}
+              onCancelRequest={cancelRequest}
+            />
           </div>
         )}
 

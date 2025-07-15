@@ -31,6 +31,8 @@ export const useChat = () => {
       timestamp: new Date()
     };
 
+    console.log('Adding message:', newMessage);
+    
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, newMessage]
@@ -100,8 +102,8 @@ export const useChat = () => {
         isLoading: false
       });
 
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
         // Request was cancelled
         setState(prev => ({
           ...prev,
@@ -113,15 +115,17 @@ export const useChat = () => {
 
       console.error('Error sending message:', error);
       
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
       updateMessage(aiMessageId, {
         content: 'Sorry, I encountered an error processing your request. Please try again.',
         isLoading: false,
-        error: error.message
+        error: errorMessage
       });
 
       setState(prev => ({
         ...prev,
-        error: error.message
+        error: errorMessage
       }));
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));

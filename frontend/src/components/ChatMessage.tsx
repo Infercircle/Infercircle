@@ -141,3 +141,5 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
     </div>
   );
 };
+
+export default ChatMessage;
