@@ -59,7 +59,7 @@ export const useChat = () => {
     }
 
     // Add user message
-    const userMessageId = addMessage({
+    addMessage({
       content: content.trim(),
       sender: 'user'
     });
@@ -77,12 +77,21 @@ export const useChat = () => {
       // Create new abort controller for this request
       abortControllerRef.current = new AbortController();
 
+      // Prepare conversation history for context
+      const conversationHistory = state.messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: content.trim() }),
+        body: JSON.stringify({ 
+          message: content.trim(),
+          conversationHistory 
+        }),
         signal: abortControllerRef.current.signal
       });
 
@@ -131,7 +140,7 @@ export const useChat = () => {
       setState(prev => ({ ...prev, isLoading: false }));
       abortControllerRef.current = null;
     }
-  }, [addMessage, updateMessage]);
+  }, [addMessage, updateMessage, state.messages]);
 
   const clearChat = useCallback(() => {
     setState({

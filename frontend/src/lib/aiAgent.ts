@@ -2,7 +2,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { DynamicTool } from 'langchain/tools';
 import { AgentExecutor, createOpenAIFunctionsAgent } from 'langchain/agents';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
-import { DataFetcher, DataSource } from './dataFetchers';
+import { DataFetcher } from './dataFetchers';
 // import { PriceDataFetcher } from './priceData';
 
 export class AIAgent {
@@ -83,7 +83,11 @@ Examples:
           ]);
           
           // Extract JSON from the response
-          const jsonMatch = analysisResponse.content.match(/\{.*\}/s);
+          const responseContent = typeof analysisResponse.content === 'string' 
+            ? analysisResponse.content 
+            : analysisResponse.content.toString();
+          
+          const jsonMatch = responseContent.match(/\{.*\}/);
           if (jsonMatch) {
             const analysis = JSON.parse(jsonMatch[0]);
             return JSON.stringify(analysis);
@@ -113,7 +117,7 @@ Examples:
     return [fetchDataTool, analyzeTopicTool];
   }
 
-  async processQuery(userInput: string): Promise<string> {
+  async processQuery(userInput: string, conversationHistory: { role: string; content: string }[] = []): Promise<string> {
     const tools = this.createTools();
     
     const prompt = ChatPromptTemplate.fromMessages([
@@ -136,12 +140,21 @@ Always:
 - Be conversational and helpful
 - If you fetch price data, highlight key trends or notable movements
 - Structure your response clearly with relevant context from recent sources
+- Remember and reference previous conversation context when relevant
+- If the user asks about something they mentioned earlier, use that context to provide more personalized responses
 
 Example flow for "How is Solana doing?":
 1. Analyze → identifies Solana/SOL, crypto=true, intent=general
 2. Fetch recent data about Solana
 3. Get SOL price chart data
-4. Synthesize both into a comprehensive response about Solana's recent performance`],
+4. Synthesize both into a comprehensive response about Solana's recent performance
+
+IMPORTANT: You have access to the full conversation history. Use this context to:
+- Remember user preferences and previous questions
+- Provide continuity between messages
+- Reference earlier parts of the conversation when relevant
+- Give more personalized and contextual responses`],
+      new MessagesPlaceholder('chat_history'),
       ['human', '{input}'],
       new MessagesPlaceholder('agent_scratchpad')
     ]);
@@ -159,8 +172,15 @@ Example flow for "How is Solana doing?":
     });
 
     try {
+      // Convert conversation history to the format expected by LangChain
+      const chatHistory = conversationHistory.map(msg => ({
+        role: msg.role === 'user' ? 'human' : 'ai',
+        content: msg.content
+      }));
+
       const response = await agentExecutor.invoke({
-        input: userInput
+        input: userInput,
+        chat_history: chatHistory
       });
       
       return response.output;
