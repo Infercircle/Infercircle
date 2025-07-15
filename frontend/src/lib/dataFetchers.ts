@@ -29,22 +29,75 @@ interface MediumArticle {
     [key: string]: any; // For any extra fields
 }
 
+const ActiveRSSFeeds: {source: string, lang: string}[] = [
+  {source: "coindesk", lang: "EN"},
+  {source: "cointelegraph", lang: "EN"},
+  {source: "dailyhodl", lang: "EN"},
+  {source: "blockworks", lang: "EN"},
+  {source: "cryptopotato", lang: "EN"},
+  {source: "decrypt", lang: "EN"},
+  {source: "bitcoin.com", lang: "EN"},
+  {source: "newsbtc", lang: "EN"},
+  {source: "utoday", lang: "EN"},
+  {source: "bitcoinist", lang: "EN"},
+  {source: "coinpedia", lang: "EN"},
+  {source: "timestabloid", lang: "EN"},
+  {source: "cryptointelligence", lang: "EN"},
+  {source: "bitcoinsistemi", lang: "EN"},
+  {source: "themerkle", lang: "EN"},
+  {source: "cryptodaily", lang: "EN"},
+  {source: "trustnodes", lang: "EN"},
+  {source: "coinpaper", lang: "EN"},
+  {source: "bitzo", lang: "EN"},
+  {source: "coinotag", lang: "EN"},
+  {source: "bloomberg_crypto_", lang: "EN"},
+  {source: "bitdegree", lang: "EN"},
+  {source: "finbold", lang: "EN"},
+  {source: "chainwire", lang: "EN"},
+  {source: "cryptoknowmics", lang: "EN"},
+  {source: "coinquora", lang: "EN"},
+  {source: "invezz", lang: "EN"},
+  {source: "seekingalpha", lang: "EN"},
+  {source: "cryptopolitan", lang: "EN"},
+  {source: "thecryptobasic", lang: "EN"},
+  {source: "huobi", lang: "EN"},
+  {source: "bitfinexblog", lang: "EN"},
+  {source: "zycrypto", lang: "EN"},
+  {source: "btcpulse", lang: "EN"},
+  {source: "thecoinrise", lang: "EN"},
+  {source: "crypto_news", lang: "EN"},
+  {source: "krakenblog", lang: "EN"},
+  {source: "cryptocoinnews", lang: "EN"},
+  {source: "cryptonews", lang: "EN"},
+  {source: "cryptocompare", lang: "EN"},
+  {source: "cryptonewsz", lang: "EN"},
+  {source: "financialtimes_crypto_", lang: "EN"},
+  {source: "bitcoinworld", lang: "EN"},
+  {source: "blokt", lang: "EN"},
+  {source: "ambcrypto", lang: "EN"},
+  {source: "cointurken", lang: "EN"},
+  {source: "forbes", lang: "EN"},
+  {source: "coinpaprika", lang: "EN"},
+  {source: "diariobitcoin", lang: "ES"}
+];
+
 export class DataFetcher {
   private async fetchNewsArticles(query: string, days: number = 7): Promise<DataSource[]> {
     const fromDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
     
     try {
-      const response = await axios.get('https://newsapi.org/v2/everything', {
-        params: {
-          q: query,
-          from: fromDate,
-          sortBy: 'publishedAt',
-          apiKey: process.env.NEWS_API_KEY,
-          language: 'en'
-        }
-      });
+      const results = await Promise.all(ActiveRSSFeeds.map(async (activeFeed) => {
+        const articles = await axios.get('http://localhost:5000/article/search', {
+          params: {
+            query: query,
+            source: activeFeed.source,
+            lang: activeFeed.lang
+          }
+        });
+        return articles.data;
+      }));
 
-      return response.data.articles.map((article: any) => ({
+      return results.map((article: any) => ({
         title: article.title,
         content: article.description || article.content,
         url: article.url,
@@ -58,28 +111,19 @@ export class DataFetcher {
   }
 
   private async fetchTweets(query: string, days: number = 7): Promise<DataSource[]> {
-    const startTime = subDays(new Date(), days).toISOString();
     
     try {
-      const response = await axios.get('https://api.twitter.com/2/tweets/search/recent', {
+      const response = await axios.get('http://localhost:5000/twitter/tweets', {
         params: {
-          query: `${query} -is:retweet`,
-          'tweet.fields': 'created_at,public_metrics',
-          'user.fields': 'username',
-          expansions: 'author_id',
-          max_results: 50,
-          start_time: startTime
-        },
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
+          query: query
         }
       });
 
       return response.data.data?.map((tweet: any) => ({
-        title: `Tweet by @${tweet.author_id}`,
+        title: `Tweet by @${tweet.name}`,
         content: tweet.text,
-        url: `https://twitter.com/i/web/status/${tweet.id}`,
-        date: tweet.created_at,
+        url: tweet.tweetUrl,
+        date: tweet.timestamp,
         source: 'twitter' as const
       })) || [];
     } catch (error) {
@@ -102,10 +146,10 @@ export class DataFetcher {
       // Note: YouTube transcript extraction requires additional setup
       // You'll need to implement transcript extraction or use a service
       return searchResponse.data.items.map((item: any) => ({
-        title: item.url,
+        title: item.title,
         content: item.summary,
         url: item.url,
-        date: item.snippet.publishedAt,
+        date: item.date,
         source: 'youtube' as const
       }));
     } catch (error) {

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { BsArrowUpCircleFill } from 'react-icons/bs';
 import { GrRobot } from 'react-icons/gr';
 import { FiSearch, FiPaperclip } from 'react-icons/fi';
+import { useChat } from '@/hooks/useChat';
+import ChatContainer from '@/components/ChatContainer';
 
 const defaultCryptoSuggestions = [
   "What's the current Bitcoin dominance?",
@@ -20,7 +22,6 @@ const defaultCryptoSuggestions = [
 
 function highlightMatch(suggestion: string, input: string) {
   if (!input) return suggestion;
-  // Escape regex special characters in input
   const safeInput = input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${safeInput})`, 'ig');
   return (
@@ -40,8 +41,10 @@ export default function InferAIPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>(defaultCryptoSuggestions);
+  
+  const { messages, isLoading, sendMessage } = useChat();
 
-  // Fetch suggestions from our backend API on mount
+  // Fetch suggestions from backend API on mount
   useEffect(() => {
     console.log('Fetching suggestions from backend API...');
     
@@ -56,7 +59,6 @@ export default function InferAIPage() {
       .then(data => {
         console.log('API Response:', data);
         
-        // Always start with default suggestions
         let combinedQuestions = [...defaultCryptoSuggestions];
         console.log('Starting with default suggestions:', combinedQuestions);
         
@@ -64,7 +66,6 @@ export default function InferAIPage() {
           const apiQuestions = data.data.map((item: any) => item.rawQuestion).filter(Boolean);
           console.log('Extracted API questions:', apiQuestions);
           
-          // Add API suggestions to the combined list
           combinedQuestions = [...combinedQuestions, ...apiQuestions];
           console.log('Combined questions (with API):', combinedQuestions);
           
@@ -73,7 +74,6 @@ export default function InferAIPage() {
           combinedQuestions = [...combinedQuestions, ...data.fallback];
         }
         
-        // Remove duplicates and set the final list
         const uniqueQuestions = [...new Set(combinedQuestions)];
         console.log('Final unique questions:', uniqueQuestions);
         
@@ -107,24 +107,26 @@ export default function InferAIPage() {
     setShowSuggestions(false);
   };
 
-  const handleSubmit = () => {
-    if (input.trim()) {
-      console.log('Sending:', input);
-      // TODO: Implement AI processing
+  const handleSubmit = async () => {
+    if (input.trim() && !isLoading) {
+      const message = input.trim();
       setInput('');
       setShowSuggestions(false);
+      
+      await sendMessage(message);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSubmit();
     }
   };
 
   return (
     <div className="min-h-screen p-6">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
             <span>InferAI</span>
@@ -133,6 +135,14 @@ export default function InferAIPage() {
           <p className="text-[#A3A3A3] text-lg">Your AI-powered Crypto Analysis Assistant</p>
         </div>
 
+        {/* Chat Container */}
+        {messages.length > 0 && (
+          <div className="mb-6">
+            <ChatContainer />
+          </div>
+        )}
+
+        {/* Input Section */}
         <div className="relative">
           <div className="bg-[#181A20] border border-[#23272b] rounded-2xl shadow-lg px-6 pt-2 pb-8 min-h-[60px] relative">
             <textarea
@@ -140,7 +150,7 @@ export default function InferAIPage() {
               onChange={handleInputChange}
               onFocus={() => setShowSuggestions(input.trim().length > 0)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ask me anything about crypto markets, trends, or analysis..."
               className="w-full bg-transparent outline-none text-white placeholder-[#A3A3A3] text-base resize-none border-none pt-4 pb-12 px-1"
               style={{ 
@@ -151,8 +161,10 @@ export default function InferAIPage() {
                 overflowY: 'auto'
               }}
               rows={1}
+              disabled={isLoading}
             />
-            {/* Send button at the bottom right */}
+            
+            {/* Send button */}
             <div className="absolute bottom-2 right-2 flex items-center gap-0">
               <button
                 type="button"
@@ -163,10 +175,16 @@ export default function InferAIPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={!input.trim()}
+                disabled={!input.trim() || isLoading}
                 className="p-2 bg-transparent disabled:bg-transparent disabled:cursor-not-allowed rounded-full transition-colors duration-200 flex items-center justify-center shadow-lg group cursor-pointer"
               >
-                <BsArrowUpCircleFill className={`w-7 h-7 transition-colors duration-200 ${!input.trim() ? 'text-[#46484d]' : 'text-[#A259FF] group-hover:text-[#8B4DFF]'}`} />
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#A259FF]"></div>
+                ) : (
+                  <BsArrowUpCircleFill className={`w-7 h-7 transition-colors duration-200 ${
+                    !input.trim() ? 'text-[#46484d]' : 'text-[#A259FF] group-hover:text-[#8B4DFF]'
+                  }`} />
+                )}
               </button>
             </div>
           </div>
@@ -190,4 +208,4 @@ export default function InferAIPage() {
       </div>
     </div>
   );
-} 
+}
