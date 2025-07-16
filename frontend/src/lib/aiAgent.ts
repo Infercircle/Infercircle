@@ -162,10 +162,10 @@ Examples:
           fetchedSources = data.slice(0, 8);
           
           if (data.length > 0) {
-            // Format the data with proper source citations
+            // Format the data with proper source citations including URLs
             const formattedSources = data.slice(0, 8).map((item, index) => {
               const sourceInfo = `[${index + 1}] ${item.title} (${item.source.toUpperCase()}, ${new Date(item.date).toDateString()})`;
-              return `${sourceInfo}\n   ${item.content?.substring(0, 180)}...\n   URL: ${item.url}`;
+              return `${sourceInfo}\n   Content: ${item.content?.substring(0, 180)}...\n   URL: ${item.url}`;
             }).join('\n\n');
             
             recentData = `\n\nRECENT DATA SOURCES for "${topicAnalysis.topic}" (${data.length} sources found):\n\n${formattedSources}`;
@@ -211,10 +211,12 @@ CRITICAL INSTRUCTIONS:
 9. IMPORTANT: Always cite your sources when using recent data - this is mandatory
 
 FORMAT FOR SOURCE CITATIONS:
-- In text: "According to [1]..." or "As reported by [2]..."(make these texts clickable links to the source URLs)
-- At the end: "Sources:\n[1] Source title\n[2] Source title\n..."(make these texts clickable links to the source URLs)
+- In text: "According to [1]..." or "As reported by [2]..."
+- At the end: "Sources:\n[1] [Source title](URL)\n[2] [Source title](URL)\n..."
 
-Please provide your complete response with proper source citations:`;
+IMPORTANT: Format all source citations as markdown links using [text](url) format so they become clickable links in the chat interface.
+
+Please provide your complete response with proper source citations formatted as clickable links:`;
 
       console.log('Step 3: Sending final prompt to AI for response generation...');
       
@@ -308,19 +310,58 @@ JSON only:`;
   }
 
   private formatResponseWithCitations(response: string, sources: { title: string; source: string; date: string; url: string }[]): string {
-    // Check if the response already has proper citations
-    const hasProperCitations = response.includes('Sources:') || response.includes('[1]') || response.includes('According to');
+    if (sources.length === 0) {
+      return response;
+    }
+
+    let enhancedResponse = response;
     
-    if (!hasProperCitations && sources.length > 0) {
-      // Add sources section if not present
-      const sourcesSection = '\n\n**Sources:**\n' + 
-        sources.slice(0, 8).map((source, index) => 
-          `[${index + 1}] ${source.title} (${source.source.toUpperCase()}, ${new Date(source.date).toDateString()})`
-        ).join('\n');
+    // Fix malformed inline citations like [3] (https://example.com)
+    sources.forEach((source, index) => {
+      const sourceNumber = index + 1;
+      const sourceUrl = source.url;
       
-      return response + sourcesSection;
+      // Fix pattern like [3] (https://example.com) -> [3](https://example.com)
+      const malformedPattern = new RegExp(`\\[${sourceNumber}\\]\\s*\\(([^)]+)\\)`, 'g');
+      enhancedResponse = enhancedResponse.replace(malformedPattern, `[${sourceNumber}](${sourceUrl})`);
+      
+      // Fix pattern like (as reported by [3] (https://example.com))
+      const inlinePattern = new RegExp(`\\(as reported by \\[${sourceNumber}\\]\\s*\\(([^)]+)\\)\\)`, 'g');
+      enhancedResponse = enhancedResponse.replace(inlinePattern, `(as reported by [${sourceNumber}](${sourceUrl}))`);
+      
+      // Fix pattern like (according to [2] (https://example.com))
+      const accordingPattern = new RegExp(`\\(according to \\[${sourceNumber}\\]\\s*\\(([^)]+)\\)\\)`, 'g');
+      enhancedResponse = enhancedResponse.replace(accordingPattern, `(according to [${sourceNumber}](${sourceUrl}))`);
+      
+      // Fix pattern like (see [7] (https://example.com))
+      const seePattern = new RegExp(`\\(see \\[${sourceNumber}\\]\\s*\\(([^)]+)\\)\\)`, 'g');
+      enhancedResponse = enhancedResponse.replace(seePattern, `(see [${sourceNumber}](${sourceUrl}))`);
+    });
+    
+    // Fix malformed sources section
+    const sourcesMatch = enhancedResponse.match(/Sources:\s*\n([\s\S]*?)(?:\n\n|$)/);
+    if (sourcesMatch) {
+      const sourcesSection = sourcesMatch[1];
+      let fixedSourcesSection = sourcesSection;
+      
+      sources.forEach((source, index) => {
+        const sourceNumber = index + 1;
+        const sourceUrl = source.url;
+        
+        // Fix pattern like [1] (https://example.com)
+        const sourcePattern = new RegExp(`\\[${sourceNumber}\\]\\s*\\(([^)]+)\\)`, 'g');
+        fixedSourcesSection = fixedSourcesSection.replace(sourcePattern, `[${sourceNumber}] [${source.title}](${sourceUrl})`);
+      });
+      
+      enhancedResponse = enhancedResponse.replace(sourcesMatch[0], `Sources:\n${fixedSourcesSection}\n\n`);
     }
     
-    return response;
+    // Clean up any remaining malformed patterns
+    enhancedResponse = enhancedResponse
+      .replace(/\(\[(\d+)\]\s*\(([^)]+)\)\)/g, '[$1]($2)')
+      .replace(/\[(\d+)\]\s*\(([^)]+)\)\)/g, '[$1]($2)')
+      .replace(/\(\(https:\/\/[^)]+\)\)/g, (match) => match.replace(/^\(\(/, '(').replace(/\)\)$/, ')'));
+    
+    return enhancedResponse;
   }
 }

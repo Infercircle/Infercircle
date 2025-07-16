@@ -82,8 +82,7 @@ const ActiveRSSFeeds: {source: string, lang: string}[] = [
 ];
 
 export class DataFetcher {
-  private async fetchNewsArticles(query: string): Promise<DataSource[]> {
-    
+  private async fetchNewsArticles(query: string): Promise<DataSource[]> { 
     try {
       const results = (await Promise.all(
         ActiveRSSFeeds.map(async (activeFeed) => {
@@ -94,8 +93,13 @@ export class DataFetcher {
               lang: activeFeed.lang,
             },
           });
+          console.log('-------------------------------------------------------------');
+          console.log(articles);
+          console.log('-------------------------------------------------------------');
           const data = articles.data as { data: unknown[] };
+          console.log('-------------------------------------------------------------');
           console.log(data.data);
+          console.log('-------------------------------------------------------------');
           return data.data; // This is an array
         })
       )).flat(); // Flatten the array of arrays into a single array
@@ -130,9 +134,6 @@ export class DataFetcher {
       
       return data.data?.map((tweet: unknown) => {
         const t = tweet as Record<string, unknown>;
-        console.log('-------------------------------------------------------------');
-        console.log(t);
-        console.log('-------------------------------------------------------------');
         return {
           title: `Tweet by @${(t.name as string) || 'Unknown'}`,
           content: (t.text as string) || 'No content available',
