@@ -48,7 +48,7 @@ export class AIAgent {
           return JSON.stringify({
             query,
             totalResults: data.length,
-            sources: data.slice(0, 10) // Limit for context
+            sources: data
           });
         } catch (error) {
           console.error('Error in fetch_recent_data tool:', error);

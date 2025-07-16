@@ -84,26 +84,44 @@ const ActiveRSSFeeds: {source: string, lang: string}[] = [
 export class DataFetcher {
   private async fetchNewsArticles(query: string): Promise<DataSource[]> { 
     try {
-      const results = (await Promise.all(
-        ActiveRSSFeeds.map(async (activeFeed) => {
-          const articles = await axios.get('http://localhost:5000/article/search', {
-            params: {
-              query: query,
-              source_key: activeFeed.source,
-              lang: activeFeed.lang,
-            },
-          });
-          console.log('-------------------------------------------------------------');
-          console.log(articles);
-          console.log('-------------------------------------------------------------');
-          const data = articles.data as { data: unknown[] };
-          console.log('-------------------------------------------------------------');
-          console.log(data.data);
-          console.log('-------------------------------------------------------------');
-          return data.data; // This is an array
-        })
-      )).flat(); // Flatten the array of arrays into a single array
-
+      const batchSize = 5;
+      const results: unknown[] = [];
+      
+      for (let i = 0; i < ActiveRSSFeeds.length; i += batchSize) {
+        const batch = ActiveRSSFeeds.slice(i, i + batchSize);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(async (activeFeed) => {
+            try {
+              const articles = await axios.get('http://localhost:5000/article/search', {
+                params: {
+                  query: query,
+                  source: activeFeed.source,
+                  lang: activeFeed.lang,
+                },
+                timeout: 10000, // 10 second timeout
+              });
+              const data = articles.data as { data: unknown[] };
+              return data.data || [];
+            } catch (error) {
+              console.error(`Failed to fetch from ${activeFeed.source}:`, error);
+              return [];
+            }
+          })
+        );
+        
+        // Extract successful results
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            results.push(...result.value);
+          }
+        });
+        
+        // Small delay between batches
+        if (i + batchSize < ActiveRSSFeeds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       return results.map((article: unknown) => {
         const art = article as Record<string, unknown>;
