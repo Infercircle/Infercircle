@@ -1,12 +1,12 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { DynamicTool } from 'langchain/tools';
 import { DataFetcher } from './dataFetchers';
-// import { PriceDataFetcher } from './priceData';
+import { PriceData } from './priceData';
 
 export class AIAgent {
   private model: ChatOpenAI;
   private dataFetcher: DataFetcher;
-//   private priceDataFetcher: PriceDataFetcher;
+  private priceDataFetcher: PriceData;
 
   constructor() {
     this.model = new ChatOpenAI({
@@ -20,7 +20,7 @@ export class AIAgent {
     });
     
     this.dataFetcher = new DataFetcher();
-    // this.priceDataFetcher = new PriceDataFetcher();
+    this.priceDataFetcher = new PriceData();
   }
 
   // This method is no longer used but keeping for reference
@@ -62,19 +62,17 @@ export class AIAgent {
       }
     });
 
-    // const priceChartTool = new DynamicTool({
-    //   name: 'get_price_chart',
-    //   description: 'Get historical price data for a cryptocurrency symbol',
-    //   func: async (input: string) => {
-    //     const symbol = input.trim().toUpperCase();
-    //     const priceData = await this.priceDataFetcher.getHistoricalPrice(symbol, 30);
+    const priceChartTool = new DynamicTool({
+      name: 'get_price_chart',
+      description: 'Get historical price data for a cryptocurrency token contract address',
+      func: async (input: string) => {
+        const contractAddress = input.trim();
+        const tokenId = await this.priceDataFetcher.getTokenId(contractAddress);
+        const priceData = await this.priceDataFetcher.getPriceHistory(tokenId, 30);
         
-    //     return JSON.stringify({
-    //       symbol,
-    //       priceData: priceData.slice(0, 30)
-    //     });
-    //   }
-    // });
+        return JSON.stringify(priceData);
+      }
+    });
 
     const analyzeTopicTool = new DynamicTool({
       name: 'analyze_topic',
@@ -137,7 +135,7 @@ Examples:
       }
     });
 
-    return [fetchDataTool, analyzeTopicTool];
+    return [fetchDataTool, analyzeTopicTool, priceChartTool];
   }
 
   async processQuery(userInput: string, conversationHistory: { role: string; content: string }[] = []): Promise<string> {
@@ -155,7 +153,7 @@ Examples:
       
       if (topicAnalysis.isCrypto || topicAnalysis.intentType === 'news' || topicAnalysis.confidence > 0.5) {
         try {
-          console.log(`Step 2: Fetching recent data for topic: "${topicAnalysis.topic}"`);
+          console.log(`Step 3: Fetching recent data for topic: "${topicAnalysis.topic}"`);
           const data = await this.dataFetcher.fetchAllData(topicAnalysis.topic, 7);
           console.log(`Fetched ${data.length} results`);
           
@@ -177,15 +175,15 @@ Examples:
           recentData = `\n\n[Note: Attempted to fetch recent data about "${topicAnalysis.topic}" but external sources are currently unavailable]`;
         }
       } else {
-        console.log('Step 2: Skipping data fetching - topic analysis indicates no need for recent data');
+        console.log('Step 3: Skipping data fetching - topic analysis indicates no need for recent data');
       }
 
-      // Step 3: Build conversation context
+      // Step 4: Build conversation context
       const conversationContext = conversationHistory.length > 0 
         ? '\n\nConversation history:\n' + conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')
         : '';
 
-      // Step 4: Create a comprehensive prompt for the final response
+      // Step 5: Create a comprehensive prompt for the final response
       const responsePrompt = `You are an intelligent AI assistant. Please provide a comprehensive and complete response to the user's question.
 
 User's question: "${userInput}"
@@ -201,14 +199,22 @@ ${recentData}
 
 CRITICAL INSTRUCTIONS:
 1. Provide a complete, well-structured response
-2. If recent data sources are provided above, you MUST cite them in your response
-3. When referencing information from the sources, use the format: "According to [source number]..." or "As reported by [source number]..."
-4. Always include a "Sources:" section at the end of your response if you used any recent data
-5. Use conversation history for context and personalization
-6. Make sure your response is complete and not truncated
-7. Be conversational and helpful
-8. If discussing crypto topics, provide comprehensive insights
-9. IMPORTANT: Always cite your sources when using recent data - this is mandatory
+2. If price chart data is provided above, you MUST include it in your response exactly as provided
+3. If price chart data is provided, the JSON data will be automatically rendered as an interactive chart
+4. When including chart data, use the format: "Here is the chart data: [JSON_DATA]"
+5. If recent data sources are provided above, you MUST cite them in your response
+6. When referencing information from the sources, use the format: "According to [source number]..." or "As reported by [source number]..."
+7. Always include a "Sources:" section at the end of your response if you used any recent data
+8. Use conversation history for context and personalization
+9. Make sure your response is complete and not truncated
+10. Be conversational and helpful
+11. If discussing crypto topics, provide comprehensive insights
+12. IMPORTANT: Always cite your sources when using recent data - this is mandatory
+
+FORMAT FOR CHART DATA:
+- If chart data is provided in the price data section, include it EXACTLY as provided
+- The JSON will be automatically detected and rendered as an interactive chart
+- Example: "Here is the chart data: {"symbol": "USDC", "name": "USD Coin", "priceData": [...]}"
 
 FORMAT FOR SOURCE CITATIONS:
 - In text: "According to [1]..." or "As reported by [2]..."
@@ -218,7 +224,7 @@ IMPORTANT: Format all source citations as markdown links using [text](url) forma
 
 Please provide your complete response with proper source citations formatted as clickable links:`;
 
-      console.log('Step 3: Sending final prompt to AI for response generation...');
+      console.log('Step 4: Sending final prompt to AI for response generation...');
       
       const response = await this.model.invoke([
         { role: 'user', content: responsePrompt }
@@ -259,13 +265,15 @@ Respond with ONLY a JSON object containing:
 - topic: the main subject (e.g., "solana", "bitcoin", "defi", "nft market")
 - isCrypto: boolean indicating if it's crypto-related
 - cryptoSymbol: the specific crypto symbol if identified (e.g., "SOL", "BTC", "ETH") or null
-- intentType: what they want to know ("price", "news", "analysis", "general")
+- intentType: what they want to know ("price", "chart", "news", "analysis", "general")
 - confidence: confidence score (0-1)
 
 Examples:
 "How is Solana doing?" → {"topic": "solana", "isCrypto": true, "cryptoSymbol": "SOL", "intentType": "general", "confidence": 0.9}
 "What's the latest on DeFi?" → {"topic": "defi", "isCrypto": true, "cryptoSymbol": null, "intentType": "news", "confidence": 0.8}
 "Show me Bitcoin price" → {"topic": "bitcoin", "isCrypto": true, "cryptoSymbol": "BTC", "intentType": "price", "confidence": 0.95}
+"Display chart for contract 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" → {"topic": "token chart", "isCrypto": true, "cryptoSymbol": null, "intentType": "chart", "confidence": 0.95}
+"Token price history for EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" → {"topic": "token price", "isCrypto": true, "cryptoSymbol": null, "intentType": "price", "confidence": 0.9}
 
 JSON only:`;
 
@@ -291,7 +299,7 @@ JSON only:`;
         topic: userInput.toLowerCase(),
         isCrypto: this.containsCryptoKeywords(userInput),
         cryptoSymbol: null,
-        intentType: 'general',
+        intentType: this.containsPriceKeywords(userInput) ? 'price' : 'general',
         confidence: 0.3
       };
     } catch (error) {
@@ -300,16 +308,43 @@ JSON only:`;
         topic: userInput.toLowerCase(),
         isCrypto: this.containsCryptoKeywords(userInput),
         cryptoSymbol: null,
-        intentType: 'general',
+        intentType: this.containsPriceKeywords(userInput) ? 'price' : 'general',
         confidence: 0.1
       };
     }
   }
 
   private containsCryptoKeywords(query: string): boolean {
-    const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'solana', 'sol', 'crypto', 'cryptocurrency', 'defi', 'nft', 'blockchain', 'token', 'coin'];
+    const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'solana', 'sol', 'crypto', 'cryptocurrency', 'defi', 'nft', 'blockchain', 'token', 'coin', 'contract', 'price', 'chart', 'trading', 'wallet', 'dex', 'swap'];
     const lowerQuery = query.toLowerCase();
     return cryptoKeywords.some(keyword => lowerQuery.includes(keyword));
+  }
+
+  private containsPriceKeywords(query: string): boolean {
+    const priceKeywords = ['price', 'chart', 'graph', 'historical', 'price history', 'token price', 'show me', 'display', 'contract'];
+    const lowerQuery = query.toLowerCase();
+    return priceKeywords.some(keyword => lowerQuery.includes(keyword));
+  }
+
+  private extractContractAddress(query: string): string | null {
+    // Look for Solana contract address pattern (base58, typically 32-44 characters)
+    const contractPattern = /[A-Za-z0-9]{32,44}/g;
+    const matches = query.match(contractPattern);
+    
+    if (matches) {
+      // Filter out common false positives
+      for (const match of matches) {
+        // Basic validation - Solana addresses are base58 and typically 32-44 chars
+        if (match.length >= 32 && match.length <= 44 && 
+            !/[0OIl]/.test(match) && // Base58 doesn't include these chars
+            !match.toLowerCase().includes('bitcoin') &&
+            !match.toLowerCase().includes('ethereum')) {
+          return match;
+        }
+      }
+    }
+    
+    return null;
   }
 
   private formatResponseWithCitations(response: string, sources: { title: string; source: string; date: string; url: string }[]): string {
