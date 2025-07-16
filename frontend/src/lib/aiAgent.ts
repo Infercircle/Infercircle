@@ -231,8 +231,11 @@ Please provide your complete response with proper source citations formatted as 
       console.log('AI response generated. Length:', responseContent.length);
       console.log('AI response preview:', responseContent.substring(0, 200) + '...');
       
+      // Clean up duplicate source citations first
+      const cleanedResponse = this.cleanupDuplicateSourceCitations(responseContent);
+      
       // Ensure proper source citations using the sources we already fetched
-      const finalResponse = this.formatResponseWithCitations(responseContent, fetchedSources);
+      const finalResponse = this.formatResponseWithCitations(cleanedResponse, fetchedSources);
       
       return finalResponse;
       
@@ -362,6 +365,44 @@ JSON only:`;
       .replace(/\[(\d+)\]\s*\(([^)]+)\)\)/g, '[$1]($2)')
       .replace(/\(\(https:\/\/[^)]+\)\)/g, (match) => match.replace(/^\(\(/, '(').replace(/\)\)$/, ')'));
     
+    // Remove duplicate source citations, keeping only the final formatted sources section
+    enhancedResponse = this.cleanupDuplicateSourceCitations(enhancedResponse);
+    
     return enhancedResponse;
+  }
+
+  private cleanupDuplicateSourceCitations(response: string): string {
+    let cleanedResponse = response;
+    
+    // Remove inline citations like "cryptocoin.news1", "cryptocoin.news2", etc.
+    cleanedResponse = cleanedResponse.replace(/\b\w+\.\w+\d+\b/g, '');
+    
+    // Remove parenthetical citations like "(cryptocoin.news1)"
+    cleanedResponse = cleanedResponse.replace(/\(\w+\.\w+\d+\)/g, '');
+    
+    // Remove superscript-style numbers after domain names
+    cleanedResponse = cleanedResponse.replace(/\b(cryptocoin\.news|[a-zA-Z]+\.[a-zA-Z]+)\d+/g, '$1');
+    
+    // Split by "Sources:" to find all sections
+    const parts = cleanedResponse.split('Sources:');
+    
+    if (parts.length > 2) {
+      // Keep only the main content and the last Sources section
+      const mainContent = parts[0].trim();
+      const lastSourcesSection = parts[parts.length - 1].trim();
+      cleanedResponse = mainContent + '\n\nSources:\n' + lastSourcesSection;
+    }
+    
+    // Remove the numbered list that appears before the final Sources section
+    // This removes patterns like "9. Title - domain" or "10. Title - domain"
+    cleanedResponse = cleanedResponse.replace(/\d+\.\s*[^\n]+\s*-\s*[^\n]+\n/g, '');
+    
+    // Remove lines that only contain numbers (like standalone "9", "10", etc.)
+    cleanedResponse = cleanedResponse.replace(/^\d+\s*$/gm, '');
+    
+    // Clean up extra spaces and line breaks
+    cleanedResponse = cleanedResponse.replace(/\s+/g, ' ').replace(/\n\s*\n/g, '\n\n');
+    
+    return cleanedResponse.trim();
   }
 }
