@@ -38,83 +38,28 @@ function highlightMatch(suggestion: string, input: string) {
 
 export default function InferAIPage() {
   const [input, setInput] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>(defaultCryptoSuggestions);
+  // const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
   
   const { messages, isLoading, error, sendMessage, clearChat, cancelRequest } = useChat();
 
   console.log('Messages in page:', messages);
   console.log('Messages length:', messages.length);
 
-  // Fetch suggestions from backend API on mount
-  useEffect(() => {
-    console.log('Fetching suggestions from backend API...');
-    
-    fetch('http://localhost:8080/suggestions')
-      .then(res => {
-        console.log('Response status:', res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('API Response:', data);
-        
-        let combinedQuestions = [...defaultCryptoSuggestions];
-        console.log('Starting with default suggestions:', combinedQuestions);
-        
-        if (data && Array.isArray(data.data)) {
-          const apiQuestions = data.data.map((item: { rawQuestion: string }) => item.rawQuestion).filter(Boolean);
-          console.log('Extracted API questions:', apiQuestions);
-          
-          combinedQuestions = [...combinedQuestions, ...apiQuestions];
-          console.log('Combined questions (with API):', combinedQuestions);
-          
-        } else if (data.fallback) {
-          console.log('Using fallback suggestions');
-          combinedQuestions = [...combinedQuestions, ...data.fallback];
-        }
-        
-        const uniqueQuestions = [...new Set(combinedQuestions)];
-        console.log('Final unique questions:', uniqueQuestions);
-        
-        setAllSuggestions(uniqueQuestions);
-        setFilteredSuggestions(uniqueQuestions);
-      })
-      .catch((error) => {
-        console.error('Error fetching suggestions:', error);
-        console.log('Using default suggestions only');
-        setAllSuggestions(defaultCryptoSuggestions);
-        setFilteredSuggestions(defaultCryptoSuggestions);
-      });
-  }, []);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInput(value);
-    
-    if (value.trim()) {
-      const filtered = allSuggestions.filter(suggestion =>
-        suggestion.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredSuggestions(filtered);
-    } else {
-      setFilteredSuggestions(allSuggestions);
-    }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setInput(suggestion);
-    setShowSuggestions(false);
-  };
+  // const handleSuggestionClick = (suggestion: string) => {
+  //   setInput(suggestion);
+  //   setShowSuggestions(false);
+  // };
 
   const handleSubmit = async () => {
     if (input.trim() && !isLoading) {
       const message = input.trim();
       setInput('');
-      setShowSuggestions(false);
+      // setShowSuggestions(false);
       
       await sendMessage(message);
     }
@@ -157,8 +102,6 @@ export default function InferAIPage() {
             <textarea
               value={input}
               onChange={handleInputChange}
-              onFocus={() => setShowSuggestions(input.trim().length > 0)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               onKeyDown={handleKeyPress}
               placeholder="Ask me anything about crypto markets, trends, or analysis..."
               className="w-full bg-transparent outline-none text-white placeholder-[#A3A3A3] text-base resize-none border-none pt-4 pb-12 px-1"
@@ -197,22 +140,6 @@ export default function InferAIPage() {
               </button>
             </div>
           </div>
-
-          {/* Suggestions */}
-          {showSuggestions && input.trim().length > 0 && filteredSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-[#181A20] rounded-xl border border-[#23272b] shadow-lg z-10 max-h-64 overflow-y-auto">
-              {filteredSuggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="w-full text-left px-4 py-3 hover:bg-[#23272b] transition-colors duration-150 border-b border-[#23272b] last:border-b-0 text-white cursor-pointer flex items-center gap-2"
-                >
-                  <FiSearch className="w-4 h-4 text-[#A3A3A3] flex-shrink-0" />
-                  {highlightMatch(suggestion, input)}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
