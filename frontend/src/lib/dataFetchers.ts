@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { subDays, format } from 'date-fns';
 
 export interface DataSource {
     title: string;
@@ -26,7 +25,8 @@ interface MediumArticle {
     date: string;
     content?: string;
     summary?: string;
-    [key: string]: any; // For any extra fields
+    publishedAt?: string;
+    description?: string;
 }
 
 const ActiveRSSFeeds: {source: string, lang: string}[] = [
@@ -82,35 +82,42 @@ const ActiveRSSFeeds: {source: string, lang: string}[] = [
 ];
 
 export class DataFetcher {
-  private async fetchNewsArticles(query: string, days: number = 7): Promise<DataSource[]> {
-    const fromDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+  private async fetchNewsArticles(query: string): Promise<DataSource[]> {
     
     try {
-      const results = await Promise.all(ActiveRSSFeeds.map(async (activeFeed) => {
-        const articles = await axios.get('http://localhost:5000/article/search', {
-          params: {
-            query: query,
-            source: activeFeed.source,
-            lang: activeFeed.lang
-          }
-        });
-        return articles.data;
-      }));
+      const results = (await Promise.all(
+        ActiveRSSFeeds.map(async (activeFeed) => {
+          const articles = await axios.get('http://localhost:5000/article/search', {
+            params: {
+              query: query,
+              source_key: activeFeed.source,
+              lang: activeFeed.lang,
+            },
+          });
+          const data = articles.data as { data: unknown[] };
+          console.log(data.data);
+          return data.data; // This is an array
+        })
+      )).flat(); // Flatten the array of arrays into a single array
 
-      return results.map((article: any) => ({
-        title: article.title,
-        content: article.description || article.content,
-        url: article.url,
-        date: article.publishedAt,
-        source: 'news' as const
-      }));
+
+      return results.map((article: unknown) => {
+        const art = article as Record<string, unknown>;
+        return {
+          title: (art.title as string) || 'Untitled',
+          content: (art.content as string) || (art.summary as string) || 'No content available',
+          url: (art.url as string) || '',
+          date: (art.publishedAt as string) || new Date().toISOString(),
+          source: 'news' as const
+        };
+      });
     } catch (error) {
       console.error('Error fetching news:', error);
       return [];
     }
   }
 
-  private async fetchTweets(query: string, days: number = 7): Promise<DataSource[]> {
+  private async fetchTweets(query: string, _days: number = 7): Promise<DataSource[]> {
     
     try {
       const response = await axios.get('http://localhost:5000/twitter/tweets', {
@@ -119,13 +126,21 @@ export class DataFetcher {
         }
       });
 
-      return response.data.data?.map((tweet: any) => ({
-        title: `Tweet by @${tweet.name}`,
-        content: tweet.text,
-        url: tweet.tweetUrl,
-        date: tweet.timestamp,
-        source: 'twitter' as const
-      })) || [];
+      const data = response.data as { data?: unknown[] };
+      
+      return data.data?.map((tweet: unknown) => {
+        const t = tweet as Record<string, unknown>;
+        console.log('-------------------------------------------------------------');
+        console.log(t);
+        console.log('-------------------------------------------------------------');
+        return {
+          title: `Tweet by @${(t.name as string) || 'Unknown'}`,
+          content: (t.text as string) || 'No content available',
+          url: (t.tweetUrl as string) || '',
+          date: (t.timestamp as string) || new Date().toISOString(),
+          source: 'twitter' as const
+        };
+      }) || [];
     } catch (error) {
       console.error('Error fetching tweets:', error);
       return [];
@@ -143,15 +158,20 @@ export class DataFetcher {
         }
       });
 
+      const data = searchResponse.data as { items?: unknown[] };
+      
       // Note: YouTube transcript extraction requires additional setup
       // You'll need to implement transcript extraction or use a service
-      return searchResponse.data.items.map((item: any) => ({
-        title: item.title,
-        content: item.summary,
-        url: item.url,
-        date: item.date,
-        source: 'youtube' as const
-      }));
+      return data.items?.map((item: unknown) => {
+        const i = item as Record<string, unknown>;
+        return {
+          title: (i.title as string) || 'Untitled Video',
+          content: (i.summary as string) || 'No summary available',
+          url: (i.url as string) || '',
+          date: (i.date as string) || new Date().toISOString(),
+          source: 'youtube' as const
+        };
+      }) || [];
     } catch (error) {
       console.error('Error fetching YouTube data:', error);
       return [];
@@ -160,40 +180,58 @@ export class DataFetcher {
 
   private async fetchMediumPosts(query: string): Promise<DataSource[]> {
     try {
-      const response = await axios.get('http://localhost:8080/medium/search', {
+      const response = await axios.get('http://localhost:5000/medium/search', {
         params: {
           q: query
         }
       });
-      if (!Array.isArray(response.data)) {
-        console.error('Unexpected API response:', response.data);
+      
+      const data = response.data as MediumArticle[];
+      
+      if (!Array.isArray(data)) {
+        console.error('Unexpected API response:', data);
         return [];
       }
 
-      const mediumArticles: MediumArticle[] = response.data;
-
-      return mediumArticles.map((article) => ({
-        title: article.title,
-        content: article.content || article.description,
-        url: article.url,
-        date: article.publishedAt,
+      return data.map((article) => ({
+        title: article.title || 'Untitled',
+        content: article.content || article.description || 'No content available',
+        url: article.url || '',
+        date: article.publishedAt || article.date || new Date().toISOString(),
         source: 'medium' as const
       }));
     } catch (error) {
-      console.error('Error fetching news:', error);
+      console.error('Error fetching medium posts:', error);
       return [];
     }
   }
 
   async fetchAllData(query: string, days: number = 7): Promise<DataSource[]> {
-    const [news, tweets, youtube, medium] = await Promise.all([
-      this.fetchNewsArticles(query, days),
-      this.fetchTweets(query, days),
-      this.fetchYouTubeTranscripts(query, days),
-      this.fetchMediumPosts(query, days)
+    console.log(`Fetching all data for query: "${query}"`);
+    
+    // Try to fetch from all sources but don't fail if one source fails
+    const results = await Promise.allSettled([
+      this.fetchNewsArticles(query),
+      this.fetchTweets(query, days)
     ]);
+    
+    const allData: DataSource[] = [];
+    
+    results.forEach((result, index) => {
+      const sourceName = ['news', 'tweets'][index];
+      if (result.status === 'fulfilled') {
+        console.log(`${sourceName}: ${result.value.length} items fetched`);
+        allData.push(...result.value);
+      } else {
+        console.error(`${sourceName}: failed to fetch -`, result.reason);
+      }
+    });
 
-    return [...news, ...tweets, ...youtube, ...medium]
+    const filteredData = allData
+      .filter(item => item && item.title && item.content) // Filter out invalid items
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    console.log(`Total valid items after filtering: ${filteredData.length}`);
+    return filteredData;
   }
 }
