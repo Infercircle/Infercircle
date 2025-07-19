@@ -56,7 +56,7 @@ const ToolResultRenderer: React.FC<Props> = ({ result }) => {
           <h4 className="text-blue-800 font-semibold">Tool: {result.toolName}</h4>
         </div>
         <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-          {result.executionTime}ms
+          {result.executionTime / 1000}ms
         </span>
       </div>
       
