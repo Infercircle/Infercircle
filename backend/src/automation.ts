@@ -56,12 +56,12 @@ const automationManager = new AutomationManager();
 export { automationManager };
 
 // Auto-start if this file is run directly
-if (require.main === module) {
-  automationManager.start().catch(error => {
-    console.error('Failed to start automation:', error);
-    process.exit(1);
-  });
-}
+// if (require.main === module) {
+//   automationManager.start().catch(error => {
+//     console.error('Failed to start automation:', error);
+//     process.exit(1);
+//   });
+// }
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {

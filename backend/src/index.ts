@@ -46,10 +46,10 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   
   // Start Elite Curators automation after server starts
-  setTimeout(() => {
-    console.log('🤖 Starting Elite Curators automation...');
-    automationManager.start().catch(error => {
-      console.error('Failed to start automation:', error);
-    });
-  }, 5000); // Wait 5 seconds for server to fully start
+  // setTimeout(() => {
+  //   console.log('🤖 Starting Elite Curators automation...');
+  //   automationManager.start().catch(error => {
+  //     console.error('Failed to start automation:', error);
+  //   });
+  // }, 5000); // Wait 5 seconds for server to fully start
 });
