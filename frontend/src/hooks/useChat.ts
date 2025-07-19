@@ -1,16 +1,8 @@
+import { AgentMessage } from '@/lib/types/agent';
 import { useState, useRef, useCallback } from 'react';
 
-export interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-  isLoading?: boolean;
-  error?: string;
-}
-
 export interface ChatState {
-  messages: Message[];
+  messages: AgentMessage[];
   isLoading: boolean;
   error: string | null;
 }
@@ -24,8 +16,8 @@ export const useChat = () => {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
-    const newMessage: Message = {
+  const addMessage = useCallback((message: Omit<AgentMessage, 'id' | 'timestamp'>) => {
+    const newMessage: AgentMessage = {
       ...message,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: new Date()
@@ -41,7 +33,7 @@ export const useChat = () => {
     return newMessage.id;
   }, []);
 
-  const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
+  const updateMessage = useCallback((id: string, updates: Partial<AgentMessage>) => {
     setState(prev => ({
       ...prev,
       messages: prev.messages.map(msg => 
@@ -61,14 +53,13 @@ export const useChat = () => {
     // Add user message
     addMessage({
       content: content.trim(),
-      sender: 'user'
+      role: 'user'
     });
 
     // Add loading AI message
     const aiMessageId = addMessage({
       content: '',
-      sender: 'ai',
-      isLoading: true
+      role: 'assistant'
     });
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -79,7 +70,7 @@ export const useChat = () => {
 
       // Prepare conversation history for context
       const conversationHistory = state.messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
+        role: msg.role === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
 
@@ -105,10 +96,11 @@ export const useChat = () => {
         throw new Error(data.error);
       }
 
-      // Update AI message with response
+      // The backend now returns a complete AgentMessage
+      // Update the AI message with the complete response
       updateMessage(aiMessageId, {
-        content: data.response,
-        isLoading: false
+        content: data.content || data.response || '',
+        toolResults: data.toolResults || []
       });
 
     } catch (error: unknown) {
@@ -127,9 +119,7 @@ export const useChat = () => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       updateMessage(aiMessageId, {
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        isLoading: false,
-        error: errorMessage
+        content: 'Sorry, I encountered an error processing your request. Please try again.'
       });
 
       setState(prev => ({

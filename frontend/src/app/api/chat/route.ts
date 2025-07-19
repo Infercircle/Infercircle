@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AIAgent } from '@/lib/core/aiAgent';
+import { AIAgent } from '@/lib/agent/aiAgent';
 
-export async function POST(request: NextRequest) {
+let agent: AIAgent | null = null;
+
+export async function initAgent(): Promise<AIAgent> {
+  if (!agent) {
+    agent = new AIAgent("", "gemini-2.0-flash-lite");
+    await agent.initializeAgent();
+  }
+  return agent;
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const { message, conversationHistory } = await request.json();
-    
-    if (!message) {
+    const { message } = await req.json();
+
+    if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    const agent = new AIAgent();
-    const response = await agent.processQuery(message, conversationHistory);
+    const agent = await initAgent();
+    const response = await agent.processMessage(message);
 
-    return NextResponse.json({ response });
+    return NextResponse.json(response);
   } catch (error) {
     console.error('API Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }

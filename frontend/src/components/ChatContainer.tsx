@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Message } from '../hooks/useChat';
-import ChatMessage from './ChatMessage';
+import ToolResultRenderer from './ChatMessage';
 import { FiTrash2, FiX } from 'react-icons/fi';
+import { AgentMessage } from '@/lib/types/agent';
+
 
 interface ChatContainerProps {
-  messages: Message[];
+  messages: AgentMessage[];
   isLoading: boolean;
   error: string | null;
   onClearChat: () => void;
@@ -62,8 +63,27 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       {/* Messages */}
       <div className="max-h-96 overflow-y-auto">
         {messages.map((message) => (
-          <div key={message.id} className="group">
-            <ChatMessage message={message} />
+          <div key={message.id} className={`flex group ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-3xl rounded-lg p-4 ${
+              message.role === 'user' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              <div className="whitespace-pre-wrap">{message.content}</div>
+              
+              {message.toolResults && message.toolResults.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-sm opacity-75 mb-2">Tool Results:</div>
+                  {message.toolResults.map((result, index) => (
+                    <ToolResultRenderer key={index} result={result} />
+                  ))}
+                </div>
+              )}
+              
+              <div className="text-xs opacity-60 mt-2">
+                {message.timestamp.toLocaleTimeString()}
+              </div>
+            </div>
           </div>
         ))}
         <div ref={messagesEndRef} />

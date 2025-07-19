@@ -19,6 +19,8 @@ interface PriceChartProps {
 }
 
 const PriceChart: React.FC<PriceChartProps> = ({ data }) => {
+
+  console.log("----------------------------Was it ever called?----------------------");
   // Transform data to match chart requirements
   const transformedData = data.map(point => ({
     date: point.time,
