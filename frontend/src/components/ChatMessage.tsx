@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { GrRobot } from 'react-icons/gr';
-import { FiUser, FiCopy, FiRefreshCw, FiExternalLink } from 'react-icons/fi';
+import { FiUser, FiCopy, FiRefreshCw, FiExternalLink, FiTrendingUp } from 'react-icons/fi';
 import { Message } from '../hooks/useChat';
-// import PriceChart from './PriceChart';
+import PriceChart from './PriceChart';
 
 interface ChatMessageProps {
   message: Message;
@@ -12,9 +12,8 @@ interface ChatMessageProps {
 interface ChartData {
   symbol: string;
   priceData: Array<{
-    date: string;
-    price: number;
-    volume: number;
+    time: string;
+    value: number;
   }>;
 }
 
@@ -139,7 +138,24 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
   // Check if message contains chart data
   const extractChartData = (content: string): ChartData | null => {
     try {
-      // Look for JSON-like chart data in the message
+      // Look for [CHART_COMPONENT] format first
+      const chartComponentMatch = content.match(/\[CHART_COMPONENT\](.*?)\[\/CHART_COMPONENT\]/);
+      if (chartComponentMatch) {
+        const chartData = JSON.parse(chartComponentMatch[1]);
+        
+        // Transform the data to match expected format
+        if (chartData.priceHistory && Array.isArray(chartData.priceHistory)) {
+          return {
+            symbol: chartData.contractAddress?.substring(0, 8) + '...' || 'Token',
+            priceData: chartData.priceHistory.map((item: { date?: string; timestamp?: string; price?: number; close?: number; volume?: number }) => ({
+              time: item.date || item.timestamp || '',
+              value: item.price || item.close || 0
+            }))
+          };
+        }
+      }
+      
+      // Fallback to old JSON format
       const chartMatch = content.match(/\{[\s\S]*?"symbol"[\s\S]*?"priceData"[\s\S]*?\}/);
       if (chartMatch) {
         return JSON.parse(chartMatch[0]);
@@ -152,7 +168,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
 
   const chartData = message.sender === 'ai' ? extractChartData(message.content) : null;
   const cleanContent = chartData ? 
-    message.content.replace(/\{[\s\S]*?"symbol"[\s\S]*?"priceData"[\s\S]*?\}/, '').trim() : 
+    message.content.replace(/\[CHART_COMPONENT\].*?\[\/CHART_COMPONENT\]/g, '').replace(/\{[\s\S]*?"symbol"[\s\S]*?"priceData"[\s\S]*?\}/g, '').trim() : 
     message.content;
 
   // Extract sources and format content for AI messages
@@ -266,7 +282,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
             )}
 
             {/* Chart Component */}
-            {/* {chartData && (
+            {chartData && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-3">
                   <FiTrendingUp className="w-4 h-4 text-[#A259FF]" />
@@ -274,9 +290,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
                     {chartData.symbol} Price Chart
                   </span>
                 </div>
-                <PriceChart data={chartData.priceData} symbol={chartData.symbol} />
+                <PriceChart data={chartData.priceData} />
               </div>
-            )} */}
+            )}
           </div>
         )}
 

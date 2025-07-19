@@ -1,40 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BsArrowUpCircleFill } from 'react-icons/bs';
 import { GrRobot } from 'react-icons/gr';
-import { FiSearch, FiPaperclip } from 'react-icons/fi';
+import { FiPaperclip } from 'react-icons/fi';
 import { useChat } from '@/hooks/useChat';
 import ChatContainer from '@/components/ChatContainer';
-
-const defaultCryptoSuggestions = [
-  "What's the current Bitcoin dominance?",
-  "Show me trending altcoins",
-  "Analyze Ethereum's on-chain metrics",
-  "What are the top DeFi protocols?",
-  "Show me NFT market trends",
-  "Analyze Bitcoin's price action",
-  "What's happening with Solana?",
-  "Show me crypto market sentiment",
-  "Analyze trading volume patterns",
-  "What are the latest ICO/IDO projects?"
-];
-
-function highlightMatch(suggestion: string, input: string) {
-  if (!input) return suggestion;
-  const safeInput = input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${safeInput})`, 'ig');
-  return (
-    <span
-      dangerouslySetInnerHTML={{
-        __html: suggestion.replace(
-          regex,
-          '<span class="font-bold text-[#A3A3A3]">$1</span>'
-        ),
-      }}
-    />
-  );
-}
 
 export default function InferAIPage() {
   const [input, setInput] = useState('');

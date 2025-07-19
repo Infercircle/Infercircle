@@ -10,6 +10,9 @@ export class TopicAnalyzer {
 
   async analyzeTopicWithAI(userInput: string): Promise<TopicAnalysis> {
     try {
+      // First, check if there's a contract address in the input
+      const contractAddress = this.extractContractAddress(userInput);
+      
       const analysisPrompt = `Analyze this user query and determine:
 1. What is the main topic/subject they're asking about?
 2. Is it related to cryptocurrency/blockchain?
@@ -18,8 +21,10 @@ export class TopicAnalyzer {
 
 User query: "${userInput}"
 
+${contractAddress ? `IMPORTANT: This query contains a contract address: ${contractAddress}. This strongly indicates the user wants token-specific information like price charts or token data.` : ''}
+
 Respond with ONLY a JSON object containing:
-- topic: the main subject (e.g., "solana", "bitcoin", "defi", "nft market")
+- topic: the main subject (e.g., "token price chart", "solana token", "bitcoin", "defi")
 - isCrypto: boolean indicating if it's crypto-related
 - cryptoSymbol: the specific crypto symbol if identified (e.g., "SOL", "BTC", "ETH") or null
 - intentType: what they want to know ("price", "chart", "news", "analysis", "general")
@@ -29,8 +34,9 @@ Examples:
 "How is Solana doing?" → {"topic": "solana", "isCrypto": true, "cryptoSymbol": "SOL", "intentType": "general", "confidence": 0.9}
 "What's the latest on DeFi?" → {"topic": "defi", "isCrypto": true, "cryptoSymbol": null, "intentType": "news", "confidence": 0.8}
 "Show me Bitcoin price" → {"topic": "bitcoin", "isCrypto": true, "cryptoSymbol": "BTC", "intentType": "price", "confidence": 0.95}
-"Display chart for contract 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" → {"topic": "token chart", "isCrypto": true, "cryptoSymbol": null, "intentType": "chart", "confidence": 0.95}
-"Token price history for EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" → {"topic": "token price", "isCrypto": true, "cryptoSymbol": null, "intentType": "price", "confidence": 0.9}
+"Display chart for contract 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" → {"topic": "token price chart", "isCrypto": true, "cryptoSymbol": null, "intentType": "chart", "confidence": 0.95}
+"Get Price chart for DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" → {"topic": "token price chart", "isCrypto": true, "cryptoSymbol": null, "intentType": "chart", "confidence": 0.95}
+"Token price history for EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" → {"topic": "token price chart", "isCrypto": true, "cryptoSymbol": null, "intentType": "chart", "confidence": 0.95}
 
 JSON only:`;
 
@@ -48,25 +54,38 @@ JSON only:`;
       const jsonMatch = responseContent.match(/\{[^}]*\}/);
       if (jsonMatch) {
         const analysis = JSON.parse(jsonMatch[0]);
+        
+        // Override analysis if contract address is found
+        if (contractAddress) {
+          analysis.topic = "token price chart";
+          analysis.isCrypto = true;
+          analysis.intentType = "chart";
+          analysis.confidence = 0.95;
+        }
+        
         return analysis;
       }
 
       // Fallback if JSON parsing fails
-      return {
-        topic: userInput.toLowerCase(),
-        isCrypto: this.containsCryptoKeywords(userInput),
+      const fallbackAnalysis = {
+        topic: contractAddress ? "token price chart" : userInput.toLowerCase(),
+        isCrypto: contractAddress ? true : this.containsCryptoKeywords(userInput),
         cryptoSymbol: null,
-        intentType: this.containsPriceKeywords(userInput) ? 'price' : 'general',
-        confidence: 0.3
+        intentType: contractAddress ? 'chart' : (this.containsPriceKeywords(userInput) ? 'price' : 'general'),
+        confidence: contractAddress ? 0.95 : 0.3
       };
+      
+      return fallbackAnalysis;
     } catch (error) {
       console.error('Error in topic analysis:', error);
+      const contractAddress = this.extractContractAddress(userInput);
+      
       return {
-        topic: userInput.toLowerCase(),
-        isCrypto: this.containsCryptoKeywords(userInput),
+        topic: contractAddress ? "token price chart" : userInput.toLowerCase(),
+        isCrypto: contractAddress ? true : this.containsCryptoKeywords(userInput),
         cryptoSymbol: null,
-        intentType: this.containsPriceKeywords(userInput) ? 'price' : 'general',
-        confidence: 0.1
+        intentType: contractAddress ? 'chart' : (this.containsPriceKeywords(userInput) ? 'price' : 'general'),
+        confidence: contractAddress ? 0.95 : 0.1
       };
     }
   }

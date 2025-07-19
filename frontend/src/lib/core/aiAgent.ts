@@ -11,7 +11,8 @@ import {
   AIModelConfig, 
   TopicAnalysis, 
   DataSource,
-  QueryProcessingOptions
+  QueryProcessingOptions,
+  ToolConfig
 } from '../types/agent.types';
 
 export class AIAgent {
@@ -73,14 +74,53 @@ export class AIAgent {
       const topicAnalysis = await this.topicAnalyzer.analyzeTopicWithAI(userInput);
       console.log('📊 Topic analysis result:', topicAnalysis);
       
-      // Step 2: Process data fetching based on analysis
+      // Step 1.5: Check for contract address and handle chart requests
+      const contractAddress = this.topicAnalyzer.extractContractAddress(userInput);
+      
+      if (contractAddress && (topicAnalysis.intentType === 'chart' || topicAnalysis.intentType === 'price')) {
+        console.log('🔍 Contract address detected, using price chart tool...');
+        
+        try {
+          const chartResult = await this.toolsManager.executeTool('crypto_getPriceChart', {
+            contractAddress: contractAddress,
+            days: options.dataFetchDays || 30
+          });
+          
+          if (chartResult && typeof chartResult === 'object' && 'success' in chartResult) {
+            const result = chartResult as { success: boolean; data?: unknown; error?: string };
+            
+            if (result.success && result.data) {
+              // Get the render method from the tool
+              const priceChartTool = this.toolsManager.getTool('crypto_getPriceChart');
+              if (priceChartTool && priceChartTool.render) {
+                priceChartTool.render(result);
+                
+                // Return a response that includes both text and chart data
+                return `Here's the price chart for the token with contract address ${contractAddress}:\n\n[CHART_COMPONENT]${JSON.stringify(result.data)}[/CHART_COMPONENT]\n\nThe chart shows the price history for the requested token over the last ${options.dataFetchDays || 30} days. You can interact with the chart to see specific price points and trends.`;
+              }
+              
+              // Fallback to JSON data if render fails
+              return `Here's the price data for contract ${contractAddress}:\n\n${JSON.stringify(result.data, null, 2)}`;
+            } else {
+              return `I couldn't fetch the price chart for contract ${contractAddress}. Error: ${result.error || 'Unknown error'}`;
+            }
+          }
+        } catch (error) {
+          console.error('Error executing price chart tool:', error);
+          return `I encountered an error while trying to fetch the price chart for contract ${contractAddress}. Please try again or check if the contract address is valid.`;
+        }
+      }
+      
+      // Step 2: Process data fetching based on analysis (only if not a chart request)
       console.log('📥 Step 2: Processing data fetching...');
+      const shouldSkipDataFetching = contractAddress && topicAnalysis.intentType === 'chart';
+      
       const { recentData, fetchedSources } = await this.dataProcessor.processDataFetching(
         topicAnalysis, 
         {
           days: options.dataFetchDays || 7,
           maxSources: options.maxSources || 8,
-          skipDataFetching: options.skipDataFetching || false
+          skipDataFetching: shouldSkipDataFetching || options.skipDataFetching || false
         }
       );
       
@@ -125,11 +165,11 @@ export class AIAgent {
   }
 
   // Tool management methods
-  async executeTool(toolName: string, params: any): Promise<any> {
+  async executeTool(toolName: string, params: unknown): Promise<unknown> {
     return await this.toolsManager.executeTool(toolName, params);
   }
 
-  registerTool(name: string, tool: any): void {
+  registerTool(name: string, tool: ToolConfig): void {
     this.toolsManager.registerTool(name, tool);
   }
 
@@ -166,7 +206,7 @@ export class AIAgent {
   }
 
   // Legacy compatibility method
-  private createTools() {
+  private createTools(): Record<string, unknown> {
     // This maintains backward compatibility with the old tool structure
     return this.toolsManager.getAllTools();
   }

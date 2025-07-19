@@ -105,6 +105,7 @@ export class ToolsManager {
   }
 
   filterToolsByRequirements(requiredEnvVars: string[] = []): Record<string, ToolConfig> {
+    console.log(`Filtering tools by required environment variables: ${requiredEnvVars.join(', ')}`);
     const filteredTools: Record<string, ToolConfig> = {};
     
     this.enabledTools.forEach((tool, name) => {

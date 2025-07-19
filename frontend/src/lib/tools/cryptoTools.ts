@@ -111,11 +111,79 @@ export class CryptoTools {
     };
   }
 
+  getPriceChartTool(): ToolConfig {
+    return {
+      displayName: '📊 Get Price Chart',
+      description: 'Get price chart data for a cryptocurrency token and render it visually',
+      parameters: z.object({
+        contractAddress: z.string().describe('The contract address of the token'),
+        days: z.number().optional().describe('Number of days for historical data (default: 30)')
+      }),
+      execute: async (params: unknown): Promise<ToolResult> => {
+        const { contractAddress, days = 30 } = params as { contractAddress: string; days?: number };
+        try {
+          console.log(`Fetching price chart for contract: ${contractAddress}, days: ${days}`);
+          
+          const tokenId = await this.priceDataFetcher.getTokenId(contractAddress);
+          const priceHistory = await this.priceDataFetcher.getPriceHistory(tokenId, days);
+          
+          if (!priceHistory || priceHistory.length === 0) {
+            return {
+              success: false,
+              error: "No price data available for this token"
+            };
+          }
+
+          const chartData = {
+            contractAddress,
+            tokenId,
+            priceHistory,
+            days,
+            timestamp: new Date().toISOString()
+          };
+
+          return {
+            success: true,
+            data: chartData
+          };
+        } catch (error) {
+          console.error('Error fetching price chart:', error);
+          return {
+            success: false,
+            error: "Failed to fetch price chart data. Please check the contract address."
+          };
+        }
+      },
+        render: (result: unknown) => {
+          const typedResult = result as {
+            success: boolean;
+            data?: { time: string; value: number }[];
+            error?: string;
+          };
+
+          if (!typedResult.success) {
+            return <div>Error: {typedResult.error}</div>;
+          }
+
+          if (!typedResult.data || typedResult.data.length === 0) {
+            return <div>No price history data found</div>;
+          }
+
+          return (
+            <Card className="bg-muted/50 p-4">
+              <PriceChart data={typedResult.data} />
+            </Card>
+          );
+        },
+    };
+  }
+
   getAllTools(): Record<string, ToolConfig> {
     return {
       getTokenPrice: this.getTokenPriceTool(),
       getTokenInfo: this.getTokenInfoTool(),
-      getMarketTrends: this.getMarketTrendsTool()
+      getMarketTrends: this.getMarketTrendsTool(),
+      getPriceChart: this.getPriceChartTool()
     };
   }
 }

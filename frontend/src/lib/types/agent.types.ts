@@ -40,7 +40,7 @@ export interface ToolConfig {
 
 export interface ToolResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 

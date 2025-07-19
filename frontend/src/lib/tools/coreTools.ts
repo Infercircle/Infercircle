@@ -1,7 +1,9 @@
+import React from 'react';
 import { z } from 'zod';
 import { DataFetcher } from '../dataFetchers';
 import { PriceData } from '../priceData';
 import { ToolConfig, ToolResult } from '../types/agent.types';
+import PriceChart from '../../components/PriceChart';
 
 export class CoreTools {
   private dataFetcher: DataFetcher;
@@ -57,7 +59,7 @@ export class CoreTools {
   getPriceChartTool(): ToolConfig {
     return {
       displayName: '📈 Get Price Chart',
-      description: 'Get historical price data for a cryptocurrency token contract address',
+      description: 'Get historical price data for a cryptocurrency token contract address and display it as a chart',
       parameters: z.object({
         contractAddress: z.string().describe('The contract address of the token'),
         days: z.number().optional().default(30).describe('Number of days of price history')
@@ -79,6 +81,27 @@ export class CoreTools {
             error: "Failed to fetch price data for the given contract address."
           };
         }
+      },
+      render: (result: unknown) => {
+        const typedResult = result as {
+          success: boolean;
+          data?: { time: string; value: number }[];
+          error?: string;
+        };
+
+        if (!typedResult.success) {
+          return React.createElement('div', { className: 'text-red-500 p-4' }, 
+            `Error: ${typedResult.error}`);
+        }
+
+        if (!typedResult.data || typedResult.data.length === 0) {
+          return React.createElement('div', { className: 'text-yellow-500 p-4' }, 
+            'No price history data found');
+        }
+
+        return React.createElement('div', { className: 'bg-muted/50 p-4' },
+          React.createElement(PriceChart, { data: typedResult.data })
+        );
       }
     };
   }

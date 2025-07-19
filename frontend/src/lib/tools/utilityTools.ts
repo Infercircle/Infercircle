@@ -21,8 +21,9 @@ export class UtilityTools {
               results: [
                 { title: 'Sample Result 1', url: 'https://example.com/1', snippet: 'Sample snippet...' },
                 { title: 'Sample Result 2', url: 'https://example.com/2', snippet: 'Another snippet...' }
-              ],
-              totalResults: 2
+              ].slice(0, maxResults),
+              totalResults: 2,
+              maxResults
             }
           };
         } catch (error) {

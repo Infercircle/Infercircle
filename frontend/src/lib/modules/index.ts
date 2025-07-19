@@ -29,7 +29,10 @@ export type {
 } from '../types/agent.types';
 
 // Utility functions
-export const createAIAgent = (config?: Partial<import('../types/agent.types').AIModelConfig>) => {
+import { AIAgent } from '../core/aiAgent';
+import { AIModelConfig } from '../types/agent.types';
+
+export const createAIAgent = (config?: Partial<AIModelConfig>) => {
   return new AIAgent(config);
 };
 

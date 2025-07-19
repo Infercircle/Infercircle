@@ -139,7 +139,8 @@ export class DataFetcher {
     }
   }
 
-  private async fetchTweets(query: string, _days: number = 7): Promise<DataSource[]> {
+  private async fetchTweets(query: string, days: number = 7): Promise<DataSource[]> {
+    console.log(`Fetching tweets for query: "${query}", days: ${days}`);
     
     try {
       const response = await axios.get('http://localhost:5000/twitter/tweets', {
