@@ -19,9 +19,6 @@ export class AIAgent {
         maxTokens: 8000
     };
 
-    console.log('Initializing AI Agent with model:', defaultConfig.model);
-    console.log('Using Google API Key:', defaultConfig.apiKey ? '***' : 'Not provided');
-
     if (!defaultConfig.apiKey) {
       throw new Error('Google API key is required');
     }
@@ -37,7 +34,6 @@ export class AIAgent {
   }
   
   async initializeAgent() {
-    console.log('Initializing AI Agent with tools....................................................');
     const tools = this.toolRegistry.getAllTools();
     
     // Build detailed tool information including parameter metadata
@@ -58,7 +54,8 @@ export class AIAgent {
     const prompt = ChatPromptTemplate.fromMessages([
       [
         "system",
-        `You are a helpful AI assistant with access to various tools. 
+        `You are an intelligent AI assistant. Please provide a comprehensive and complete response to the user's question.
+         like a helpful AI assistant with access to various tools. 
         
         When using tools:
         1. Always explain what tool you're using and why
@@ -112,9 +109,6 @@ export class AIAgent {
     }
     
     try {
-      console.log("------------------------------------------------");
-      console.log('Processing message:', message);
-      console.log("------------------------------------------------");
       const chatHistory = this.conversationHistory.flatMap(msg => [
         msg.role === 'user' 
           ? new HumanMessage(msg.content)
@@ -125,8 +119,6 @@ export class AIAgent {
         input: message,
         chat_history: chatHistory,
       });
-      console.log('Agent execution result:', result);
-      console.log("------------------------------------------------");
       
       const toolResults = this.extractToolResults(result.intermediateSteps || []);
       

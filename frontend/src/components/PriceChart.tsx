@@ -12,15 +12,24 @@ import {
 } from 'recharts';
 
 interface PriceChartProps {
-  data: {
+  data?: {
     time: string;
     value: number;
   }[];
+  days: number;
 }
 
-const PriceChart: React.FC<PriceChartProps> = ({ data }) => {
-
-  console.log("----------------------------Was it ever called?----------------------");
+const PriceChart: React.FC<PriceChartProps> = ({ data = [], days }) => {
+  
+  // Handle empty data
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-auto h-96 min-w-[600px] min-h-[400px] flex items-center justify-center bg-gray-100 rounded-lg">
+        <p className="text-gray-500">No price data available</p>
+      </div>
+    );
+  }
+  
   // Transform data to match chart requirements
   const transformedData = data.map(point => ({
     date: point.time,
@@ -28,7 +37,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ data }) => {
   }));
 
   return (
-    <div className="w-auto h-96 min-w-[600px] min-h-[400px]">
+    <div className="w-auto h-96 min-w-[600px] min-h-[400px] flex justify-center p-10">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={transformedData}
@@ -42,21 +51,31 @@ const PriceChart: React.FC<PriceChartProps> = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="date"
+            height={60}
             label={{ 
               value: 'Date', 
               position: 'bottom',
-              offset: 0
+              offset: 45,
+              fill: '#fff'
             }}
+            tick={{
+              fontSize: 12,
+              fill: '#fff'
+            }}
+            tickCount={days-1}
+            angle={-45}
+            tickFormatter={(value: any)=>{ return value.split(' ')[0]}}
           />
           <YAxis
             label={{ 
               value: 'Price (USD)', 
               angle: -90, 
               position: 'left',
-              offset: 0
+              offset: 0,
+              fill: '#fff'
             }}
           />
-          <Tooltip />
+          <Tooltip  contentStyle={{ backgroundColor: '#333', border: 'none' }}/>
           <Legend />
           <Line
             type="monotone"

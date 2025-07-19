@@ -44,8 +44,8 @@ export default function InferAIPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen p-6 flex flex-col">
+      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col p-20">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
             <span>InferAI</span>
@@ -55,20 +55,28 @@ export default function InferAIPage() {
         </div>
 
         {/* Chat Container */}
-        {messages.length > 0 && (
-          <div className="mb-6">
+        {messages.length > 0 ? (
+          <div className="flex-1 mb-6 min-h-0">
             <ChatContainer 
               messages={messages}
               isLoading={isLoading}
               error={error}
               onClearChat={clearChat}
               onCancelRequest={cancelRequest}
+              className="h-full"
             />
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center mb-6">
+            <div className="text-center">
+              <GrRobot className="w-16 h-16 text-[#A259FF] mx-auto mb-4 opacity-50" />
+              <p className="text-[#6B7280] text-lg">Start a conversation to see your chat history</p>
+            </div>
           </div>
         )}
 
         {/* Input Section */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <div className="bg-[#181A20] border border-[#23272b] rounded-2xl shadow-lg px-6 pt-2 pb-8 min-h-[60px] relative">
             <textarea
               value={input}

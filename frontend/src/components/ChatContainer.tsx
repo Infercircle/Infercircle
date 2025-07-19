@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ToolResultRenderer from './ChatMessage';
-import { FiTrash2, FiX } from 'react-icons/fi';
+import { FiTrash2, FiX, FiUser } from 'react-icons/fi';
+import { GrRobot } from 'react-icons/gr';
 import { AgentMessage } from '@/lib/types/agent';
 
 
@@ -18,8 +19,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   isLoading, 
   error, 
   onClearChat, 
-  onCancelRequest,
-  className = '' 
+  onCancelRequest
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   }
 
   return (
-    <div className={`bg-[#0F1114] border border-[#23272b] rounded-2xl ${className}`}>
+    <div className="bg-[#0F1114] border border-[#23272b] rounded-2xl">
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 border-b border-[#23272b]">
         <h3 className="text-white font-medium">Chat History</h3>
@@ -61,26 +61,40 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       </div>
 
       {/* Messages */}
-      <div className="max-h-96 overflow-y-auto">
+      <div className="overflow-y-auto">
         {messages.map((message) => (
-          <div key={message.id} className={`flex group ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-3xl rounded-lg p-4 ${
-              message.role === 'user' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 text-gray-800'
+          <div key={message.id} className={`flex gap-3 p-4 ${message.role === 'assistant' ? 'bg-[#1A1C23]' : 'bg-transparent'}`}>
+            {/* Avatar */}
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              message.role === 'assistant' ? 'bg-[#A259FF]' : 'bg-[#2A2D34]'
             }`}>
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              {message.role === 'assistant' ? (
+                <GrRobot className="w-4 h-4 text-white" />
+              ) : (
+                <FiUser className="w-4 h-4 text-white" />
+              )}
+            </div>
+
+            {/* Message Content */}
+            <div className="flex-1 min-w-0">
+              {/* Message Text */}
+              {message.content && (
+                <div className="text-[#E5E7EB] whitespace-pre-wrap mb-3">
+                  {message.content}
+                </div>
+              )}
               
+              {/* Tool Results */}
               {message.toolResults && message.toolResults.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-sm opacity-75 mb-2">Tool Results:</div>
+                <div className="space-y-3">
                   {message.toolResults.map((result, index) => (
                     <ToolResultRenderer key={index} result={result} />
                   ))}
                 </div>
               )}
               
-              <div className="text-xs opacity-60 mt-2">
+              {/* Timestamp */}
+              <div className="text-xs text-[#6B7280] mt-2">
                 {message.timestamp.toLocaleTimeString()}
               </div>
             </div>
@@ -91,7 +105,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
       {/* Global Error */}
       {error && (
-        <div className="p-4 bg-red-900/20 border-t border-red-500/20">
+        <div className="p-4 bg-red-900/20 border-t border-red-500/20 flex-shrink-0">
           <div className="text-red-400 text-sm">
             Connection error: {error}
           </div>

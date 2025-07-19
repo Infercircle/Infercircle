@@ -28,19 +28,13 @@ export class TSXGeneratorTool extends StructuredTool {
   });
   
   protected async _call(params: { contractAddress: string; days?: number }): Promise<string> {
-    console.log(`[${this.name}] _call method called with params:`, params);
-    console.log(`[${this.name}] Params type:`, typeof params);
-    
-    const { contractAddress, days = 30 } = params;
+    const { contractAddress, days = 7 } = params;
     
     if (!contractAddress) {
       throw new Error('Contract address is required');
     }
     
     try {
-      console.log("----------------------Fetching Price History--------------------------");
-      console.log(`Fetching price chart for contract: ${contractAddress}, days: ${days}`);
-      
       const tokenId = await this.getTokenId(contractAddress);
       const priceHistory = await this.getPriceHistory(tokenId, days);
       
@@ -59,7 +53,8 @@ export class TSXGeneratorTool extends StructuredTool {
         result = {
           componentName: 'PriceChart',
           props: {
-            data: priceHistory
+            data: priceHistory,
+            days
           }
         };
       }
