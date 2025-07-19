@@ -37,7 +37,6 @@ function highlightMatch(suggestion: string, input: string) {
 export default function InferAIPage() {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [allSuggestions, setAllSuggestions] = useState<string[]>(defaultCryptoSuggestions);
   const [suggestionsToFilterFrom, setSuggestionsToFilterFrom] = useState<string[]>(defaultCryptoSuggestions);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
 
@@ -54,14 +53,13 @@ export default function InferAIPage() {
         let combinedQuestions = [...defaultCryptoSuggestions];
 
         if (data && Array.isArray(data.data)) {
-          const apiQuestions = data.data.map((item: any) => item.rawQuestion).filter(Boolean);
+          const apiQuestions = data.data.map((item: { rawQuestion: string }) => item.rawQuestion).filter(Boolean);
           combinedQuestions = [...combinedQuestions, ...apiQuestions];
         } else if (data.fallback) {
           combinedQuestions = [...combinedQuestions, ...data.fallback];
         }
 
         const uniqueQuestions = [...new Set(combinedQuestions)];
-        setAllSuggestions(uniqueQuestions);
         setSuggestionsToFilterFrom(uniqueQuestions);
       })
       .catch(error => {
