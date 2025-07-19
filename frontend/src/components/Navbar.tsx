@@ -3,6 +3,7 @@ import React from "react";
 import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
+import Link from "next/link";
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -56,7 +57,9 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
           {showAuthButtons && (
             <>
               <Button variant="plain">New Account</Button>
-              <Button variant="outline">Sign In</Button>
+              <Link href="/dashboard">
+                <Button variant="outline">Sign In</Button>
+              </Link>
             </>
           )}
         </div>

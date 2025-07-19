@@ -31,9 +31,9 @@ const sidebarItems = [
     group: "Onchain Metrics",
     icon: FiDatabase,
     items: [
-      { label: "Pre TGE", icon: FiBox, href: "/dashboard/pre-tge" },
       { label: "Assets", icon: FiDatabase, href: "/dashboard/assets" },
-      { label: "Projects Sentiments", icon: FiSmile, href: "/dashboard/project-sentiment" },
+      { label: "Onchain Tracking", icon: FiSmile, href: "/dashboard/onchain-tracking" },
+      { label: "Pre TGE", icon: FiBox, href: "/dashboard/pre-tge" },
       { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
       { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
     ],

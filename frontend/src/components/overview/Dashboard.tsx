@@ -7,7 +7,7 @@ import IcoIdo from "./IcoIdo";
 import Suggested from "./Suggested";
 
 const Dashboard = () => (
-  <div className="grid grid-cols-12 gap-6 h-full w-full">
+  <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
     {/* Top Row: Profile Card (full width) */}
     <div className="col-span-12">
       <ProfileCard />
