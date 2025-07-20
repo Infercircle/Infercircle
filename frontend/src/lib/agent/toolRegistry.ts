@@ -1,28 +1,29 @@
-
 import { PriceChart } from "./tools/priceChart";
-import { Tool } from "langchain/tools";
+import { StructuredTool } from "langchain/tools";
+import { DataFetcher } from "./tools/dataFetcher"
 
 export class ToolRegistry {
-  private tools: Map<string, Tool> = new Map();
+  private tools: Map<string, StructuredTool> = new Map();
   
   constructor() {
     this.registerDefaultTools();
   }
   
   private registerDefaultTools() {
+    this.registerTool(new DataFetcher());
     this.registerTool(new PriceChart());
   }
   
-  registerTool(tool: Tool) {
+  registerTool(tool: StructuredTool) {
     this.tools.set(tool.name, tool);
     console.log(`Tool registered: ${tool.name}`);
   }
   
-  getTool(name: string): Tool | undefined {
+  getTool(name: string): StructuredTool | undefined {
     return this.tools.get(name);
   }
   
-  getAllTools(): Tool[] {
+  getAllTools(): StructuredTool[] {
     return Array.from(this.tools.values());
   }
   

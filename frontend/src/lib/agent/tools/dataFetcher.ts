@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { StructuredTool } from 'langchain/tools';
 import axios from 'axios';
 
 export interface DataSource {
@@ -81,7 +83,105 @@ const ActiveRSSFeeds: {source: string, lang: string}[] = [
   {source: "diariobitcoin", lang: "ES"}
 ];
 
-export class DataFetcher {
+export class DataFetcher extends StructuredTool {
+  name = "get_data_about_topic";
+  description = "Fetch comprehensive data from multiple sources (news, Twitter, Medium, YouTube) about any cryptocurrency, blockchain project, or market topic. Use this tool when you need current information, sentiment analysis, or market updates to provide informed responses with source citations.";
+  
+  schema = z.object({
+    topic: z.string().describe('The topic to fetch data about (e.g., "Solana", "Bitcoin", "DeFi", "Ethereum")'),
+    source: z.enum(['news', 'twitter', 'medium', 'youtube', 'all']).describe('The source to fetch data from').default('all'),
+    days: z.number().optional().describe('Number of days for historical data (default: 7)').default(7)
+  });
+
+  protected async _call(params: { topic: string; source: 'news' | 'twitter' | 'medium' | 'youtube' | 'all'; days?: number }): Promise<string> {
+    const { topic, source, days = 7 } = params;
+    const startTime = Date.now();
+
+    try {
+      const allData = await this.fetchAllData(topic, days);
+      
+      if (!allData || allData.length === 0) {
+        return JSON.stringify({
+          success: true,
+          result: `No recent data found for "${topic}" in the last ${days} days. You may want to try a different search term or increase the date range.`,
+          toolName: this.name,
+          executionTime: Date.now() - startTime,
+          isReactComponent: false
+        });
+      }
+
+      // Create a summary for the AI to use in its response
+      const summary = this.createDataSummary(allData, topic);
+      
+      const result = {
+        componentName: 'DataAnalysis',
+        props: {
+          title: `Analysis: ${topic}`,
+          items: allData,
+          source: source,
+          timestamp: new Date().toISOString()
+        }
+      };
+
+      return JSON.stringify({
+        success: true,
+        result: summary,
+        toolName: this.name,
+        executionTime: Date.now() - startTime,
+        isReactComponent: true,
+        componentName: result.componentName,
+        componentProps: result.props
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      
+      return JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        toolName: this.name,
+        executionTime: Date.now() - startTime,
+        result: `Failed to fetch data about "${topic}". This could be due to network issues or the topic might not have recent coverage.`,
+        isReactComponent: false
+      });
+    }
+  }
+
+  private createDataSummary(data: DataSource[], topic: string): string {
+    const sourceBreakdown = this.getSourceBreakdown(data);
+    const recentData = data.slice(0, 5);
+    
+    let summary = `Found ${data.length} recent sources about "${topic}":\n\n`;
+    
+    summary += `📊 **Source Breakdown:**\n`;
+    Object.entries(sourceBreakdown).forEach(([source, count]) => {
+      summary += `• ${source.charAt(0).toUpperCase() + source.slice(1)}: ${count} items\n`;
+    });
+    
+    summary += `\n📰 **Recent Headlines & Sources:**\n`;
+    recentData.forEach((item, index) => {
+      const date = new Date(item.date).toLocaleDateString();
+      summary += `${index + 1}. **${item.title}** (${item.source} - ${date})\n`;
+      summary += `   ${item.content.substring(0, 150)}...\n`;
+      if (item.url) {
+        summary += `   🔗 Source: ${item.url}\n`;
+      }
+      summary += `\n`;
+    });
+    
+    if (data.length > 5) {
+      summary += `\n*Note: ${data.length - 5} additional sources available in the detailed analysis below.*\n`;
+    }
+    
+    return summary;
+  }
+
+  private getSourceBreakdown(data: DataSource[]): Record<string, number> {
+    return data.reduce((acc, item) => {
+      acc[item.source] = (acc[item.source] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
   private async fetchNewsArticles(query: string): Promise<DataSource[]> { 
     try {
       const batchSize = 5;
@@ -253,5 +353,11 @@ export class DataFetcher {
     
     console.log(`Total valid items after filtering: ${filteredData.length}`);
     return filteredData;
+  }
+
+  getParameterInfo(): string {
+    return `topic (required): The topic to fetch data about (e.g., "Solana", "Bitcoin", "DeFi", "Ethereum")
+    source (optional): The source to fetch data from (default: all)
+    days (optional): Number of days for historical data (default: 7)`;
   }
 }

@@ -140,17 +140,6 @@ export class PriceChart extends StructuredTool {
     const parsed = priceHistorySchema.parse(data);
     return parsed.prices.map(([time, value]) => ({ time: new Date(time).toLocaleString(), value }));
   };
-  
-  private generateDefault(input: string): ComponentResult {
-    return {
-      componentName: 'DefaultComponent',
-      props: {
-        title: 'Generated Content',
-        message: `You requested: "${input}"`,
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
 
   // Get parameter metadata for the AI to understand what parameters are needed
   getParameterInfo(): string {
