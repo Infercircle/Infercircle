@@ -1,5 +1,5 @@
 
-import { TSXGeneratorTool } from "./tools/priceChart";
+import { PriceChart } from "./tools/priceChart";
 import { Tool } from "langchain/tools";
 
 export class ToolRegistry {
@@ -10,7 +10,7 @@ export class ToolRegistry {
   }
   
   private registerDefaultTools() {
-    this.registerTool(new TSXGeneratorTool());
+    this.registerTool(new PriceChart());
   }
   
   registerTool(tool: Tool) {

@@ -19,7 +19,7 @@ const priceHistorySchema = z.object({
   prices: z.array(z.tuple([z.number(), z.number()])),
 });
 
-export class TSXGeneratorTool extends StructuredTool {
+export class PriceChart extends StructuredTool {
   name = "get_price_chart";
   description = "Get price chart data for a cryptocurrency token and render it visually. Use contractAddress parameter to specify the token contract address and optional days parameter for historical data range.";
   schema = z.object({
