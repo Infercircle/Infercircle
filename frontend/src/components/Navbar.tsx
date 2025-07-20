@@ -4,6 +4,7 @@ import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -29,6 +30,7 @@ const SearchBar: React.FC = () => (
 const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false }) => {
   // Mock number of connected wallets
   const connectedWallets = 2;
+  const { data: session, status } = useSession();
 
   return (
     <header className={`sticky top-0 z-50 p-1 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#23272b] transition-all duration-300 ${
@@ -54,12 +56,21 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
               <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
             </Button>
           )}
+          {(session && status === "authenticated")  &&(
+            <Button variant="outline" onClick={
+              () => signOut({ callbackUrl: '/', redirect: true })
+            }>Sign-Out</Button>
+          )}
           {showAuthButtons && (
             <>
-              <Button variant="plain">New Account</Button>
-              <Link href="/dashboard">
-                <Button variant="outline">Sign In</Button>
-              </Link>
+              {(session && status === "authenticated")  ?
+              (<Link href="/dashboard">
+                <Button variant="outline">Dashboard</Button>
+              </Link>): (
+                <Button variant="outline" onClick={
+                  () => signIn('twitter', { callbackUrl: '/dashboard', redirect: true })
+                }>Sign In With X</Button>
+                )}
             </>
           )}
         </div>

@@ -5,13 +5,27 @@ import Display from "./Display";
 import Watchlist from "./Watchlist";
 import IcoIdo from "./IcoIdo";
 import Suggested from "./Suggested";
+import { useSession } from "next-auth/react";
 
-const Dashboard = () => (
-  <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
-    {/* Top Row: Profile Card (full width) */}
-    <div className="col-span-12">
-      <ProfileCard />
-    </div>
+const Dashboard = () => {
+  const { data: session, status } = useSession();
+
+  if(!session || status !== "authenticated") {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-500">Please sign in to view your dashboard.</p>
+      </div>
+    );
+  }
+
+  const user = session.user;
+
+  return (
+    <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
+      {/* Top Row: Profile Card (full width) */}
+      <div className="col-span-12">
+        <ProfileCard />
+      </div>
     {/* Second Row: Suggested (full width, prominent) */}
     <div className="col-span-12">
       <Suggested />
@@ -31,6 +45,6 @@ const Dashboard = () => (
       <IcoIdo />
     </div>
   </div>
-);
+)};
 
 export default Dashboard; 
