@@ -6,17 +6,40 @@ export const authOptions: NextAuthOptions = {
     Twitter({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-      version: "2.0", // Use OAuth 2.0
+      version: "2.0",
+      userinfo: {
+        url: "https://api.twitter.com/2/users/me",
+        params: {
+          "user.fields": "username,profile_image_url,public_metrics"
+        }
+      },
+      profile({ data }) {
+      return {
+        id: data.id,
+        name: data.name,
+        username: data.username,
+        followersCount: data.public_metrics?.followers_count || 0,
+        // NOTE: E-mail is currently unsupported by OAuth 2 Twitter.
+        email: null,
+        image: data.profile_image_url,
+      };
+    },
     })
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, user }) {
       // Persist the OAuth access_token and refresh_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
       }
+            // Persist additional user fields to the token
+      if (user) {
+        token.username = (user as any).username
+        token.followersCount = (user as any).followersCount
+      }
+      
       return token
     },
     async session({ session, token }) {
@@ -25,6 +48,11 @@ export const authOptions: NextAuthOptions = {
         ...session,
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
+                user: {
+          ...session.user,
+          username: token.username,
+          followersCount: token.followersCount,
+        }
       }
     },
   },

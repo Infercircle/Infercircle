@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import React from "react";
+import { TwitterUser } from "@/lib/types";
 
 const ProfileCard = () => {
     const { data: session, status } = useSession();
@@ -13,9 +14,9 @@ const ProfileCard = () => {
         </div>
       );
     }
-  
-    const user = session.user;
-    
+
+    const user = session.user as TwitterUser;
+
   return (
     <div className="bg-[#181A20] border border-[#23272b] rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-lg w-full min-h-[120px]">
       {/* Left: Avatar and user info */}
@@ -30,9 +31,9 @@ const ProfileCard = () => {
         </div>
         {/* User info */}
         <div>
-          <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@bullofthedip</span></div>
+          <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@{user.username}</span></div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
-            <span><span className="text-[#A259FF] font-bold">799</span> 𝕏 Followers</span>
+            <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
             <span><span className="text-[#A259FF] font-bold">80</span> Nerd Followers</span>
           </div>
         </div>
