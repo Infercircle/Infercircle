@@ -4,9 +4,9 @@ import React from "react";
 
 const Display = () => {
   return (
-    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-6 shadow-lg w-full h-full flex flex-col min-h-[320px]">
+    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-6 shadow-lg w-full h-full flex flex-col min-h-[320px] overflow-x-auto">
       {/* Asset Info */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🟠</span>
           <div>
@@ -16,16 +16,16 @@ const Display = () => {
             </div>
           </div>
         </div>
-        <button className="text-[#A3A3A3] text-xs bg-[#23262F] px-3 py-1 rounded-lg">View Asset</button>
+        <button className="text-[#A3A3A3] text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0">View Asset</button>
       </div>
       {/* Price and change */}
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4">
         <div className="text-2xl font-bold text-white">$107,030.45</div>
         <div className="text-green-400 font-semibold text-sm">0.27% (1d) ▲</div>
       </div>
       {/* Holdings */}
-      <div className="flex gap-4 mb-4">
-        <div className="flex-1 bg-[#23262F] rounded-xl p-3">
+      <div className="flex flex-col lg:flex-row gap-4 mb-4">
+        <div className="flex-1 bg-[#23262F] rounded-xl p-3 w-full">
           <div className="text-xs text-[#A3A3A3] mb-1">Addresses by Holdings</div>
           <div className="flex items-center gap-2 text-xs mb-1">
             <span className="text-[#A3A3A3]">$0 - $1k</span>
@@ -43,7 +43,7 @@ const Display = () => {
             <span>1.95%</span>
           </div>
         </div>
-        <div className="flex-1 bg-[#23262F] rounded-xl p-3">
+        <div className="flex-1 bg-[#23262F] rounded-xl p-3 w-full">
           <div className="text-xs text-[#A3A3A3] mb-1">Whale Holdings</div>
           <div className="flex items-center gap-2 text-xs mb-1">
             <span className="text-[#A3A3A3]">Whales</span>
@@ -62,8 +62,8 @@ const Display = () => {
       {/* Social Sentiment */}
       <div className="mt-2">
         <div className="text-[#A259FF] font-semibold mb-2">Social Sentiment</div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3">
+          <div className="flex-1 w-full">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">🧑‍💻</span>
               <span className="text-white font-medium text-sm">Crypto.Andy</span>
@@ -73,7 +73,7 @@ const Display = () => {
             </div>
           </div>
           {/* Chart placeholder */}
-          <div className="w-28 h-16 bg-[#23262F] rounded-lg flex items-center justify-center">
+          <div className="w-28 h-16 bg-[#23262F] rounded-lg flex items-center justify-center mt-2 lg:mt-0">
             <span className="text-[#A259FF] text-2xl">📊</span>
           </div>
         </div>

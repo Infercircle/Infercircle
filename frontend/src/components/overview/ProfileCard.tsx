@@ -22,7 +22,7 @@ const ProfileCard = () => {
       {/* Left: Avatar and user info */}
       <div className="flex items-center gap-4">
         {/* Avatar */}
-        <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 aspect-square rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
             src={user?.image ||"https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
             alt="Profile Avatar"

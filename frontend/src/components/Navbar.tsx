@@ -1,5 +1,5 @@
 "use client"
-import React from "react";
+import React, { useState } from "react";
 import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
@@ -8,12 +8,14 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { FiPower } from "react-icons/fi";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import Modal from "./Modal";
 
 interface NavbarProps {
   collapsed?: boolean;
   showConnectWallet?: boolean;
   showAuthButtons?: boolean;
   showSearch?: boolean;
+  onOpenWalletModal?: () => void;
 }
 
 // Inline SearchBar component
@@ -30,7 +32,7 @@ const SearchBar: React.FC = () => (
   </form>
 );
 
-const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false }) => {
+const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal }) => {
   // Mock number of connected wallets
   const connectedWallets = 2;
   const { data: session, status } = useSession();
@@ -54,7 +56,7 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
           {/* Watchlist button with react-icon */}
           {showSearch && <SearchBar />}
           {showConnectWallet && (
-            <Button variant="filled">
+            <Button variant="filled" onClick={onOpenWalletModal}>
               <FaWallet className="mr-2" size={18} /> Wallets
               <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
             </Button>
