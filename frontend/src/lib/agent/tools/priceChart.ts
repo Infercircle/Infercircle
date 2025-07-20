@@ -29,7 +29,7 @@ export class PriceChart extends StructuredTool {
   
   protected async _call(params: { contractAddress: string; days?: number }): Promise<string> {
     const { contractAddress, days = 7 } = params;
-    
+
     if (!contractAddress) {
       throw new Error('Contract address is required');
     }

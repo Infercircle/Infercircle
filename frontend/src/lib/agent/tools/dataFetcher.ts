@@ -109,9 +109,6 @@ export class DataFetcher extends StructuredTool {
           isReactComponent: false
         });
       }
-
-      // Create a summary for the AI to use in its response
-      const summary = this.createDataSummary(allData, topic);
       
       const result = {
         componentName: 'DataAnalysis',
@@ -125,7 +122,7 @@ export class DataFetcher extends StructuredTool {
 
       return JSON.stringify({
         success: true,
-        result: summary,
+        result: allData,
         toolName: this.name,
         executionTime: Date.now() - startTime,
         isReactComponent: true,
@@ -144,35 +141,6 @@ export class DataFetcher extends StructuredTool {
         isReactComponent: false
       });
     }
-  }
-
-  private createDataSummary(data: DataSource[], topic: string): string {
-    const sourceBreakdown = this.getSourceBreakdown(data);
-    const recentData = data.slice(0, 5);
-    
-    let summary = `Found ${data.length} recent sources about "${topic}":\n\n`;
-    
-    summary += `📊 **Source Breakdown:**\n`;
-    Object.entries(sourceBreakdown).forEach(([source, count]) => {
-      summary += `• ${source.charAt(0).toUpperCase() + source.slice(1)}: ${count} items\n`;
-    });
-    
-    summary += `\n📰 **Recent Headlines & Sources:**\n`;
-    recentData.forEach((item, index) => {
-      const date = new Date(item.date).toLocaleDateString();
-      summary += `${index + 1}. **${item.title}** (${item.source} - ${date})\n`;
-      summary += `   ${item.content.substring(0, 150)}...\n`;
-      if (item.url) {
-        summary += `   🔗 Source: ${item.url}\n`;
-      }
-      summary += `\n`;
-    });
-    
-    if (data.length > 5) {
-      summary += `\n*Note: ${data.length - 5} additional sources available in the detailed analysis below.*\n`;
-    }
-    
-    return summary;
   }
 
   private getSourceBreakdown(data: DataSource[]): Record<string, number> {
