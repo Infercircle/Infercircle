@@ -5,6 +5,9 @@ import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { FiPower } from "react-icons/fi";
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -19,7 +22,7 @@ const SearchBar: React.FC = () => (
     <input
       type="text"
       placeholder="Search (e.g. Doge)"
-      className="w-full pl-4 pr-10 py-2 rounded bg-[#23272b] border border-[#23272b] text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 border border-[#23272b]"
+      className="w-full pl-4 pr-10 py-2 rounded bg-[#23272b] border border-[#23272b] text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
     />
     <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400">
       <FiSearch size={20} />
@@ -57,9 +60,16 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
             </Button>
           )}
           {(session && status === "authenticated")  &&(
-            <Button variant="outline" onClick={
-              () => signOut({ callbackUrl: '/', redirect: true })
-            }>Sign-Out</Button>
+            <Tippy content="Sign out" placement="bottom">
+              <button
+                onClick={() => signOut({ callbackUrl: '/', redirect: true })}
+                className="p-2 rounded transition-colors cursor-pointer"
+                aria-label="Sign out"
+                type="button"
+              >
+                <FiPower size={22} className="text-violet-500 hover:text-violet-400" />
+              </button>
+            </Tippy>
           )}
           {showAuthButtons && (
             <>

@@ -34,7 +34,7 @@ const ProfileCard = () => {
           <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@{user.username}</span></div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
             <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
-            <span><span className="text-[#A259FF] font-bold">80</span> Nerd Followers</span>
+            <span><span className="text-[#A259FF] font-bold">80</span> Elite followers</span>
           </div>
         </div>
       </div>
