@@ -30,15 +30,18 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
       <div
         className="bg-[#181A20] rounded-2xl p-6 shadow-xl relative w-full max-w-[550px] max-w-[90vw] w-full mx-4 border border-[#23272b]"
         onClick={(e) => e.stopPropagation()} // Prevent click from bubbling
+        style={{ maxHeight: '80vh' }}
       >
+        <div className="overflow-y-auto max-h-[70vh] pr-2">
+          {children}
+        </div>
         <button
-          className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl font-bold"
+          className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl font-bold focus:outline-none"
           onClick={onClose}
           aria-label="Close modal"
         >
           &times;
         </button>
-        {children}
       </div>
     </div>
   );
