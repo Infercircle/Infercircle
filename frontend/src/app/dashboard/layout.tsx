@@ -18,6 +18,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const openWalletModal = () => setWalletModalOpen(true);
   const closeWalletModal = () => setWalletModalOpen(false);
+  // Wallets state (object for eth and sol)
+  const [wallets, setWallets] = useState<{ eth: string; sol: string }>({ eth: "", sol: "" });
+  const connectedWallets = [wallets.eth, wallets.sol].filter(Boolean).length;
 
   return (
     <ToastProvider>
@@ -29,13 +32,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           showAuthButtons={false}
           showSearch={showSearch}
           onOpenWalletModal={openWalletModal}
+          connectedWallets={connectedWallets}
         />
         <main className="pt-6 px-6">
           {children}
         </main>
       </div>
       <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
-        <WalletModalContent />
+        <WalletModalContent eth={wallets.eth} sol={wallets.sol} setWallets={setWallets} />
       </Modal>
     </ToastProvider>
   );

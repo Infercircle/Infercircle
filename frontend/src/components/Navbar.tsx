@@ -16,6 +16,7 @@ interface NavbarProps {
   showAuthButtons?: boolean;
   showSearch?: boolean;
   onOpenWalletModal?: () => void;
+  connectedWallets?: number;
 }
 
 // Inline SearchBar component
@@ -47,7 +48,9 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
           collapsed ? 'transform -translate-x-5' : 'transform translate-x--3'
         }`}>
           <span className="text-violet-400 font-black text-2xl tracking-widest uppercase">
-            <img src="/icons/logo.svg" alt="Infercircle" />
+            {/* Show sidebar logo on md and below, original logo on lg+ */}
+            <img src="/icons/image.svg" alt="Infercircle" className="block md:hidden" />
+            <img src="/icons/logo.svg" alt="Infercircle" className="hidden md:block" />
           </span>
         </a>
 
