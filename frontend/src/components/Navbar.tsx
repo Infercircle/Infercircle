@@ -33,10 +33,8 @@ const SearchBar: React.FC = () => (
   </form>
 );
 
-const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal }) => {
-  // Mock number of connected wallets
-  const connectedWallets = 2;
-  const { data: session, status } = useSession();
+const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal, connectedWallets = 0 }) => {
+const { data: session, status } = useSession();
 
   return (
     <header className={`sticky top-0 z-50 p-1 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#23272b] transition-all duration-300 ${
@@ -84,7 +82,7 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
               </Link>): (
                 <Button variant="outline" onClick={
                   () => signIn('twitter', { callbackUrl: '/dashboard', redirect: true })
-                }>Sign In With X</Button>
+                }>Sign In With 𝕏</Button>
                 )}
             </>
           )}
