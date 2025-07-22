@@ -30,9 +30,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
       <div
         className="bg-[#181A20] rounded-2xl p-6 shadow-xl relative w-full max-w-[550px] max-w-[90vw] w-full mx-4 border border-[#23272b]"
         onClick={(e) => e.stopPropagation()} // Prevent click from bubbling
-        style={{ maxHeight: '80vh' }}
+        style={{ maxHeight: '60vh' }}
       >
-        <div className="overflow-y-auto max-h-[70vh] pr-2">
+        <div className="overflow-y-auto max-h-[50vh] pr-2">
           {children}
         </div>
         <button

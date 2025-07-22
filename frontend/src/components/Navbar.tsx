@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react";
+import React from "react";
 import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
@@ -8,7 +8,6 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { FiPower } from "react-icons/fi";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import Modal from "./Modal";
 
 interface NavbarProps {
   collapsed?: boolean;
