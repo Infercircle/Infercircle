@@ -22,7 +22,7 @@ const ProfileCard = () => {
       {/* Left: Avatar and user info */}
       <div className="flex items-center gap-4">
         {/* Avatar */}
-        <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 aspect-square rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
             src={user?.image ||"https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
             alt="Profile Avatar"
@@ -34,7 +34,7 @@ const ProfileCard = () => {
           <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@{user.username}</span></div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
             <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
-            <span><span className="text-[#A259FF] font-bold">80</span> Nerd Followers</span>
+            <span><span className="text-[#A259FF] font-bold">80</span> Elite followers</span>
           </div>
         </div>
       </div>

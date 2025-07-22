@@ -2,11 +2,11 @@ import { FiArrowRight } from "react-icons/fi";
 
 const COLORS = {
   violet: {
-    fill: "bg-violet-800",
+    fill: "bg-violet-700",
     text: "text-white",
     border: "border-violet-500",
     outlineText: "text-violet-800",
-    hoverFill: "hover:bg-violet-600",
+    hoverFill: "hover:bg-violet-500",
   },
   // Add more colors if needed
 };
