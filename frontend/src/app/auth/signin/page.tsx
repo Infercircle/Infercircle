@@ -63,7 +63,7 @@ const SignInPage: React.FC = () => {
             Object.values(providers).map((provider) => (
               <button
                 key={provider.name}
-                onClick={() => signIn(provider.id, { callbackUrl: '/dashboard' })}
+                onClick={() => signIn(provider.id, { callbackUrl: `/dashboard?addX=${provider.name == "Google"}` })}
                 className={`w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg text-white font-medium transition-colors ${getProviderColor(provider.id)}`}
               >
                 <span className="mr-3">

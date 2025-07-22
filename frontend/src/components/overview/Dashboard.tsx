@@ -18,8 +18,6 @@ const Dashboard = () => {
     );
   }
 
-  const user = session.user;
-
   return (
     <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}

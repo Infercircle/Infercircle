@@ -12,10 +12,14 @@ import { signIn } from "next-auth/react";
 
 import { FaXTwitter } from "react-icons/fa6";
 
-export function AddXModal() {
+interface AddXModalProps {
+  onClose: (value: string) => void;
+}
+
+export function AddXModal({ onClose }: AddXModalProps) {
   return (
     <div className="relative">
-      <Card className="w-full max-w-md bg-[#181c20] border border-[#23272b] shadow-2xl">
+      <Card className="w-full max-w-md bg-[#181c20] border border-[#23272b] shadow-2xl min-w-96">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-[#A259FF]/10 rounded-full flex items-center justify-center">
@@ -33,6 +37,7 @@ export function AddXModal() {
           }}>
             Connect X Account
           </Button>
+          <CardAction className="text-center text-gray-400 text-sm w-full cursor-pointer" onClick={()=>{onClose("false")}}>Close</CardAction>
         </CardFooter>
       </Card>
     </div>

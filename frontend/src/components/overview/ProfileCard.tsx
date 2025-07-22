@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import React from "react";
 import { User } from "@/lib/types";
 
@@ -31,10 +31,16 @@ const ProfileCard = () => {
         </div>
         {/* User info */}
         <div>
-          <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@{user.username}</span></div>
+          <div className="text-lg font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-base">@{user.username}</span>}</div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
-            <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
-            <span><span className="text-[#A259FF] font-bold">80</span> Elite followers</span>
+            {user.followersCount &&  <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
+            {user.username && <span><span className="text-[#A259FF] font-bold">80</span> Elite followers</span>}
+            {!user.username && 
+              <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
+                signIn("twitter", { callbackUrl: "/dashboard" })
+              }}>
+                Add X Account
+              </span>}
           </div>
         </div>
       </div>

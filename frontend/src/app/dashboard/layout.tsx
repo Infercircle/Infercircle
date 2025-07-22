@@ -10,6 +10,7 @@ import { User } from "@/lib/types";
 import { AddXModal } from "@/components/AddXModal";
 import WalletModalContent from "@/components/WalletModalContent";
 import { ToastProvider } from "@/components/ToastProvider";
+import { useSearchParams } from "next/navigation";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -19,6 +20,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session } = useSession();
 
   const user = session?.user as User;
+  const searchParams = useSearchParams();
+  const [addX, setAddX] = useState<string | null>(searchParams.get('addX'));
 
   // Wallet modal state
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -37,12 +40,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div>
-      {(!user || !user.username || user.username.length < 0) && (
+      {(!user || !user.username || user.username.length < 0) && (addX == "true") && (
         <div className="fixed inset-0 flex items-center justify-center bg-transparent z-50">
-          <AddXModal />
+          <AddXModal onClose={setAddX}/>
         </div>
       )}
-      <div className={`${!user || !user.username || user.username.length < 0 ? "blur": ""}`}>
+      <div className={`${((!user || !user.username || user.username.length < 0) && addX == "true") ? "blur": ""}`}>
         <ToastProvider>
           <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
           <div className={`${contentMarginClass} transition-all duration-300`}>
