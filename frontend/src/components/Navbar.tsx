@@ -4,7 +4,7 @@ import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -67,9 +67,9 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = 
               (<Link href="/dashboard">
                 <Button variant="outline">Dashboard</Button>
               </Link>): (
-                <Button variant="outline" onClick={
-                  () => signIn('twitter', { callbackUrl: '/dashboard', redirect: true })
-                }>Sign In With X</Button>
+                <Link href="/auth/signin">
+                  <Button variant="outline">Sign In</Button>
+                </Link>
                 )}
             </>
           )}

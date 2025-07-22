@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import React from "react";
-import { TwitterUser } from "@/lib/types";
+import { User } from "@/lib/types";
 
 const ProfileCard = () => {
     const { data: session, status } = useSession();
@@ -15,7 +15,7 @@ const ProfileCard = () => {
       );
     }
 
-    const user = session.user as TwitterUser;
+    const user = session.user as User;
 
   return (
     <div className="bg-[#181A20] border border-[#23272b] rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-lg w-full min-h-[120px]">
