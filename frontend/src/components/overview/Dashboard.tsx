@@ -7,7 +7,13 @@ import IcoIdo from "./IcoIdo";
 import Suggested from "./Suggested";
 import { useSession } from "next-auth/react";
 
-const Dashboard = () => {
+interface DashboardProps {
+  netWorth?: number;
+  totalPriceChange?: number;
+  refreshKey?: number;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0 }) => {
   const { data: session, status } = useSession();
 
   if(!session || status !== "authenticated") {
@@ -24,7 +30,7 @@ const Dashboard = () => {
     <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}
       <div className="col-span-12">
-        <ProfileCard />
+        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
     <div className="col-span-12">
@@ -32,7 +38,7 @@ const Dashboard = () => {
     </div>
     {/* Third Row: OnChain Activities & Display */}
     <div className="col-span-12 md:col-span-7 flex flex-col">
-      <OnChainActivities />
+      <OnChainActivities refreshKey={refreshKey} />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">
       <Display />

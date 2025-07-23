@@ -38,6 +38,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.username = (user as any).username
         token.followersCount = (user as any).followersCount
+        token.id = (user as any).id
       }
       
       return token
@@ -52,6 +53,7 @@ export const authOptions: NextAuthOptions = {
           ...session.user,
           username: token.username,
           followersCount: token.followersCount,
+          id: token.id,
         }
       }
     },

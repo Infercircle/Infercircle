@@ -4,7 +4,12 @@ import { useSession } from "next-auth/react";
 import React from "react";
 import { TwitterUser } from "@/lib/types";
 
-const ProfileCard = () => {
+interface ProfileCardProps {
+  netWorth?: number;
+  totalPriceChange?: number;
+}
+
+const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0 }) => {
     const { data: session, status } = useSession();
   
     if(!session || status !== "authenticated") {
@@ -39,9 +44,15 @@ const ProfileCard = () => {
         </div>
       </div>
       {/* Right: Net Worth */}
-      <div className="mt-4 md:mt-0 md:text-right">
+      <div className="mt-4 md:mt-0 md:text-right flex flex-col items-end">
         <div className="text-gray-400 text-sm">Net Worth</div>
-        <div className="text-2xl font-bold text-white">$10,513.73</div>
+        <div className="flex items-center gap-2">
+          <div className="text-2xl font-bold text-white">${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
+            title="Total 24h Price Change">
+            {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
+          </span>
+        </div>
       </div>
     </div>
   );

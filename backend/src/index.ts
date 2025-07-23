@@ -11,6 +11,7 @@ import eliteCuratorsRoutes from "./routes/eliteCurators";
 import { automationManager } from "./automation";
 import suggestionsRoutes from "./routes/suggestions";
 import balancesRoutes from "./routes/balances";
+import userWalletsRoutes from "./routes/userwallets";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use("/yt", ytRoutes);
 app.use("/twitterspaces", twitterspacesRoutes);
 app.use("/elite-curators", eliteCuratorsRoutes);
 app.use("/balances", balancesRoutes);
+app.use("/userwallets", userWalletsRoutes);
 
 app.use("/suggestions", suggestionsRoutes);
 app.get("/", (req: Request, res: Response) => {

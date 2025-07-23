@@ -23,7 +23,7 @@ const SearchBar: React.FC = () => (
   <form className="relative w-80">
     <input
       type="text"
-      placeholder="Search (e.g. Doge)"
+      placeholder="Search"
       className="w-full pl-4 pr-10 py-2 rounded bg-[#23272b] border border-[#23272b] text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
     />
     <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400">

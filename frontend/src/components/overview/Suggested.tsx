@@ -5,7 +5,9 @@ const Suggested = () => {
         <div className="text-lg font-semibold text-white">Suggested for you</div>
       </div>
       <div className="flex-1 flex items-center justify-center text-[#A3A3A3] text-sm">
-        Suggestions will appear here.
+        Suggestions will appear here..
+        <br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;comming soon
       </div>
     </div>
   );
