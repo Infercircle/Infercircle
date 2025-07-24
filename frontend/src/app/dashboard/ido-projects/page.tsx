@@ -325,7 +325,7 @@ export default function IDOProjectsPage() {
                     <div className="space-y-3 mb-4">
                       <div className="flex justify-between items-center">
                         <span className="text-[#A3A3A3] text-sm">Target Raise</span>
-                        <span className="text-white font-medium">{project.raise ? formatCurrency(project.raise): "Unknown"}</span>
+                        <span className="text-white font-medium">{project.raise ? formatCurrency(project.raise): "Unknow"}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[#A3A3A3] text-sm">Total Raise</span>

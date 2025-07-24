@@ -10,6 +10,7 @@ interface UpcomingIDO {
   type: string;
   initialCap: string;
   when: string;
+  till: string;
   launchpads: Array<{
     key: string;
     name: string;
@@ -21,6 +22,63 @@ const IcoIdo = () => {
   const [icoIdoData, setIcoIdoData] = useState<UpcomingIDO[] | []>([]);
   const [selectedFilter, setSelectedFilter] = useState<'upcoming' | 'active' | 'past'>('upcoming');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Function to get relative date based on filter
+  const getRelativeDate = (dateString: string, filterType: string) => {
+    if (!dateString || dateString === "TBA") return "TBA";
+    
+    const targetDate = new Date(dateString);
+    const today = new Date();
+    
+    // Reset time to midnight for accurate day comparison
+    const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    const diffTime = targetMidnight.getTime() - todayMidnight.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    const formattedDate = targetDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    
+    // Different display logic based on filter type
+    if (filterType === 'active') {
+      if (diffDays === 0) {
+        return `${formattedDate}, Ends today`;
+      } else if (diffDays === 1) {
+        return `${formattedDate}, Ends tomorrow`;
+      } else if (diffDays > 1) {
+        return `${formattedDate}, Ends in ${diffDays} days`;
+      } else if (diffDays === -1) {
+        return `${formattedDate}, Ended yesterday`;
+      } else {
+        return `${formattedDate}, Ended ${Math.abs(diffDays)} days ago`;
+      }
+    } else if (filterType === 'past') {
+      if (diffDays === 0) {
+        return `${formattedDate}, Ended today`;
+      } else if (diffDays === -1) {
+        return `${formattedDate}, Ended yesterday`;
+      } else {
+        return `${formattedDate}, Ended ${Math.abs(diffDays)} days ago`;
+      }
+    } else {
+      // For 'upcoming' filter, use the original format
+      if (diffDays === 0) {
+        return `${formattedDate}, Today`;
+      } else if (diffDays === 1) {
+        return `${formattedDate}, Tomorrow`;
+      } else if (diffDays === -1) {
+        return `${formattedDate}, Yesterday`;
+      } else if (diffDays > 1) {
+        return `${formattedDate}, ${diffDays} days left`;
+      } else {
+        return `${formattedDate}, ${Math.abs(diffDays)} days ago`;
+      }
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -93,7 +151,7 @@ const IcoIdo = () => {
         <table className="min-w-full text-xs text-left">
           <thead>
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium">Date</th>
+              <th className="py-2 px-2 font-medium">When</th>
               <th className="py-2 px-2 font-medium">Project</th>
               <th className="py-2 px-2 font-medium">Type</th>
               <th className="py-2 px-2 font-medium">Launchpad</th>
@@ -102,7 +160,12 @@ const IcoIdo = () => {
           <tbody className="overflow-hidden">
             {icoIdoData.length>0 && icoIdoData.map((item, idx) => (
               <tr key={idx} className="border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition">
-                <td className="py-2 px-2 text-white">{item.when || "TBA"}</td>
+                <td className="py-2 px-2 text-white text-xs">
+                  {getRelativeDate(
+                    selectedFilter === 'upcoming' ? item.when : item.till, 
+                    selectedFilter
+                  )}
+                </td>
                 <td className="py-2 px-2 flex items-center gap-2">
                   <img src={item.image} alt={item.name} className="w-6 h-6 rounded-full" />
                   <div>
