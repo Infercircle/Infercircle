@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { asyncHandler } from "../lib/helper";
 import { EliteCuratorsService } from "../services/eliteCuratorsService";
+import axios from 'axios';
 
 const router = Router();
 const eliteCuratorsService = new EliteCuratorsService();
@@ -163,6 +164,38 @@ router.get("/curators/category/:category", asyncHandler(async (req: Request, res
     count: filteredCurators.length,
     data: filteredCurators
   });
+}));
+
+// Proxy endpoint to fetch elite followers from twitterscore.io for a given twitter_id
+router.get("/elite-followers/:twitter_id", asyncHandler(async (req: Request, res: Response) => {
+  const { twitter_id } = req.params;
+  if (!twitter_id) {
+    return res.status(400).json({ error: "twitter_id is required" });
+  }
+  try {
+    const apiKey = process.env.TWITTERSCORE_API_KEY;
+    const url = `https://twitterscore.io/api/v1/get_followers`;
+    const response = await axios.get(url, {
+      params: {
+        api_key: apiKey,
+        twitter_id,
+        page: 1,
+        size: 1
+      },
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json, text/plain, */*',
+      }
+    });
+    const data: any = response.data;
+    if (data && data.success && typeof data.total === 'number') {
+      return res.json({ eliteFollowers: data.total });
+    } else {
+      return res.status(404).json({ error: 'No data from twitterscore', response: data });
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch from twitterscore' });
+  }
 }));
 
 export default router; 

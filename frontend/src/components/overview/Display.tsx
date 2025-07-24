@@ -19,6 +19,37 @@ const fetchWithKey = async (url: string) => {
   return res.json();
 };
 
+const MOCK_TWEETS = [
+  {
+    matchedRule: "BITCOIN",
+    name: "Abdul Manan",
+    text: "@SimplyBitcoinTV It depends what would be next of #Bitcoin Holders RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.RT If stablecoins grow to $2–3 trillion, just imagine how much Aave will grow. The biggest beneficiary of stablecoin growth will be Aave.",
+    tweetUrl: "https://x.com/Businessiz/status/1947914236077670507",
+    timestamp: "1s"
+  },
+  {
+    matchedRule: "BITCOIN",
+    name: "Harjot",
+    text: "@SharkyWeb3 @PortaltoBitcoin @PortaltoBitcoin is future in bitcoin",
+    tweetUrl: "https://x.com/KourKulwan7106/status/1947914230268891461",
+    timestamp: "3s"
+  },
+  {
+    matchedRule: "BITCOIN",
+    name: "Mat",
+    text: "#BITCOIN IS BREAKING OUT 🚀 bullish retest! https://t.co/euQ6xXaPQt",
+    tweetUrl: "https://x.com/mjolnirfounder/status/1947914230264426600",
+    timestamp: "3s"
+  },
+  {
+    matchedRule: "BITCOIN",
+    name: "Crypto Los",
+    text: "Bitcoin",
+    tweetUrl: "https://x.com/Crypto_Los/status/1947914224099070245",
+    timestamp: "4s"
+  }
+];
+
 const Display = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +59,7 @@ const Display = () => {
   const [logo, setLogo] = useState<string | null>(null);
   const [addressDist, setAddressDist] = useState<any>(null);
   const [whaleDist, setWhaleDist] = useState<any>(null);
-  const [tweets, setTweets] = useState<any[]>([]);
+  const [tweets, setTweets] = useState<any[]>(MOCK_TWEETS);
   const [tweetIndex, setTweetIndex] = useState(0);
 
   // Cycle tweet index every 5 seconds
@@ -80,15 +111,17 @@ const Display = () => {
         console.warn("Glassnode whale fetch failed", e);
       }
 
-      // 4. Always fetch tweets, even if above fails
-      try {
-        const tweetRes = await fetch(`${API_BASE}/twitter/tweets?query=bitcoin`);
-        const tweetData = await tweetRes.json();
-        setTweets(Array.isArray(tweetData?.data) ? tweetData.data : []);
-      } catch (e) {
-        setTweets([]);
-        console.warn("Tweet fetch failed", e);
-      }
+      // Commented out: Always fetch tweets
+      // try {
+      //   const tweetRes = await fetch(`${API_BASE}/twitter/tweets?query=bitcoin`);
+      //   const tweetData = await tweetRes.json();
+      //   setTweets(Array.isArray(tweetData?.data) ? tweetData.data : []);
+      // } catch (e) {
+      //   setTweets([]);
+      //   console.warn("Tweet fetch failed", e);
+      // }
+      // Use mock tweets instead
+      setTweets(MOCK_TWEETS);
     } catch (e: any) {
       setError(e.message || "Failed to load data");
       console.error("Error in fetchData:", e);
@@ -115,7 +148,7 @@ const Display = () => {
   };
 
   return (
-    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-6 shadow-lg w-full h-full flex flex-col min-h-[320px] overflow-x-auto">
+    <div className="bg-[#181A20] border border-[#23272b] rounded-2xl p-6 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto overflow-y-auto">
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
         <div className="flex items-center gap-3">
           {logo ? (

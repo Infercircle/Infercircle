@@ -37,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Total price change state
   const [totalPriceChange, setTotalPriceChange] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [loadingNetWorth, setLoadingNetWorth] = useState(true);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Helper to fetch and sum balances for all wallets and calculate net worth price change
   const fetchAndSumBalances = async () => {
+    setLoadingNetWorth(true);
     let total = 0;
     let total24hAgo = 0;
     const allWallets = [
@@ -72,6 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       priceChange = ((total - total24hAgo) / total24hAgo) * 100;
     }
     setTotalPriceChange(priceChange);
+    setLoadingNetWorth(false);
   };
 
   // Add this callback to handle instant balance fetch and net worth update
@@ -135,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           connectedWallets={connectedWallets}
         />
         <main className="pt-6 px-6">
-          <Dashboard netWorth={netWorth} totalPriceChange={totalPriceChange} refreshKey={refreshKey} />
+          <Dashboard netWorth={netWorth} totalPriceChange={totalPriceChange} refreshKey={refreshKey} loadingNetWorth={loadingNetWorth} />
         </main>
       </div>
       <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>

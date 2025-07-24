@@ -35,6 +35,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [logoCache, setLogoCache] = useState<Record<string, string>>({});
   const fetchingSymbols = useRef<Set<string>>(new Set());
 
@@ -43,6 +44,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
     let retryInterval: NodeJS.Timeout | null = null;
     const fetchAssets = async () => {
       try {
+        setLoading(true);
         // 1. Fetch all wallets for the user
         const walletsRes = await axios.get(`${API_BASE}/userwallets/${twitterId}`);
         const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{wallet_address: string, chain: string}>;
@@ -89,6 +91,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
         // 4. Attach logos to tokens from cache
         allTokens = allTokens.map(t => ({ ...t, icon: newLogoCache[t.symbol?.toLowerCase()] || '' }));
         setAssets(allTokens);
+        setLoading(false);
 
         // 5. Periodic retry for missing icons every 5 seconds
         if (retryInterval) clearInterval(retryInterval);
@@ -110,6 +113,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
         }, 5000);
       } catch {
         setAssets([]);
+        setLoading(false);
       }
     };
     fetchAssets();
@@ -125,7 +129,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
   }, [logoCache]);
 
   return (
-    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px]">
+    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+      {/* Preloader overlay */}
+      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <img src="/icons/preloader.gif" alt="Loading..." style={{ width: 200, height: 160 }} />
+      </div>
       <div className="flex items-center justify-between mb-2">
         <div className="text-lg font-semibold text-white">Portfolio Overview</div>
         <span className="text-[#A259FF] text-sm flex items-center gap-1">
@@ -194,4 +202,4 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0 })
   );
 };
 
-export default OnChainActivities;
+export default OnChainActivities; 

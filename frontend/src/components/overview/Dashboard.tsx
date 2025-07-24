@@ -11,9 +11,10 @@ interface DashboardProps {
   netWorth?: number;
   totalPriceChange?: number;
   refreshKey?: number;
+  loadingNetWorth?: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0 }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false }) => {
   const { data: session, status } = useSession();
 
   if(!session || status !== "authenticated") {
@@ -30,7 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}
       <div className="col-span-12">
-        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} />
+        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
     <div className="col-span-12">
