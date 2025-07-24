@@ -17,7 +17,7 @@ const Watchlist = () => {
         <button className="text-[#A3A3A3] text-xs bg-[#23262F] px-2 py-1 rounded-lg flex items-center gap-1">All <span>▼</span></button>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent">
-        {mockWatchlist.map((item, idx) => (
+        {/* {mockWatchlist.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between py-2 border-b border-[#23262F] last:border-0">
             <div className="flex items-center gap-2">
               <span className="bg-[#23262F] text-[#A259FF] text-xs font-bold px-2 py-1 rounded mr-1">{item.ticker}</span>
@@ -26,7 +26,7 @@ const Watchlist = () => {
             </div>
             <span className="text-[#A3A3A3] text-xs ml-2 whitespace-nowrap">{item.time}</span>
           </div>
-        ))}
+        ))} */}
       </div>
     </div>
   );

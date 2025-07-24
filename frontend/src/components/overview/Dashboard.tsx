@@ -36,10 +36,10 @@ const Dashboard = () => {
       <Display />
     </div>
     {/* Bottom Row: Watchlist, ICO/IDO */}
-    <div className="col-span-12 md:col-span-6">
+    {/* <div className="col-span-12 md:col-span-6">
       <Watchlist />
-    </div>
-    <div className="col-span-12 md:col-span-6">
+    </div> */}
+    <div className="col-span-12">
       <IcoIdo />
     </div>
   </div>
