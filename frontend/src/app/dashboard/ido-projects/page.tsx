@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import SearchAndFilters from "../../../components/token-sales/SearchAndFilters";
 import ProjectGrid from "../../../components/token-sales/ProjectGrid";
 import StatsBar from "../../../components/token-sales/StatsBar";
-import { TokenSaleProject, FilterState, SortOption } from "../../../components/token-sales/types";
+import { TokenSaleProject, FilterState, SortOption, SearchSuggestion } from "../../../components/token-sales/types";
 
 interface ApiResponse {
   total: number;
@@ -27,6 +27,7 @@ interface ApiFilters {
     condition: string;
     data: string[];
   };
+  coins?: string[];
 }
 
 export default function TokenSalesPage() {
@@ -36,6 +37,8 @@ export default function TokenSalesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [selectedCoin, setSelectedCoin] = useState<SearchSuggestion | null>(null);
   
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -43,26 +46,64 @@ export default function TokenSalesPage() {
     tokenSaleTypes: [],
     launchpads: [],
     categories: [],
-    ecosystems: []
+    ecosystems: [],
+    coins: []
   });
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Update filters when debounced search changes
+  // Fetch search suggestions when user types
+  const fetchSearchSuggestions = useCallback(async (searchQuery: string) => {
+    setSearchSuggestions([]);
+    if (!searchQuery.trim()) {
+      setSearchSuggestions([]);
+      return;
+    }
+    let endpoint = "upcoming"; // Default endpoint for upcoming projects
+    if (filters.status !== "upcoming") {
+      endpoint = filters.status;
+    }
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_HELPERS_API_URL}/${endpoint}?search=${encodeURIComponent(searchQuery)}`
+      );
+      
+      if (response.ok) {
+        const suggestions: SearchSuggestion[] = await response.json();
+        setSearchSuggestions(suggestions);
+      }
+    } catch (error) {
+      console.error("Error fetching search suggestions:", error);
+      setSearchSuggestions([]);
+    }
+  }, [filters.status, currentPage]);
+
+  // Fetch suggestions when debounced search changes
   useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      search: debouncedSearch
-    }));
-    setCurrentPage(1); // Reset to first page when search changes
-  }, [debouncedSearch]);
+    if (debouncedSearch && !selectedCoin && debouncedSearch.length > 0) {
+      fetchSearchSuggestions(debouncedSearch);
+    } else {
+      setSearchSuggestions([]);
+    }
+  }, [debouncedSearch, selectedCoin, fetchSearchSuggestions]);
+
+  // Update filters when debounced search changes (only for text search, not coin selection)
+  useEffect(() => {
+    if (!selectedCoin) {
+      setFilters(prev => ({
+        ...prev,
+        search: debouncedSearch,
+      }));
+      setCurrentPage(1); // Reset to first page when search changes
+    }
+  }, [debouncedSearch, selectedCoin]);
 
   const getDefaultSort = (status: FilterState["status"]): SortOption => {
     switch (status) {
@@ -81,7 +122,8 @@ export default function TokenSalesPage() {
   
   const limit = 12;
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(
+    async () => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * limit;
@@ -127,6 +169,11 @@ export default function TokenSalesPage() {
         };
       }
 
+      // Add coins filter (for specific coin selection)
+      if (filters.coins && filters.coins.length > 0) {
+        apiFilters.coins = filters.coins;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/${endpoint}`, {
         method: "POST",
         headers: {
@@ -142,15 +189,15 @@ export default function TokenSalesPage() {
       
       const data: ApiResponse = await response.json();
       
-      let filteredData = data.data;
+      const filteredData = data.data;
       
-      // Apply client-side search filter (since API doesn't handle search)
-      if (filters.search) {
-        filteredData = filteredData.filter(project =>
-          project.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-          project.symbol.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
+      // Apply client-side search filter only if not using coin filter
+      // if (filters.search && (!filters.coins || filters.coins.length === 0)) {
+      //   filteredData = filteredData.filter(project =>
+      //     project.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+      //     project.symbol.toLowerCase().includes(filters.search.toLowerCase())
+      //   );
+      // }
 
       // Filter out projects with null dates based on status
       // if (filters.status === "upcoming") {
@@ -219,8 +266,8 @@ export default function TokenSalesPage() {
     filters.tokenSaleTypes, 
     filters.launchpads, 
     filters.categories, 
-    filters.ecosystems, 
-    filters.search, 
+    filters.ecosystems,
+    filters.coins,
     sortOption.field, 
     sortOption.order
   ]);
@@ -240,6 +287,36 @@ export default function TokenSalesPage() {
 
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
+    // Clear selected coin when user types new search
+    if (selectedCoin) {
+      setSelectedCoin(null);
+    }
+  };
+
+  const handleSearchSuggestionSelect = (suggestion: SearchSuggestion) => {
+    setSelectedCoin(suggestion);
+    setSearchTerm(suggestion.name); // Show the selected coin name in search input
+    setSearchSuggestions([]); // Clear suggestions
+    
+    // Update filters to use coin filter instead of text search
+    setFilters(prev => ({
+      ...prev,
+      search: "", // Clear text search
+      coins: [suggestion.key] // Set specific coin
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setSelectedCoin(null);
+    setSearchSuggestions([]);
+    setFilters(prev => ({
+      ...prev,
+      search: "",
+      coins: []
+    }));
+    setCurrentPage(1);
   };
 
   const handleSortChange = (newSort: SortOption) => {
@@ -269,6 +346,10 @@ export default function TokenSalesPage() {
           onSortChange={handleSortChange}
           onSearchChange={handleSearchChange}
           searchTerm={searchTerm}
+          searchSuggestions={searchSuggestions}
+          onSearchSuggestionSelect={handleSearchSuggestionSelect}
+          onClearSearch={handleClearSearch}
+          selectedCoin={selectedCoin}
         />
 
         {/* Stats Bar */}

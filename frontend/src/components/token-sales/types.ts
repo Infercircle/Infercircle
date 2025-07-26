@@ -36,6 +36,12 @@ export interface TokenSaleProject {
   blockchains: any[];
 }
 
+export interface SearchSuggestion {
+  key: string;
+  name: string;
+  symbol: string;
+}
+
 export interface FilterState {
   search: string;
   status: "upcoming" | "active" | "past";
@@ -43,6 +49,7 @@ export interface FilterState {
   launchpads: string[];
   categories: string[];
   ecosystems: string[];
+  coins?: string[]; // Added for specific coin filtering
   tokenSaleStartDates?: {
     start?: string;
     end?: string;

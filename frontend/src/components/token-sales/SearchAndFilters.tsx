@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { FilterState, SortOption, TOKEN_SALE_TYPES, LAUNCHPAD_OPTIONS, CATEGORY_OPTIONS, ECOSYSTEM_OPTIONS } from "./types";
+import { FilterState, SortOption, SearchSuggestion, TOKEN_SALE_TYPES, LAUNCHPAD_OPTIONS, CATEGORY_OPTIONS, ECOSYSTEM_OPTIONS } from "./types";
 
 interface SearchAndFiltersProps {
   filters: FilterState;
@@ -9,6 +9,10 @@ interface SearchAndFiltersProps {
   onSortChange: (sort: SortOption) => void;
   onSearchChange: (search: string) => void;
   searchTerm: string;
+  searchSuggestions: SearchSuggestion[];
+  onSearchSuggestionSelect: (suggestion: SearchSuggestion) => void;
+  onClearSearch: () => void;
+  selectedCoin: SearchSuggestion | null;
 }
 
 const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
@@ -17,7 +21,11 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   onFilterChange,
   onSortChange,
   onSearchChange,
-  searchTerm
+  searchTerm,
+  searchSuggestions,
+  onSearchSuggestionSelect,
+  onClearSearch,
+  selectedCoin
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
@@ -26,9 +34,11 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   };
 
   const handleStatusChange = (status: FilterState["status"]) => {
+    onSearchChange("");
     onFilterChange({
       ...filters,
-      status
+      status,
+      coins: [] // Clear coins filter when changing status
     });
   };
 
@@ -161,8 +171,60 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
             placeholder="Search projects..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="block w-full pl-10 pr-3 py-3 border border-[#23262F] rounded-lg bg-[#181A20] text-white placeholder-[#A3A3A3] focus:outline-none focus:ring-2 focus:ring-[#A259FF] focus:border-transparent"
+            className="block w-full pl-10 pr-10 py-3 border border-[#23262F] rounded-lg bg-[#181A20] text-white placeholder-[#A3A3A3] focus:outline-none focus:ring-2 focus:ring-[#A259FF] focus:border-transparent"
           />
+          
+          {/* Clear search button */}
+          {/* {(searchTerm || selectedCoin) && (
+            <button
+              onClick={onClearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#A3A3A3] hover:text-white"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )} */}
+
+          {/* Search suggestions dropdown */}
+          {searchSuggestions.length > 0 && !selectedCoin && searchTerm && (
+            <div className="absolute z-50 w-full mt-1 bg-[#181A20] border border-[#23262F] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.key}
+                  onClick={() => onSearchSuggestionSelect(suggestion)}
+                  className="w-full px-4 py-3 text-left hover:bg-[#23262F] border-b border-[#23262F] last:border-b-0 focus:outline-none focus:bg-[#23262F]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">{suggestion.name}</div>
+                      <div className="text-[#A3A3A3] text-sm">{suggestion.symbol}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Selected coin indicator */}
+          {/* {selectedCoin && (
+            <div className="absolute z-40 w-full mt-1 bg-[#A259FF] bg-opacity-10 border border-[#A259FF] rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[#A259FF] font-medium">Selected: {selectedCoin.name}</div>
+                  <div className="text-[#A3A3A3] text-sm">{selectedCoin.symbol}</div>
+                </div>
+                <button
+                  onClick={onClearSearch}
+                  className="text-[#A259FF] hover:text-white"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )} */}
         </div>
 
         <div className="flex items-center gap-4">
