@@ -5,6 +5,7 @@ import mediumRoutes from "./routes/medium";
 import twitterRoutes from "./routes/twitter";
 import articleRoutes from "./routes/article";
 import tokenRoutes from "./routes/tokens";
+import mindShare from "./routes/mindshare";
 import ytRoutes from "./routes/Youtube";
 import twitterspacesRoutes from "./routes/twitterspaces";
 import eliteCuratorsRoutes from "./routes/eliteCurators";
@@ -35,12 +36,12 @@ app.use("/twitter", twitterRoutes);
 app.use("/medium", mediumRoutes);
 app.use("/article", articleRoutes);
 app.use("/tokens", tokenRoutes);
+app.use("/mindshare", mindShare);
 app.use("/yt", ytRoutes);
 app.use("/twitterspaces", twitterspacesRoutes);
 app.use("/elite-curators", eliteCuratorsRoutes);
 app.use("/balances", balancesRoutes);
 app.use("/userwallets", userWalletsRoutes);
-
 app.use("/suggestions", suggestionsRoutes);
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
