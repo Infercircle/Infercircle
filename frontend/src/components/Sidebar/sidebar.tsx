@@ -233,9 +233,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                       <div className="text-sm font-semibold text-white truncate">
                         {session.user?.name}
                       </div>
-                      <div className="text-xs text-[#A3A3A3] truncate">
-                        @{(session.user as User)?.username}
-                      </div>
                     </div>
                     <Tippy content="Sign out" placement="top">
                       <FiLogOut 
