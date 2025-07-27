@@ -1,41 +1,26 @@
+import { FiArrowRight } from "react-icons/fi";
+
 const COLORS = {
-  cyan: {
-    fill: "bg-cyan-400",
-    text: "text-black",
-    border: "border-cyan-400",
-    outlineText: "text-cyan-400",
-    hoverFill: "hover:bg-cyan-300",
+  violet: {
+    fill: "bg-violet-700",
+    text: "text-white",
+    border: "border-violet-500",
+    outlineText: "text-violet-800",
+    hoverFill: "hover:bg-violet-500",
   },
   // Add more colors if needed
 };
 
-const ArrowRight = () => (
-  <svg
-    className="ml-2 w-5 h-5 inline-block"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M17 8l4 4m0 0l-4 4m4-4H3"
-    />
-  </svg>
-);
-
 type ButtonProps = {
   className?: string;
   href?: string;
-  onClick?: (...args: any[]) => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
   variant?: string;
-  color?: string;
+  color?: keyof typeof COLORS;
   px?: string;
   rightIcon?: boolean;
-  [x: string]: any;
+  [x: string]: unknown;
 };
 
 const Button: React.FC<ButtonProps> = ({
@@ -44,26 +29,26 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   children,
   variant = "outline",
-  color = "cyan",
-  px = "px-7",
+  color = "violet",
+  px = "px-4",
   rightIcon = false,
   ...props
 }) => {
-  const colorSet = COLORS[color] || COLORS.cyan;
-  let baseClasses = `inline-flex items-center justify-center h-11 transition-colors duration-200 rounded px-7 font-semibold text-base border-2 cursor-pointer ${px} ${className}`;
+  const colorSet = COLORS[color as keyof typeof COLORS] || COLORS.violet;
+  let baseClasses = `inline-flex items-center justify-center h-10 transition-all duration-200 rounded font-semibold text-sm cursor-pointer relative ${px} ${className}`;
 
   if (variant === "filled") {
-    baseClasses += ` ${colorSet.fill} ${colorSet.text} border-transparent ${colorSet.hoverFill}`;
+    baseClasses += ` ${colorSet.fill} ${colorSet.text} ${colorSet.hoverFill} border-t border-l border-white/20 border-r border-b border-black/20 active:border-t active:border-l active:border-black/20 active:border-r active:border-b active:border-white/20 active:translate-y-0.5`;
   } else if (variant === "outline") {
-    baseClasses += ` bg-transparent ${colorSet.outlineText} ${colorSet.border} button-circle-fill hover:border-white`;
+    baseClasses += ` ${colorSet.outlineText} border-t border-l border-white/10 border-r border-b border-black/30 active:border-t active:border-l active:border-black/30 active:border-r active:border-b active:border-white/10 active:translate-y-0.5 button-circle-fill`;
   } else if (variant === "plain") {
-    baseClasses += ` bg-transparent border-none shadow-none text-white/50 hover:text-white`;
+    baseClasses += ` bg-transparent border-none text-white/50 hover:text-white`;
   }
 
   const content = (
-    <span className="button-content flex items-center">
+    <span className="button-content flex items-center gap-1">
       {children}
-      {rightIcon && <ArrowRight />}
+      {rightIcon && <FiArrowRight size={16} />}
     </span>
   );
 
@@ -74,6 +59,7 @@ const Button: React.FC<ButtonProps> = ({
       </a>
     );
   }
+
   return (
     <button className={baseClasses} onClick={onClick} {...props}>
       {content}

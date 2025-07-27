@@ -1,7 +1,9 @@
-export interface Tweet {
-  matchedRule: string;
-  name: string;
-  text: string;
-  tweetUrl: string;
-  timestamp: string;
+export interface TwitterAuthor {
+  id: string; // Twitter user id
+  username: string; // Twitter username
+}
+
+export interface TwitterAuthorCreate {
+  id: string;
+  username: string;
 }
