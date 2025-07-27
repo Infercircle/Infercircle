@@ -65,9 +65,9 @@ const { data: session, status } = useSession();
               (<Link href="/dashboard">
                 <Button variant="outline">Dashboard</Button>
               </Link>): (
-                <Button variant="outline" onClick={
-                  () => signIn('twitter', { callbackUrl: '/dashboard', redirect: true })
-                }>Sign In With 𝕏</Button>
+                <Link href="/auth/signin">
+                <Button variant="outline">Sign In</Button>
+              </Link>
                 )}
             </>
           )}

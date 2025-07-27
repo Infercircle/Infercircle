@@ -4,7 +4,7 @@ import OnChainActivities from "./OnChainActivities";
 import Display from "./Display";
 import Watchlist from "./Watchlist";
 import IcoIdo from "./IcoIdo";
-import Suggested from "./Suggested";
+// import Suggested from "./Suggested";
 import { useSession } from "next-auth/react";
 
 interface DashboardProps {
@@ -84,21 +84,30 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
-    <div className="col-span-12">
+    {/* <div className="col-span-12">
       <Suggested />
-    </div>
+    </div> */}
     {/* Third Row: OnChain Activities & Display */}
     <div className="col-span-12 md:col-span-7 flex flex-col">
-      <OnChainActivities refreshKey={refreshKey} onAssetSelect={handleAssetSelect} selectedAsset={selectedAsset} onFirstAssetLoad={handleFirstAssetLoad} onPriceChartRequest={handlePriceChartRequest} onBalanceChartRequest={handleBalanceChartRequest} />
+      <OnChainActivities 
+        refreshKey={refreshKey} 
+        onAssetSelect={handleAssetSelect} 
+        selectedAsset={selectedAsset} 
+        onFirstAssetLoad={handleFirstAssetLoad} 
+        onPriceChartRequest={handlePriceChartRequest} 
+        onBalanceChartRequest={handleBalanceChartRequest}
+        activeChartType={showPriceChart ? chartType : null}
+        activeChartAsset={showPriceChart ? chartAsset : null}
+      />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">
       <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} />
     </div>
     {/* Bottom Row: Watchlist, ICO/IDO */}
-    <div className="col-span-12 md:col-span-6">
+    {/* <div className="col-span-12 md:col-span-6">
       <Watchlist />
-    </div>
-    <div className="col-span-12 md:col-span-6">
+    </div> */}
+    <div className="col-span-12">
       <IcoIdo />
     </div>
   </div>

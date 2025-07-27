@@ -10,7 +10,7 @@ import { SiGitbook } from "react-icons/si";
 import { FiLogOut } from "react-icons/fi";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import { TwitterUser } from "@/lib/types";
+import { User } from "@/lib/types";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -203,11 +203,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                     }`}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 cursor-pointer">
-                      <img
-                        src={session.user?.image || "https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
-                        alt="Profile Avatar"
-                        className="w-full h-full object-cover"
-                      />
+                      {session.user?.image && (
+                        <img
+                          src={session.user.image}
+                          alt="Profile Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   </div>
                 </Link>
@@ -219,18 +221,20 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                     pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
                   }`}>
                     <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                      <img
-                        src={session.user?.image || "https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
-                        alt="Profile Avatar"
-                        className="w-full h-full object-cover"
-                      />
+                      {session.user?.image && (
+                        <img
+                          src={session.user.image}
+                          alt="Profile Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white truncate">
                         {session.user?.name}
                       </div>
                       <div className="text-xs text-[#A3A3A3] truncate">
-                        @{(session.user as TwitterUser)?.username}
+                        @{(session.user as User)?.username}
                       </div>
                     </div>
                     <Tippy content="Sign out" placement="top">

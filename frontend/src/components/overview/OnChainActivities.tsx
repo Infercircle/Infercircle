@@ -63,9 +63,11 @@ interface OnChainActivitiesProps {
   onFirstAssetLoad?: (firstAsset: Asset) => void;
   onPriceChartRequest?: (asset: Asset) => void;
   onBalanceChartRequest?: (asset: Asset) => void;
+  activeChartType?: 'price' | 'balance' | null;
+  activeChartAsset?: Asset | null;
 }
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -245,14 +247,22 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   </div>
                 </td>
                 <td 
-                  className="py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors"
+                  className={`py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    activeChartType === 'price' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
+                      ? 'text-[#A259FF]' 
+                      : ''
+                  }`}
                   onClick={(e) => handlePriceClick(asset, e)}
                   title="Click to view price chart"
                 >
                   {asset.price !== undefined ? `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}` : '--'}
                 </td>
                 <td 
-                  className="py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors"
+                  className={`py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
+                      ? 'text-[#A259FF]' 
+                      : ''
+                  }`}
                   onClick={(e) => handleBalanceClick(asset, e)}
                   title="Click to view balance chart"
                 >

@@ -1,26 +1,32 @@
 'use client';
 
-import React, { useState, createContext } from "react";
+import React, { useState, createContext, Suspense } from "react";
 import Sidebar from "@/components/Sidebar/sidebar";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import WalletModalContent from "@/components/WalletModalContent";
 import { ToastProvider } from "@/components/ToastProvider";
 import Dashboard from "@/components/overview/Dashboard";
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import OnChainActivities from "@/components/overview/OnChainActivities";
+import { User } from "@/lib/types";
+import { AddXModal } from "@/components/AddXModal";
 
 export const DashboardContext = createContext<any>(null);
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const contentMarginClass = collapsed ? "ml-16" : "ml-60";
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
   const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/spaces-summarizer";
   const showWallet = !isInferAI && pathname !== "/dashboard/spaces-summarizer";
+  const { data: session } = useSession();
+  const user = session?.user as User;
+  const searchParams = useSearchParams();
+  const [addX, setAddX] = useState<string | null>(searchParams.get('addX'));
 
   // Wallet modal state
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -45,7 +51,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-  const { data: session, status } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
 
   // Helper to fetch and sum balances for all wallets and calculate net worth price change
@@ -84,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Add this callback to handle instant balance fetch and net worth update
   const handleWalletAdded = async (addr: string, chain: string) => {
     try {
-      // Always use backend proxy for balance fetch
+      // proxy for balance fetch
       const res = await axios.get(`${API_BASE}/balances/address/${addr}`);
       const balances = (res.data as any).balances;
       let walletTotal = 0;
@@ -130,41 +135,58 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [wallets, refreshKey]);
 
   return (
-    <DashboardContext.Provider value={{
-      netWorth,
-      totalPriceChange,
-      refreshKey,
-      loadingNetWorth
-    }}>
-      <ToastProvider>
-        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className={`${contentMarginClass} transition-all duration-300`}>
-          <Navbar
-            collapsed={collapsed}
-            showConnectWallet={showWallet}
-            showAuthButtons={false}
-            showSearch={showSearch}
-            onOpenWalletModal={openWalletModal}
-            connectedWallets={connectedWallets}
-          />
-          <main className="pt-6 px-6">
-            {children}
-          </main>
+    <div>
+      {(!user || !user.username || user.username.length < 0) && (addX == "true") && (
+        <div className="fixed inset-0 flex items-center justify-center bg-transparent z-50">
+          <AddXModal onClose={setAddX}/>
         </div>
-        <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
-          <WalletModalContent
-            eth={wallets.eth}
-            sol={wallets.sol}
-            btc={wallets.btc}
-            tron={wallets.tron}
-            ton={wallets.ton}
-            setWallets={setWallets}
-            onWalletAdded={handleWalletAdded}
-            refreshWallets={refreshWallets}
-            onWalletsChanged={() => setRefreshKey(k => k + 1)}
-          />
-        </Modal>
-      </ToastProvider>
-    </DashboardContext.Provider>
+      )}
+      <div className={`${((!user || !user.username || user.username.length < 0) && addX == "true") ? "blur": ""}`}>
+        <DashboardContext.Provider value={{
+          netWorth,
+          totalPriceChange,
+          refreshKey,
+          loadingNetWorth
+        }}>
+          <ToastProvider>
+            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+            <div className={`${contentMarginClass} transition-all duration-300`}>
+              <Navbar
+                collapsed={collapsed}
+                showConnectWallet={showWallet}
+                showAuthButtons={false}
+                showSearch={showSearch}
+                onOpenWalletModal={openWalletModal}
+                connectedWallets={connectedWallets}
+              />
+              <main className="pt-6 px-6">
+                {children}
+              </main>
+            </div>
+            <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
+              <WalletModalContent
+                eth={wallets.eth}
+                sol={wallets.sol}
+                btc={wallets.btc}
+                tron={wallets.tron}
+                ton={wallets.ton}
+                setWallets={setWallets}
+                onWalletAdded={handleWalletAdded}
+                refreshWallets={refreshWallets}
+                onWalletsChanged={() => setRefreshKey(k => k + 1)}
+              />
+            </Modal>
+          </ToastProvider>
+        </DashboardContext.Provider>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 } 

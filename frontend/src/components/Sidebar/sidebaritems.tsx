@@ -34,7 +34,7 @@ const sidebarItems = [
     items: [
       { label: "Assets", icon: FiDatabase, href: "/dashboard/assets" },
       { label: "Onchain Tracking", icon: FiSmile, href: "/dashboard/onchain-tracking" },
-      { label: "Pre TGE", icon: FiBox, href: "/dashboard/pre-tge" },
+      { label: "Token Sales", icon: FiBox, href: "/dashboard/token-sales" },
       { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
       { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
     ],

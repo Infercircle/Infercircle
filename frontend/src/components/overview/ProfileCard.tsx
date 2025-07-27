@@ -1,8 +1,8 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
-import { TwitterUser } from "@/lib/types";
+import { User } from "@/lib/types";
 
 interface ProfileCardProps {
   netWorth?: number;
@@ -19,7 +19,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
     useEffect(() => {
       const fetchEliteFollowers = async () => {
         if (!session || status !== "authenticated") return;
-        const user = session.user as TwitterUser;
+        const user = session.user as User;
         if (!user || !user.id) {
           return;
         }
@@ -57,7 +57,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
       );
     }
 
-    const user = session.user as TwitterUser;
+    const user = session.user as User;
 
   return (
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center md:justify-between gap-3 md:gap-0 w-full min-h-[100px] md:min-h-[120px] shadow-lg">
@@ -66,7 +66,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image ||"https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
+            src={user?.image}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />
@@ -76,12 +76,18 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           {/* Name and username (single line, truncate) */}
           <div className="flex items-center min-w-0">
             <span className="text-base sm:text-lg font-semibold text-white truncate whitespace-nowrap max-w-[60%]">{user?.name}</span>
-            <span className="text-gray-400 text-xs sm:text-sm truncate whitespace-nowrap ml-1 max-w-[40%]">@{user.username}</span>
+            {user.username && <span className="text-gray-400 text-xs sm:text-sm truncate whitespace-nowrap ml-1 max-w-[40%]">@{user.username}</span>}
           </div>
           {/* Follows metrics */}
           <div className="flex gap-4 mt-1 text-xs sm:text-sm text-[#A3A3A3]">
-            <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
-            <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>
+            {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
+            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
+            {!user.username && 
+              <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
+                signIn("twitter", { callbackUrl: "/dashboard" })
+              }}>
+                Add X Account
+              </span>}
           </div>
           {/* Net Worth and Price Change */}
           <div className="flex gap-3 items-center mt-2">
@@ -105,21 +111,23 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-16 h-16 aspect-square rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image ||"https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg"}
+            src={user?.image}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />
         </div>
         {/* User info */}
         <div>
-          <div className="text-lg font-semibold text-white"> {user?.name} <span className="text-gray-400 text-base">@{user.username}</span></div>
+          <div className="text-lg font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-base">@{user.username}</span>}</div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
-            <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>
-            <span>
-              <span className="text-[#A259FF] font-bold">
-                {eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}
-              </span> Elite Curators
-            </span>
+            {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
+            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
+            {!user.username && 
+              <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
+                signIn("twitter", { callbackUrl: "/dashboard" })
+              }}>
+                Add 𝕏 Account
+              </span>}
           </div>
         </div>
       </div>

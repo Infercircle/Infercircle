@@ -169,6 +169,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
+  // Update currentChartType when chartType prop changes
+  useEffect(() => {
+    setCurrentChartType(chartType);
+  }, [chartType]);
+
   // Symbol mapping for tokens that have changed their symbols
   const SYMBOL_MAPPINGS: Record<string, string> = {
     'matic': 'pol', // MATIC rebranded to POL
