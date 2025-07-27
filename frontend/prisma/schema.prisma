@@ -8,13 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model TwitterUser {
-  username  String   @id
-  name      String?
-  url       String
-  createdAt DateTime @default(now())
-}
-
 model EliteCurator {
   id             Int       @id @default(autoincrement())
   twitterId      String    @unique @map("twitter_id") @db.VarChar(32)
@@ -36,17 +29,6 @@ model TopEliteCurators {
   processed Boolean? @default(false)
 
   @@map("top_elite_curators")
-}
-
-model wallets {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String
-  type       String
-  address    String
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  @@unique([user_id, type, address])
-  @@index([user_id], map: "idx_wallets_user_id")
 }
 
 model User {

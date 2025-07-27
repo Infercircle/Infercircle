@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
     const { code } = await request.json();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -27,10 +27,14 @@ export async function POST(request: Request) {
         }
 
         // Mark the invite code as used
-        await updateInviteCode(code, true);
+        if (inviteCode.InviteCode == "TEAMINFER"){
+            await updateInviteCode(code, true);
+        }
+        
+        if (session.user.id) {
+            await updateUserInvite(session.user.id, true);
+        }
 
-        await updateUserInvite(session.user.id, true);
-    
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
         console.error("Error processing invite code:", error);

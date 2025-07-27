@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
-// Import ApexCharts with proper typing
-let Chart: any = null;
-if (typeof window !== 'undefined') {
-  Chart = require('react-apexcharts').default;
-}
+// Import ApexCharts with proper typing and dynamic loading
+const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 interface SelectedAsset {
   name: string;
@@ -41,7 +40,37 @@ interface ChartData {
   }>;
 }
 
-const MOCK_TWEETS = [
+interface Tweet {
+  sentiment: string;
+  avatar: string;
+  name: string;
+  handle: string;
+  timestamp: string;
+  followers: string;
+  tweetUrl: string;
+  text: string;
+}
+
+interface AddressDistribution {
+  less_0001: number;
+  "0001_001": number;
+  "001_01": number;
+  "01_1": number;
+  "1_10": number;
+  "10_100": number;
+  "100_1k": number;
+  "1k_10k": number;
+  "10k_100k": number;
+  above_100k: number;
+}
+
+interface WhaleDistribution {
+  "1k_10k": number;
+  "10k_100k": number;
+  above_100k: number;
+}
+
+const MOCK_TWEETS: Tweet[] = [
   {
     sentiment: "negative",
     avatar: "https://randomuser.me/api/portraits/men/1.jpg",
@@ -112,12 +141,6 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
-const CloseIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
 interface DisplayProps {
   selectedAsset?: SelectedAsset | null;
   showPriceChart?: boolean;
@@ -135,7 +158,13 @@ const CHART_FILTERS = [
   { label: '1Y', days: '365', interval: 'daily' },
 ];
 
-const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, onCloseChart, chartType = 'price' }) => {
+// Symbol mapping for tokens that have changed their symbols
+const SYMBOL_MAPPINGS: Record<string, string> = {
+  'matic': 'pol', // MATIC rebranded to POL
+  'polygon': 'pol',
+};
+
+const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loadingRank, setLoadingRank] = useState(false);
@@ -147,7 +176,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType);
-  const [addressDist] = useState<any>({
+  const [addressDist] = useState<AddressDistribution>({
     less_0001: 0.1,
     "0001_001": 0.15,
     "001_01": 0.2,
@@ -159,12 +188,12 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     "10k_100k": 0.03,
     above_100k: 0.02,
   });
-  const [whaleDist] = useState<any>({
+  const [whaleDist] = useState<WhaleDistribution>({
     "1k_10k": 0.05,
     "10k_100k": 0.03,
     above_100k: 0.02,
   });
-  const [tweets] = useState<any[]>(MOCK_TWEETS);
+  const [tweets] = useState<Tweet[]>(MOCK_TWEETS);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
@@ -174,17 +203,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     setCurrentChartType(chartType);
   }, [chartType]);
 
-  // Symbol mapping for tokens that have changed their symbols
-  const SYMBOL_MAPPINGS: Record<string, string> = {
-    'matic': 'pol', // MATIC rebranded to POL
-    'polygon': 'pol',
-  };
-
   // Helper function to get the correct symbol for API calls
-  const getApiSymbol = (symbol: string): string => {
+  const getApiSymbol = useCallback((symbol: string): string => {
     const lowerSymbol = symbol.toLowerCase();
     return SYMBOL_MAPPINGS[lowerSymbol] || lowerSymbol;
-  };
+  }, []);
 
   // Logo fetch/retry logic for chartAsset
   useEffect(() => {
@@ -203,16 +226,17 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           } else {
             throw new Error('No logo');
           }
-        } catch {
+        } catch (error) {
+          console.error('Logo fetch error:', error);
           if (isMounted && logoRetryCount < 3) {
-            setTimeout(() => setLogoRetryCount(c => c + 1), 3000);
+            setTimeout(() => setLogoRetryCount((c: number) => c + 1), 3000);
           }
         }
       };
       fetchLogo();
     }
     return () => { isMounted = false; };
-  }, [chartAsset?.symbol, logoCache, logoRetryCount, API_BASE]);
+  }, [chartAsset?.symbol, logoCache, logoRetryCount, API_BASE, getApiSymbol]);
 
   // Fetch rank data when selectedAsset changes
   useEffect(() => {
@@ -246,18 +270,18 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           }
         } else {
           throw new Error("Failed to fetch rank");
-        }
-      } catch (error) {
-        setRank(null);
-        // Increment retry count for failed attempts
-        setRankRetryCount(prev => prev + 1);
-    } finally {
+        }        } catch (error) {
+          console.error("Rank fetch error:", error);
+          setRank(null);
+          // Increment retry count for failed attempts
+          setRankRetryCount((prev: number) => prev + 1);
+        } finally {
         setLoadingRank(false);
       }
     };
 
     fetchRank();
-  }, [selectedAsset?.symbol, API_BASE, rankCache]);
+  }, [selectedAsset?.symbol, API_BASE, rankCache, getApiSymbol]);
 
   // Retry logic for failed rank fetches
   useEffect(() => {
@@ -280,14 +304,14 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
               }
             } else {
               throw new Error("Failed to fetch rank");
-            }
-          } catch (error) {
-            setRank(null);
-            // Continue retrying if we haven't reached max attempts
-            if (rankRetryCount < 3) {
-              setRankRetryCount(prev => prev + 1);
-            }
-          } finally {
+            }            } catch (error) {
+              console.error("Retry rank fetch error:", error);
+              setRank(null);
+              // Continue retrying if we haven't reached max attempts
+              if (rankRetryCount < 3) {
+                setRankRetryCount((prev: number) => prev + 1);
+              }
+            } finally {
             setLoadingRank(false);
           }
         };
@@ -297,7 +321,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
 
       return () => clearTimeout(retryTimeout);
     }
-  }, [rankRetryCount, selectedAsset?.symbol, API_BASE]);
+  }, [rankRetryCount, selectedAsset?.symbol, API_BASE, getApiSymbol]);
 
   // Fetch chart data when chart view is active or filter changes
   useEffect(() => {
@@ -313,7 +337,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             if (currentChartType === 'balance' && chartAsset.balance) {
               // Calculate balance value over time
               const balanceData = {
-                prices: data.prices.map((item: any) => ({
+                prices: data.prices.map((item: { timestamp: number; price: number; date: string }) => ({
                   timestamp: item.timestamp,
                   price: item.price,
                   date: item.date,
@@ -338,15 +362,15 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       };
       fetchChartData();
     }
-  }, [showPriceChart, chartAsset?.symbol, API_BASE, activeFilter, currentChartType]);
+  }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
 
   // Helper for address bands
-  const getBand = (band: string) => {
+  const getBand = (band: keyof AddressDistribution) => {
     if (!addressDist) return 0;
     return (addressDist[band] ?? 0) * 100;
   };
   // Helper for whale bands
-  const getWhale = (band: string) => {
+  const getWhale = (band: keyof WhaleDistribution) => {
     if (!whaleDist) return 0;
     return (whaleDist[band] ?? 0) * 100;
   };
@@ -358,13 +382,6 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displayChange = selectedAsset ? selectedAsset.priceChange : null;
   const displayLogo = selectedAsset?.icon || null;
   const displayRank = loadingRank ? "Loading..." : rank !== null ? `#${rank}` : null;
-
-  // Chart asset data
-  const chartName = chartAsset ? chartAsset.name : "";
-  const chartSymbol = chartAsset ? chartAsset.symbol : "";
-  const chartPrice = chartAsset ? chartAsset.price : null;
-  const chartChange = chartAsset ? chartAsset.priceChange : null;
-  const chartLogo = chartAsset?.icon || null;
 
   // Show loading state if no asset is selected
   if (!selectedAsset) {
@@ -384,7 +401,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
         <div className="flex items-center gap-3">
             {displayLogo ? (
-              <img src={displayLogo} alt={displaySymbol} className="w-8 h-8 rounded-full" />
+              <Image src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
           ) : (
               <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
           )}
@@ -460,7 +477,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                 style={{ minHeight: 80, maxHeight: 80, overflow: "hidden" }}
                 onClick={() => setExpandedIndex(idx)}
               >
-                <img src={tweet.avatar} alt={tweet.name} className="w-10 h-10 rounded-full object-cover mt-1" />
+                <Image src={tweet.avatar} alt={tweet.name} width={40} height={40} className="rounded-full object-cover mt-1" />
                 <div className="flex-1 flex flex-col min-w-0">
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -468,7 +485,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                       <span className="font-semibold text-sm text-white truncate">{tweet.name}</span>
                       <span className="text-[#A3A3A3] text-sm truncate">{tweet.handle}</span>
                     </div>
-                    <div className="flex items-center gap-2 ml-auto items-center">
+                    <div className="flex items-center gap-2 ml-auto">
                       <span className="text-[#A3A3A3] text-sm">{tweet.timestamp}</span>
                       <a
                         href={tweet.tweetUrl}
@@ -476,7 +493,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                         rel="noopener noreferrer"
                         className="text-[#A259FF] flex items-center"
                         title="View Tweet"
-                        onClick={e => e.stopPropagation()}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
                         <ExternalLinkIcon />
                       </a>
@@ -495,7 +512,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             onClick={() => setExpandedIndex(null)}
           >
             <div className="flex items-center gap-3 mb-2 w-full">
-              <img src={tweets[expandedIndex].avatar} alt={tweets[expandedIndex].name} className="w-12 h-12 rounded-full object-cover" />
+              <Image src={tweets[expandedIndex].avatar} alt={tweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
               <div className="flex flex-col flex-1 min-w-0">
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -503,7 +520,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                     <span className="font-semibold text-sm text-[#A259FF] truncate">{tweets[expandedIndex].name}</span>
                     <span className="text-[#A3A3A3] text-sm truncate">{tweets[expandedIndex].handle}</span>
                   </div>
-                  <div className="flex items-center gap-2 ml-auto items-center">
+                  <div className="flex items-center gap-2 ml-auto">
                     <span className="text-[#A3A3A3] text-sm">{tweets[expandedIndex].timestamp}</span>
                     <a
                       href={tweets[expandedIndex].tweetUrl}
@@ -511,7 +528,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                       rel="noopener noreferrer"
                       className="text-[#A259FF] flex items-center"
                       title="View Tweet"
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     >
                       <ExternalLinkIcon />
                     </a>
@@ -569,18 +586,16 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                         },
                         animations: {
                           enabled: true,
-                          easing: 'easeinout',
                           speed: 800
                         },
                         height: '100%'
                       },
                       series: [
                         {
-                          name: currentChartType === 'price' ? 'Price' : 'Balance Value',
-                          data: chartData.prices.map(item => [
-                            item.timestamp, 
-                            currentChartType === 'price' ? item.price : item.balanceValue
-                          ])
+                          name: currentChartType === 'price' ? 'Price' : 'Balance Value',                        data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
+                          item.timestamp, 
+                          currentChartType === 'price' ? item.price : item.balanceValue
+                        ])
                         }
                       ],
                       xaxis: {
@@ -668,7 +683,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                     series={[
                       {
                         name: currentChartType === 'price' ? 'Price' : 'Balance Value',
-                        data: chartData.prices.map(item => [
+                        data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
                           item.timestamp, 
                           currentChartType === 'price' ? item.price : item.balanceValue
                         ])
