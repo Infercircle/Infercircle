@@ -9,7 +9,7 @@ const mockIcoIdo = [
 
 const IcoIdo = () => {
   return (
-    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px]">
+    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px]">
       <div className="flex items-center justify-between mb-2">
         <div className="text-lg font-semibold text-white">ICO / IDO</div>
         <button className="text-[#A3A3A3] text-xs bg-[#23262F] px-2 py-1 rounded-lg flex items-center gap-1">All <span>▼</span></button>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ProfileCard from "./ProfileCard";
 import OnChainActivities from "./OnChainActivities";
 import Display from "./Display";
@@ -14,18 +14,68 @@ interface DashboardProps {
   loadingNetWorth?: boolean;
 }
 
+interface SelectedAsset {
+  name: string;
+  symbol: string;
+  chain: string;
+  price: number;
+  balance: number;
+  value: number;
+  priceChange: number;
+  balanceChange?: number;
+  sentimentChange?: number;
+  sentiment?: number;
+  icon: string;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false }) => {
   const { data: session, status } = useSession();
+  const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
+  const [showPriceChart, setShowPriceChart] = useState(false);
+  const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
+  const [chartType, setChartType] = useState<'price' | 'balance'>('price');
 
   if(!session || status !== "authenticated") {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Please sign in to view your dashboard.</p>
+        <p className="text-gray-500">
+          Please <a
+            href="/"
+            className="px-1 rounded bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border border-transparent"
+            style={{ textDecoration: 'none', borderRadius: '6px' }}
+          >
+            sign in
+          </a> to view your dashboard.
+        </p>
       </div>
     );
   }
 
   const user = session.user;
+
+  const handleAssetSelect = (asset: SelectedAsset) => {
+    setSelectedAsset(asset);
+    setShowPriceChart(false); // Close chart view when selecting new asset
+  };
+
+  const handleFirstAssetLoad = (firstAsset: SelectedAsset) => {
+    // Only set the first asset if no asset is currently selected
+    if (!selectedAsset) {
+      setSelectedAsset(firstAsset);
+    }
+  };
+
+  const handlePriceChartRequest = (asset: SelectedAsset) => {
+    setChartAsset(asset);
+    setChartType('price');
+    setShowPriceChart(true);
+  };
+
+  const handleBalanceChartRequest = (asset: SelectedAsset) => {
+    setChartAsset(asset);
+    setChartType('balance');
+    setShowPriceChart(true);
+  };
 
   return (
     <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
@@ -39,10 +89,10 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     </div>
     {/* Third Row: OnChain Activities & Display */}
     <div className="col-span-12 md:col-span-7 flex flex-col">
-      <OnChainActivities refreshKey={refreshKey} />
+      <OnChainActivities refreshKey={refreshKey} onAssetSelect={handleAssetSelect} selectedAsset={selectedAsset} onFirstAssetLoad={handleFirstAssetLoad} onPriceChartRequest={handlePriceChartRequest} onBalanceChartRequest={handleBalanceChartRequest} />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">
-      <Display />
+      <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} />
     </div>
     {/* Bottom Row: Watchlist, ICO/IDO */}
     <div className="col-span-12 md:col-span-6">

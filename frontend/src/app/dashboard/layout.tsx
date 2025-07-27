@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, createContext } from "react";
 import Sidebar from "@/components/Sidebar/sidebar";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
@@ -12,11 +12,15 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import OnChainActivities from "@/components/overview/OnChainActivities";
 
+export const DashboardContext = createContext<any>(null);
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const contentMarginClass = collapsed ? "ml-16" : "ml-60";
   const pathname = usePathname();
-  const showSearch = pathname !== "/dashboard";
+  const isInferAI = pathname === "/dashboard/inferai";
+  const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/spaces-summarizer";
+  const showWallet = !isInferAI && pathname !== "/dashboard/spaces-summarizer";
 
   // Wallet modal state
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -126,34 +130,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [wallets, refreshKey]);
 
   return (
-    <ToastProvider>
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <div className={`${contentMarginClass} transition-all duration-300`}>
-        <Navbar
-          collapsed={collapsed}
-          showConnectWallet={true}
-          showAuthButtons={false}
-          showSearch={showSearch}
-          onOpenWalletModal={openWalletModal}
-          connectedWallets={connectedWallets}
-        />
-        <main className="pt-6 px-6">
-          <Dashboard netWorth={netWorth} totalPriceChange={totalPriceChange} refreshKey={refreshKey} loadingNetWorth={loadingNetWorth} />
-        </main>
-      </div>
-      <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
-        <WalletModalContent
-          eth={wallets.eth}
-          sol={wallets.sol}
-          btc={wallets.btc}
-          tron={wallets.tron}
-          ton={wallets.ton}
-          setWallets={setWallets}
-          onWalletAdded={handleWalletAdded}
-          refreshWallets={refreshWallets}
-          onWalletsChanged={() => setRefreshKey(k => k + 1)}
-        />
-      </Modal>
-    </ToastProvider>
+    <DashboardContext.Provider value={{
+      netWorth,
+      totalPriceChange,
+      refreshKey,
+      loadingNetWorth
+    }}>
+      <ToastProvider>
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className={`${contentMarginClass} transition-all duration-300`}>
+          <Navbar
+            collapsed={collapsed}
+            showConnectWallet={showWallet}
+            showAuthButtons={false}
+            showSearch={showSearch}
+            onOpenWalletModal={openWalletModal}
+            connectedWallets={connectedWallets}
+          />
+          <main className="pt-6 px-6">
+            {children}
+          </main>
+        </div>
+        <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
+          <WalletModalContent
+            eth={wallets.eth}
+            sol={wallets.sol}
+            btc={wallets.btc}
+            tron={wallets.tron}
+            ton={wallets.ton}
+            setWallets={setWallets}
+            onWalletAdded={handleWalletAdded}
+            refreshWallets={refreshWallets}
+            onWalletsChanged={() => setRefreshKey(k => k + 1)}
+          />
+        </Modal>
+      </ToastProvider>
+    </DashboardContext.Provider>
   );
 } 

@@ -114,4 +114,85 @@ router.get('/cmc', asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
+// CMC price, rank, and change proxy
+router.get('/cmc/price', asyncHandler(async (req: Request, res: Response) => {
+  let { symbol } = req.query;
+  if (!symbol || typeof symbol !== 'string') return res.status(400).json({ error: 'symbol is required' });
+  try {
+    const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest', {
+      params: { symbol },
+      headers: { 'X-CMC_PRO_API_KEY': process.env.CMC_API_KEY }
+    });
+    const data = (response.data as any).data[symbol.toUpperCase()];
+    if (!data) return res.status(404).json({ error: 'Token not found' });
+    const quote = data.quote && data.quote.USD ? data.quote.USD : {};
+    res.json({
+      symbol: data.symbol,
+      name: data.name,
+      price: quote.price ?? null,
+      rank: data.cmc_rank ?? null,
+      change24h: quote.percent_change_24h ?? null
+      // CMC does not provide supply distribution/percentage by holding in this endpoint
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch price from CMC' });
+  }
+}));
+
+// CoinGecko market chart data for price charts
+router.get('/chart', asyncHandler(async (req: Request, res: Response) => {
+  const { id, symbol, days = '365', vs_currency = 'usd' } = req.query;
+  
+  if (!id && !symbol) {
+    return res.status(400).json({ error: 'Either id or symbol is required' });
+  }
+
+  try {
+    let coinId = id as string;
+    
+    // If symbol is provided, we need to find the coin ID first
+    if (symbol && !id) {
+      const listRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      const coins = await listRes.json();
+      const match = coins.find((c: any) => c.symbol.toLowerCase() === String(symbol).toLowerCase());
+      if (!match) {
+        return res.status(404).json({ error: `No coin found with symbol '${symbol}'` });
+      }
+      coinId = match.id;
+    }
+
+    // Fetch market chart data
+    const chartRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=${vs_currency}&days=${days}`);
+    if (!chartRes.ok) {
+      return res.status(404).json({ error: `No chart data found for '${coinId}'` });
+    }
+
+    const chartData = await chartRes.json();
+    
+    // Transform the data to a more usable format
+    const transformedData = {
+      prices: chartData.prices.map(([timestamp, price]: [number, number]) => ({
+        timestamp,
+        price,
+        date: new Date(timestamp).toISOString()
+      })),
+      market_caps: chartData.market_caps.map(([timestamp, marketCap]: [number, number]) => ({
+        timestamp,
+        marketCap,
+        date: new Date(timestamp).toISOString()
+      })),
+      total_volumes: chartData.total_volumes.map(([timestamp, volume]: [number, number]) => ({
+        timestamp,
+        volume,
+        date: new Date(timestamp).toISOString()
+      }))
+    };
+
+    res.status(200).json(transformedData);
+  } catch (error) {
+    console.error("Error fetching chart data:", error);
+    res.status(500).json({ error: "Failed to fetch chart data" });
+  }
+}));
+
 export default router;
