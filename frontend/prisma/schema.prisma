@@ -56,4 +56,25 @@ model User {
   image          String?
   username       String?   @unique
   followersCount Int?
+  inviteAccepted Boolean   @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @default(now())
+
+  wallets        UserWallet[]  @relation("UserWallets")
+}
+
+model UserWallet {
+  id             String        @id @default(cuid())
+  walletAddress  String
+  chain          String
+  createdAt      DateTime      @default(now())
+
+  users          User[]        @relation("UserWallets")
+}
+
+model InviteCode {
+  InviteCode  String  @id
+  email       String?
+  username    String?
+  used        Boolean @default(false)
 }

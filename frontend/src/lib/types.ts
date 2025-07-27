@@ -5,4 +5,7 @@ export interface User {
     followersCount: number;
     email: string | undefined;
     image: string;
+    inviteAccepted: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 }

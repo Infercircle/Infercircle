@@ -17,3 +17,26 @@ export async function getUserByUsername(username: string) {
         where: { username },
     });
 }
+
+export async function findInviteCode(code: string) {
+  return db.inviteCode.findUnique({
+    where: { InviteCode: code },
+  });
+}
+
+export async function updateInviteCode(code: string, used: boolean) {
+  return db.inviteCode.update({
+    where: { InviteCode: code },
+    data: { used },
+  });
+}
+
+export async function updateUserInvite(id: string, inviteAccepted: boolean) {
+  return db.user.update({
+    where: { id },
+    data: {
+      inviteAccepted,
+      updatedAt: new Date(),
+    },
+  });
+}
