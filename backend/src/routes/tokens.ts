@@ -10,45 +10,60 @@ const router = Router();
 
 
 router.get("/search", asyncHandler(async (req: Request, res: Response) => {
-  const { symbol, slug, address, id } = req.query;
-  const params = [symbol, slug, address, id];
-  const definedParamsCount = params.filter(Boolean).length;
-
-  if (definedParamsCount > 1) {
-    return res.status(400).json({ error: "Only one query parameter is allowed: symbol, slug, address, or id." });
+  const { symbol, id, address } = req.query;
+  if ([symbol, id, address].filter(Boolean).length !== 1) {
+    return res.status(400).json({ error: "Provide exactly one of: symbol, id, or address." });
   }
 
-  if (!symbol && !slug && !address && !id) {
-    return res.status(400).json({ error: "Query parameters 'symbol', 'slug', 'address', or 'id' is required" });
-  }
   try {
-    const token = await fetch(`https://api.coingecko.com/api/v3/coins/list` + `${symbol? `?symbol=${symbol}`  : slug ? `?slug=${slug}`  : address ? `?address=${address}` : id ? `?id=${id}` : ""}`, {
-      method: "GET",
-      headers: {
-        // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
-        // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
-      },
-    });
-    const response = (await token.json());
-    if(response.status.error_code !== 0) {
-      return res.status(response.status.error_code).json({ error: response.status.error_message });
+    let coinData;
+    if (symbol) {
+      // 1. Get all coins, find by symbol
+      const listRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      const coins = await listRes.json();
+      const match = coins.find((c: any) => c.symbol.toLowerCase() === String(symbol).toLowerCase());
+      if (!match) {
+        return res.status(404).json({ error: `No coin found with symbol '${symbol}'` });
+      }
+      // 2. Fetch details by id
+      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/${match.id}`);
+      if (!detailsRes.ok) {
+        return res.status(404).json({ error: `No details found for symbol '${symbol}'` });
+      }
+      coinData = await detailsRes.json();
+    } else if (id) {
+      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
+      if (!detailsRes.ok) {
+        return res.status(404).json({ error: `No details found for id '${id}'` });
+      }
+      coinData = await detailsRes.json();
+    } else if (address) {
+      // Only Ethereum supported here
+      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/ethereum/contract/${address}`);
+      if (!detailsRes.ok) {
+        return res.status(404).json({ error: `No details found for address '${address}'` });
+      }
+      coinData = await detailsRes.json();
     }
-    const tokenData = response.data[Object.keys(response.data)[0]];
+
+    // Compose DTO
     const tokenReturnDTO = {
-      id: tokenData.id,
-      name: tokenData.name,
-      description: tokenData.description,
-      symbol: tokenData.symbol,
-      logo: tokenData.logo,
-      tokenAddress: tokenData.platform ? tokenData.platform.token_address : "",
-      chain:{
-        name: tokenData.platform ? tokenData.platform.name : "",
-        id: tokenData.platform ? tokenData.platform.id : "",
-        symbol: tokenData.platform ? tokenData.platform.symbol : "",
+      id: coinData.id,
+      name: coinData.name,
+      description: coinData.description?.en || "",
+      symbol: coinData.symbol,
+      logo: coinData.image?.large || coinData.image?.thumb || "",
+      tokenAddress: coinData.platforms?.ethereum || "",
+      chain: {
+        name: "ethereum",
+        id: "1",
+        symbol: "ETH",
       },
-      explorer: tokenData.urls.explorer[0],
-      twitter: tokenData.urls.twitter[0],
-    }
+      explorer: coinData.links?.blockchain_site?.[0] || "",
+      twitter: coinData.links?.twitter_screen_name
+        ? `https://twitter.com/${coinData.links.twitter_screen_name}`
+        : "",
+    };
     res.status(200).json(tokenReturnDTO);
   } catch (error) {
     console.error("Error fetching token data:", error);
@@ -81,5 +96,103 @@ router.get("/assets", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch from CoinGecko" });
   }
 });
+
+// CMC logo/info proxy
+router.get('/cmc', asyncHandler(async (req: Request, res: Response) => {
+  let { symbol } = req.query;
+  if (!symbol || typeof symbol !== 'string') return res.status(400).json({ error: 'symbol is required' });
+  try {
+    const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/info', {
+      params: { symbol },
+      headers: { 'X-CMC_PRO_API_KEY': process.env.CMC_API_KEY }
+    });
+    const data = (response.data as any).data[symbol.toUpperCase()];
+    if (!data) return res.status(404).json({ error: 'Token not found' });
+    res.json({ logo: data.logo, name: data.name, symbol: data.symbol });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch from CMC' });
+  }
+}));
+
+// CMC price, rank, and change proxy
+router.get('/cmc/price', asyncHandler(async (req: Request, res: Response) => {
+  let { symbol } = req.query;
+  if (!symbol || typeof symbol !== 'string') return res.status(400).json({ error: 'symbol is required' });
+  try {
+    const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest', {
+      params: { symbol },
+      headers: { 'X-CMC_PRO_API_KEY': process.env.CMC_API_KEY }
+    });
+    const data = (response.data as any).data[symbol.toUpperCase()];
+    if (!data) return res.status(404).json({ error: 'Token not found' });
+    const quote = data.quote && data.quote.USD ? data.quote.USD : {};
+    res.json({
+      symbol: data.symbol,
+      name: data.name,
+      price: quote.price ?? null,
+      rank: data.cmc_rank ?? null,
+      change24h: quote.percent_change_24h ?? null
+      // CMC does not provide supply distribution/percentage by holding in this endpoint
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch price from CMC' });
+  }
+}));
+
+// CoinGecko market chart data for price charts
+router.get('/chart', asyncHandler(async (req: Request, res: Response) => {
+  const { id, symbol, days = '365', vs_currency = 'usd' } = req.query;
+  
+  if (!id && !symbol) {
+    return res.status(400).json({ error: 'Either id or symbol is required' });
+  }
+
+  try {
+    let coinId = id as string;
+    
+    // If symbol is provided, we need to find the coin ID first
+    if (symbol && !id) {
+      const listRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      const coins = await listRes.json();
+      const match = coins.find((c: any) => c.symbol.toLowerCase() === String(symbol).toLowerCase());
+      if (!match) {
+        return res.status(404).json({ error: `No coin found with symbol '${symbol}'` });
+      }
+      coinId = match.id;
+    }
+
+    // Fetch market chart data
+    const chartRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=${vs_currency}&days=${days}`);
+    if (!chartRes.ok) {
+      return res.status(404).json({ error: `No chart data found for '${coinId}'` });
+    }
+
+    const chartData = await chartRes.json();
+    
+    // Transform the data to a more usable format
+    const transformedData = {
+      prices: chartData.prices.map(([timestamp, price]: [number, number]) => ({
+        timestamp,
+        price,
+        date: new Date(timestamp).toISOString()
+      })),
+      market_caps: chartData.market_caps.map(([timestamp, marketCap]: [number, number]) => ({
+        timestamp,
+        marketCap,
+        date: new Date(timestamp).toISOString()
+      })),
+      total_volumes: chartData.total_volumes.map(([timestamp, volume]: [number, number]) => ({
+        timestamp,
+        volume,
+        date: new Date(timestamp).toISOString()
+      }))
+    };
+
+    res.status(200).json(transformedData);
+  } catch (error) {
+    console.error("Error fetching chart data:", error);
+    res.status(500).json({ error: "Failed to fetch chart data" });
+  }
+}));
 
 export default router;

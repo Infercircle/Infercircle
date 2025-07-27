@@ -1,13 +1,18 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Dashboard from "@/components/overview/Dashboard";
+import axios from "axios";
+import { useSession } from "next-auth/react";
+import { DashboardContext } from './layout';
 
-export default function OverviewPage() {
-
-
+export default function DashboardPage() {
+  const { netWorth, totalPriceChange, refreshKey, loadingNetWorth } = useContext(DashboardContext);
   return (
-    <div >
-          <Dashboard />
-    </div>
+    <Dashboard
+      netWorth={netWorth}
+      totalPriceChange={totalPriceChange}
+      refreshKey={refreshKey}
+      loadingNetWorth={loadingNetWorth}
+    />
   );
 }

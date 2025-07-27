@@ -117,9 +117,9 @@ const IcoIdo = () => {
     fetchIcoIdoData();
   }, [selectedFilter])
   return (
-    <div className="bg-[#181A20] border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
+    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
       <div className="flex items-center justify-between mb-2">
-        <Link href="/dashboard/Token-Sale" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
+        <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
           <div className="text-lg font-semibold text-white">ICO / IDO</div>
           <FiExternalLink />
         </Link>

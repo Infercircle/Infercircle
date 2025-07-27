@@ -4,10 +4,7 @@ import Button from "./Button";
 import { FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
-import { signIn, signOut, useSession } from "next-auth/react";
-import { FiPower } from "react-icons/fi";
-import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
+import { signIn, useSession } from "next-auth/react";
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -23,7 +20,7 @@ const SearchBar: React.FC = () => (
   <form className="relative w-80">
     <input
       type="text"
-      placeholder="Search (e.g. Doge)"
+      placeholder="Search"
       className="w-full pl-4 pr-10 py-2 rounded bg-[#23272b] border border-[#23272b] text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
     />
     <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400">
@@ -41,7 +38,7 @@ const { data: session, status } = useSession();
     }`}>
       <div className="flex items-center justify-between px-10 py-1.5 min-h-[54px]">
         {/* Logo */}
-        <a href="#home" className={`flex items-center transition-all duration-300 ${
+        <a href="/" className={`flex items-center transition-all duration-300 ${
           collapsed ? 'transform -translate-x-5' : 'transform translate-x--3'
         }`}>
           <span className="text-violet-400 font-black text-2xl tracking-widest uppercase">
@@ -61,18 +58,7 @@ const { data: session, status } = useSession();
               <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
             </Button>
           )}
-          {(session && status === "authenticated")  &&(
-            <Tippy content="Sign out" placement="bottom">
-              <button
-                onClick={() => signOut({ callbackUrl: '/', redirect: true })}
-                className="p-2 rounded transition-colors cursor-pointer"
-                aria-label="Sign out"
-                type="button"
-              >
-                <FiPower size={22} className="text-violet-500 hover:text-violet-400" />
-              </button>
-            </Tippy>
-          )}
+
           {showAuthButtons && (
             <>
               {(session && status === "authenticated")  ?
@@ -80,8 +66,8 @@ const { data: session, status } = useSession();
                 <Button variant="outline">Dashboard</Button>
               </Link>): (
                 <Link href="/auth/signin">
-                  <Button variant="outline">Sign In</Button>
-                </Link>
+                <Button variant="outline">Sign In</Button>
+              </Link>
                 )}
             </>
           )}

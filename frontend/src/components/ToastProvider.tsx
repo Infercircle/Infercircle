@@ -37,7 +37,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border border-[#23272b] bg-[#23272b] text-white min-w-[220px] max-w-xs animate-fadeIn ${toast.type === "success" ? "text-[#A259FF]" : "text-red-400"}`}
+            className={`toast-shake flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border border-[#23272b] bg-[#23272b] text-white min-w-[220px] max-w-xs animate-fadeIn ${toast.type === "success" ? "text-[#A259FF]" : "text-red-400"}`}
           >
             <FiCheckCircle className={toast.type === "success" ? "text-[#A259FF]" : "text-red-400"} size={20} />
             <span className="text-sm font-medium">{toast.message}</span>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FiEdit2, FiEye, FiEyeOff, FiPlus, FiTrash2 } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa";
 import { useToast } from "@/components/ToastProvider";
+import { useSession } from "next-auth/react";
 
 // Helper to mask addresses: first 5 + ... + last 4
 function maskAddress(addr: string) {
@@ -15,18 +16,21 @@ interface WalletModalContentProps {
   btc: string[];
   tron: string[];
   ton: string[];
-  doge: string[];
   setWallets: React.Dispatch<React.SetStateAction<{
     eth: string[];
     sol: string[];
     btc: string[];
     tron: string[];
     ton: string[];
-    doge: string[];
   }>>;
+  onWalletAdded?: (addr: string, chain: string) => void;
+  refreshWallets?: () => void | Promise<void>;
+  onWalletsChanged?: () => void;
 }
 
-const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, tron, ton, doge, setWallets }) => {
+const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, tron, ton, setWallets, onWalletAdded, refreshWallets, onWalletsChanged }) => {
+  const { data: session } = useSession();
+  const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [newEth, setNewEth] = useState("");
   const [newSol, setNewSol] = useState("");
   const [addingEth, setAddingEth] = useState(false);
@@ -58,142 +62,239 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const [editTonValue, setEditTonValue] = useState("");
   const [maskedTon, setMaskedTon] = useState<{[k:number]: boolean}>({});
 
-  const [newDoge, setNewDoge] = useState("");
-  const [addingDoge, setAddingDoge] = useState(false);
-  const [editDogeIdx, setEditDogeIdx] = useState<number|null>(null);
-  const [editDogeValue, setEditDogeValue] = useState("");
-  const [maskedDoge, setMaskedDoge] = useState<{[k:number]: boolean}>({});
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
   // Add new eth address
-  const handleEthConfirm = () => {
+  const handleEthConfirm = async () => {
     if (newEth.trim() && !eth.includes(newEth.trim())) {
       setWallets(prev => ({ ...prev, eth: [...prev.eth, newEth.trim()] }));
       showToast("Ethereum address added!", "success");
+      if (onWalletAdded) onWalletAdded(newEth.trim(), 'eth');
+      // Call backend to persist (fire and forget)
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: newEth.trim(), chain: 'eth', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setNewEth("");
     setAddingEth(false);
   };
   // Add new sol address
-  const handleSolConfirm = () => {
+  const handleSolConfirm = async () => {
     if (newSol.trim() && !sol.includes(newSol.trim())) {
       setWallets(prev => ({ ...prev, sol: [...prev.sol, newSol.trim()] }));
       showToast("Solana address added!", "success");
+      if (onWalletAdded) onWalletAdded(newSol.trim(), 'sol');
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: newSol.trim(), chain: 'sol', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setNewSol("");
     setAddingSol(false);
   };
   // Edit eth address
-  const handleEthEditConfirm = (idx: number) => {
+  const handleEthEditConfirm = async (idx: number) => {
     if (editEthValue.trim()) {
+      const oldAddress = eth[idx];
       setWallets(prev => ({ ...prev, eth: prev.eth.map((a, i) => i === idx ? editEthValue.trim() : a) }));
       showToast("Ethereum address updated!", "success");
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editEthValue.trim(), chain: 'eth', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setEditEthIdx(null);
     setEditEthValue("");
   };
   // Edit sol address
-  const handleSolEditConfirm = (idx: number) => {
+  const handleSolEditConfirm = async (idx: number) => {
     if (editSolValue.trim()) {
+      const oldAddress = sol[idx];
       setWallets(prev => ({ ...prev, sol: prev.sol.map((a, i) => i === idx ? editSolValue.trim() : a) }));
       showToast("Solana address updated!", "success");
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editSolValue.trim(), chain: 'sol', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setEditSolIdx(null);
     setEditSolValue("");
   };
   // Remove eth address
-  const handleEthRemove = (idx: number) => {
+  const handleEthRemove = async (idx: number) => {
+    const address = eth[idx];
     setWallets(prev => ({ ...prev, eth: prev.eth.filter((_, i) => i !== idx) }));
     showToast("Ethereum address removed!", "success");
+    // Call backend to delete
+    await fetch(`${API_BASE}/userwallets`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, chain: 'eth', twitter_id: twitterId })
+    });
+    if (refreshWallets) await refreshWallets();
+    if (onWalletsChanged) onWalletsChanged();
   };
   // Remove sol address
-  const handleSolRemove = (idx: number) => {
+  const handleSolRemove = async (idx: number) => {
+    const address = sol[idx];
     setWallets(prev => ({ ...prev, sol: prev.sol.filter((_, i) => i !== idx) }));
     showToast("Solana address removed!", "success");
+    await fetch(`${API_BASE}/userwallets`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, chain: 'sol', twitter_id: twitterId })
+    });
+    if (refreshWallets) await refreshWallets();
+    if (onWalletsChanged) onWalletsChanged();
   };
 
   // Add/edit/remove logic for each wallet type
-  const handleBtcConfirm = () => {
+  const handleBtcConfirm = async () => {
     if (newBtc.trim() && !btc.includes(newBtc.trim())) {
       setWallets(prev => ({ ...prev, btc: [...prev.btc, newBtc.trim()] }));
       showToast("Bitcoin address added!", "success");
+      if (onWalletAdded) onWalletAdded(newBtc.trim(), 'btc');
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: newBtc.trim(), chain: 'btc', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setNewBtc("");
     setAddingBtc(false);
   };
-  const handleBtcEditConfirm = (idx: number) => {
+  const handleBtcEditConfirm = async (idx: number) => {
     if (editBtcValue.trim()) {
+      const oldAddress = btc[idx];
       setWallets(prev => ({ ...prev, btc: prev.btc.map((a, i) => i === idx ? editBtcValue.trim() : a) }));
       showToast("Bitcoin address updated!", "success");
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editBtcValue.trim(), chain: 'btc', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setEditBtcIdx(null);
     setEditBtcValue("");
   };
-  const handleBtcRemove = (idx: number) => {
+  const handleBtcRemove = async (idx: number) => {
+    const address = btc[idx];
     setWallets(prev => ({ ...prev, btc: prev.btc.filter((_, i) => i !== idx) }));
     showToast("Bitcoin address removed!", "success");
+    await fetch(`${API_BASE}/userwallets`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, chain: 'btc', twitter_id: twitterId })
+    });
+    if (refreshWallets) await refreshWallets();
+    if (onWalletsChanged) onWalletsChanged();
   };
 
-  const handleTronConfirm = () => {
+  const handleTronConfirm = async () => {
     if (newTron.trim() && !tron.includes(newTron.trim())) {
       setWallets(prev => ({ ...prev, tron: [...prev.tron, newTron.trim()] }));
       showToast("TRON address added!", "success");
+      if (onWalletAdded) onWalletAdded(newTron.trim(), 'tron');
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: newTron.trim(), chain: 'tron', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setNewTron("");
     setAddingTron(false);
   };
-  const handleTronEditConfirm = (idx: number) => {
+  const handleTronEditConfirm = async (idx: number) => {
     if (editTronValue.trim()) {
+      const oldAddress = tron[idx];
       setWallets(prev => ({ ...prev, tron: prev.tron.map((a, i) => i === idx ? editTronValue.trim() : a) }));
       showToast("TRON address updated!", "success");
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTronValue.trim(), chain: 'tron', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setEditTronIdx(null);
     setEditTronValue("");
   };
-  const handleTronRemove = (idx: number) => {
+  const handleTronRemove = async (idx: number) => {
+    const address = tron[idx];
     setWallets(prev => ({ ...prev, tron: prev.tron.filter((_, i) => i !== idx) }));
     showToast("TRON address removed!", "success");
+    await fetch(`${API_BASE}/userwallets`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, chain: 'tron', twitter_id: twitterId })
+    });
+    if (refreshWallets) await refreshWallets();
+    if (onWalletsChanged) onWalletsChanged();
   };
 
-  const handleTonConfirm = () => {
+  const handleTonConfirm = async () => {
     if (newTon.trim() && !ton.includes(newTon.trim())) {
       setWallets(prev => ({ ...prev, ton: [...prev.ton, newTon.trim()] }));
       showToast("TON address added!", "success");
+      if (onWalletAdded) onWalletAdded(newTon.trim(), 'ton');
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: newTon.trim(), chain: 'ton', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setNewTon("");
     setAddingTon(false);
   };
-  const handleTonEditConfirm = (idx: number) => {
+  const handleTonEditConfirm = async (idx: number) => {
     if (editTonValue.trim()) {
+      const oldAddress = ton[idx];
       setWallets(prev => ({ ...prev, ton: prev.ton.map((a, i) => i === idx ? editTonValue.trim() : a) }));
       showToast("TON address updated!", "success");
+      await fetch(`${API_BASE}/userwallets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTonValue.trim(), chain: 'ton', twitter_id: twitterId })
+      });
+      if (refreshWallets) await refreshWallets();
+      if (onWalletsChanged) onWalletsChanged();
     }
     setEditTonIdx(null);
     setEditTonValue("");
   };
-  const handleTonRemove = (idx: number) => {
+  const handleTonRemove = async (idx: number) => {
+    const address = ton[idx];
     setWallets(prev => ({ ...prev, ton: prev.ton.filter((_, i) => i !== idx) }));
     showToast("TON address removed!", "success");
-  };
-
-  const handleDogeConfirm = () => {
-    if (newDoge.trim() && !doge.includes(newDoge.trim())) {
-      setWallets(prev => ({ ...prev, doge: [...prev.doge, newDoge.trim()] }));
-      showToast("Dogecoin address added!", "success");
-    }
-    setNewDoge("");
-    setAddingDoge(false);
-  };
-  const handleDogeEditConfirm = (idx: number) => {
-    if (editDogeValue.trim()) {
-      setWallets(prev => ({ ...prev, doge: prev.doge.map((a, i) => i === idx ? editDogeValue.trim() : a) }));
-      showToast("Dogecoin address updated!", "success");
-    }
-    setEditDogeIdx(null);
-    setEditDogeValue("");
-  };
-  const handleDogeRemove = (idx: number) => {
-    setWallets(prev => ({ ...prev, doge: prev.doge.filter((_, i) => i !== idx) }));
-    showToast("Dogecoin address removed!", "success");
+    await fetch(`${API_BASE}/userwallets`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, chain: 'ton', twitter_id: twitterId })
+    });
+    if (refreshWallets) await refreshWallets();
+    if (onWalletsChanged) onWalletsChanged();
   };
 
   return (
@@ -235,7 +336,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
                 ) : (
                   <>
                     <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
+                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center break-all">
                         {maskedEth[idx] !== false ? maskAddress(address) : address}
                       </div>
                     </div>
@@ -302,7 +403,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
                 ) : (
                   <>
                     <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
+                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center break-all">
                         {maskedSol[idx] !== false ? maskAddress(address) : address}
                       </div>
                     </div>
@@ -369,7 +470,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
                 ) : (
                   <>
                     <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
+                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center break-all">
                         {maskedBtc[idx] !== false ? maskAddress(address) : address}
                       </div>
                     </div>
@@ -435,7 +536,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
                 ) : (
                   <>
                     <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
+                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center break-all">
                         {maskedTron[idx] !== false ? maskAddress(address) : address}
                       </div>
                     </div>
@@ -501,7 +602,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
                 ) : (
                   <>
                     <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
+                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center break-all">
                         {maskedTon[idx] !== false ? maskAddress(address) : address}
                       </div>
                     </div>
@@ -532,72 +633,6 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
               <div className="w-full max-w-[400px]">
                 <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center cursor-pointer" onClick={() => setAddingTon(true)} tabIndex={0} role="button" aria-label="Add TON address">
                   <span className="text-gray-500">Input TON address</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Dogecoin Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-gray-400 text-sm">Dogecoin wallet</span>
-            <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingDoge(true)} aria-label="Add Dogecoin address">
-              <FiPlus className="text-lg text-[#A259FF]" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {doge.map((address, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                {editDogeIdx === idx ? (
-                  <>
-                    <div className="w-full max-w-[400px]">
-                      <textarea
-                        value={editDogeValue}
-                        onChange={e => setEditDogeValue(e.target.value)}
-                        className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] focus:outline-none text-sm resize-none"
-                        spellCheck={false}
-                        autoFocus
-                        rows={1}
-                        style={{ minHeight: '40px', maxHeight: '90px' }}
-                      />
-                    </div>
-                    <button className="ml-2 px-4 py-2 bg-[#A259FF] text-white font-semibold rounded-lg text-sm hover:bg-[#a259ffcc] focus:outline-none cursor-pointer" onClick={() => handleDogeEditConfirm(idx)}>Confirm</button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-full max-w-[400px]">
-                      <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center">
-                        {maskedDoge[idx] !== false ? maskAddress(address) : address}
-                      </div>
-                    </div>
-                    <button className="text-gray-400 hover:text-white p-2 cursor-pointer" onClick={() => setMaskedDoge(m => ({ ...m, [idx]: !m[idx] }))} aria-label={maskedDoge[idx] !== false ? "Show" : "Hide"}>{maskedDoge[idx] !== false ? <FiEyeOff /> : <FiEye />}</button>
-                    <button className="text-gray-400 hover:text-white p-2 cursor-pointer" onClick={() => { setEditDogeIdx(idx); setEditDogeValue(address); }} aria-label="Edit"><FiEdit2 /></button>
-                    <button className="text-gray-400 hover:text-red-400 p-2 cursor-pointer" onClick={() => handleDogeRemove(idx)} aria-label="Remove"><FiTrash2 /></button>
-                  </>
-                )}
-              </div>
-            ))}
-            {addingDoge && (
-              <div className="flex items-center gap-2 mt-2">
-                <div className="w-full max-w-[400px]">
-                  <textarea
-                    value={newDoge}
-                    onChange={e => setNewDoge(e.target.value)}
-                    className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] focus:outline-none text-sm resize-none"
-                    spellCheck={false}
-                    autoFocus
-                    rows={1}
-                    style={{ minHeight: '40px', maxHeight: '90px' }}
-                  />
-                </div>
-                <button className="ml-2 px-4 py-2 bg-[#A259FF] text-white font-semibold rounded-lg text-sm hover:bg-[#a259ffcc] focus:outline-none cursor-pointer" onClick={handleDogeConfirm}>Confirm</button>
-              </div>
-            )}
-            {doge.length === 0 && !addingDoge && (
-              <div className="w-full max-w-[400px]">
-                <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center cursor-pointer" onClick={() => setAddingDoge(true)} tabIndex={0} role="button" aria-label="Add Dogecoin address">
-                  <span className="text-gray-500">Input Dogecoin address</span>
                 </div>
               </div>
             )}

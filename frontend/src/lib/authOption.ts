@@ -1,7 +1,8 @@
-import { db } from "./db";
-import { getServerSession, NextAuthOptions } from "next-auth";
+import { NextAuthOptions } from "next-auth";
 import Twitter from "next-auth/providers/twitter";
 import Google from "next-auth/providers/google";
+import { getServerSession } from "next-auth";
+import { db } from "./db";
 import { User } from "./types";
 
 export const authOptions: NextAuthOptions = {
@@ -45,11 +46,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.username = (user as any).username
         token.followersCount = (user as any).followersCount
+        token.id = (user as any).id
       }
       
       return token
     },
-
     async session({ session, token }) {
       // Send properties to the client, like an access_token and refresh_token from a provider.
       if (session.user && token.sub) {
@@ -84,66 +85,103 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-  async signIn({ user }) {
-    const account = user as User;
-    if (!account.email && !account.username) {
-      return false;
-    }
+    async signIn({ user }) {
+      const account = user as User;
+      
+      // For Twitter OAuth, we need at least a username
+      if (!account.email && !account.username) {
+        console.log('No email or username provided');
+        return false;
+      }
 
-    if(account.username && account.followersCount){
-      // Get the current session
-      const session = await getServerSession();
-      const dbUser = session?.user as User;
-      if (dbUser && dbUser.email && dbUser.email.length > 0 && dbUser.username && dbUser.username.length > 0) {
+      try {
+        // Check if user exists by email first (if available)
+        let dbUser = null;
+        
+        if (account.email && account.email.length > 0) {
+          dbUser = await db.user.findFirst({
+            where: { email: account.email }
+          });
+        }
+        
+        // If not found by email, check by username
+        if (!dbUser && account.username && account.username.length > 0) {
+          dbUser = await db.user.findFirst({
+            where: { username: account.username }
+          });
+        }
+
+        // If user exists, update their information
+        if (dbUser) {
+          await db.user.update({
+            where: { id: dbUser.id },
+            data: {
+              name: account.name || dbUser.name,
+              image: account.image || dbUser.image || "",
+              followersCount: account.followersCount || dbUser.followersCount,
+              username: account.username || dbUser.username,
+              email: account.email || dbUser.email,
+            },
+          });
+        } else {
+          // If user doesn't exist, create one
+          // Ensure we have required fields
+          if (!account.username || account.username.length === 0) {
+            console.log('Cannot create user without username');
+            return false;
+          }
+          
+          await db.user.create({
+            data: {
+              id: account.id,
+              email: account.email,
+              name: account.name,
+              image: account.image || "",
+              followersCount: account.followersCount,
+              username: account.username,
+            },
+          });
+        }
         return true;
+      } catch (error) {
+        console.error("Error during sign in:", error);
+        
+        // If there's a unique constraint error, try to find and update the existing user
+        if (error instanceof Error && error.message.includes('Unique constraint failed')) {
+          try {
+            // Try to find existing user by username and update them
+            if (account.username && account.username.length > 0) {
+              const existingUser = await db.user.findFirst({
+                where: { username: account.username }
+              });
+              
+              if (existingUser) {
+                await db.user.update({
+                  where: { id: existingUser.id },
+                  data: {
+                    name: account.name || existingUser.name,
+                    image: account.image || existingUser.image || "",
+                    followersCount: account.followersCount || existingUser.followersCount,
+                    email: account.email || existingUser.email,
+                  },
+                });
+                return true;
+              }
+            }
+          } catch (updateError) {
+            console.error("Error updating existing user:", updateError);
+          }
+        }
+        
+        return false;
       }
-      if(session && session?.user?.email && (!dbUser.username || dbUser.username.length <= 0)) {
-        await db.user.update({
-          where: { email: session.user.email },
-          data: {
-            name: account.name || session.user.name,
-            image: account.image || session.user.image || "",
-            followersCount: account.followersCount,
-            username: account.username,
-          },
-        });
-        return true;
-      }
-    }
-
-    try {
-      // Check if user exists
-      let dbUser = (account.email && account.email.length > 0) ? await db.user.findFirst({
-        where: { email: account.email }
-      }) : await db.user.findFirst({
-        where: { username: account.username }
-      });
-
-      // If user doesn't exist, create one with only the required fields
-      if (!dbUser) {
-        dbUser = await db.user.create({
-          data: {
-            id: account.id,
-            email: account.email,
-            name: account.name,
-            image: account.image || user.image || "",
-            followersCount: account.followersCount,
-            username: account.username,
-          },
-        });
-      }
-      return true;
-    } catch (error) {
-      console.error("Error during sign in:", error);
-      return false;
-    }
+    },
   },
-},
   pages: {
     signIn: '/',
     error: '/',
   },
   session: {
     strategy: "jwt",
-  },
+  }
 }

@@ -1,10 +1,10 @@
 "use client"
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
-const AuthErrorPage: React.FC = () => {
+const AuthErrorPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -48,6 +48,14 @@ const AuthErrorPage: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const AuthErrorPage: React.FC = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthErrorPageContent />
+    </Suspense>
   );
 };
 

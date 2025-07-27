@@ -60,67 +60,6 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
 
 // --- 2. Summarize Space Endpoint ---
 router.post('/spaces/summarize', asyncHandler(async (req: Request, res: Response) => {
-  const { space_url, space_id } = req.body;
-  if (!space_url && !space_id) {
-    return res.status(400).json({ error: 'Either space_url or space_id is required' });
-  }
-
-  // 1. Download the space
-  const downloadRes = await fetch(`${process.env.HELPER_APIS_URL}/download`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ space_url, space_id })
-  });
-  const downloadData = await downloadRes.json();
-  if (!downloadRes.ok) {
-    return res.status(500).json({ error: downloadData.detail || 'Download failed' });
-  }
-
-  // 2. Transcribe the space
-  const transcribeRes = await fetch(`${process.env.HELPER_APIS_URL}/transcribe`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ space_id })
-  });
-  const transcribeData = await transcribeRes.json();
-  if (!transcribeRes.ok) {
-    return res.status(500).json({ error: transcribeData.detail || 'Transcription failed' });
-  }
-  const transcript = transcribeData.transcription;
-
-  // 3. Summarize with Gemini
-  const summaryPrompt = `Summarize the following Twitter Space transcript:\n\n${transcript}`;
-  const summary = await gemini(summaryPrompt, {});
-
-  res.json({
-    space_id,
-    summary,
-    transcript
-  });
-}));
-
-// --- 3. Download Only Endpoint ---
-router.post('/spaces/download', asyncHandler(async (req: Request, res: Response) => {
-  const { space_url, space_id } = req.body;
-  if (!space_url && !space_id) {
-    return res.status(400).json({ error: 'Either space_url or space_id is required' });
-  }
-
-  const downloadRes = await fetch(`${process.env.HELPER_APIS_URL}/download`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ space_url, space_id })
-  });
-  const downloadData = await downloadRes.json();
-  if (!downloadRes.ok) {
-    return res.status(500).json({ error: downloadData.detail || 'Download failed' });
-  }
-
-  res.json(downloadData);
-}));
-
-// --- 4. Transcribe and Summarize Only Endpoint ---
-router.post('/spaces/transcribe-summarize', asyncHandler(async (req: Request, res: Response) => {
   const { space_id } = req.body;
   if (!space_id) {
     return res.status(400).json({ error: 'space_id is required' });
@@ -146,6 +85,29 @@ router.post('/spaces/transcribe-summarize', asyncHandler(async (req: Request, re
     space_id,
     summary,
     transcript
+  });
+}));
+
+// --- 3. Transcribe Only Endpoint ---
+router.post('/spaces/transcribe', asyncHandler(async (req: Request, res: Response) => {
+  const { space_id } = req.body;
+  if (!space_id) {
+    return res.status(400).json({ error: 'space_id is required' });
+  }
+
+  const transcribeRes = await fetch(`${process.env.HELPER_APIS_URL}/transcribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ space_id })
+  });
+  const transcribeData = await transcribeRes.json();
+  if (!transcribeRes.ok) {
+    return res.status(500).json({ error: transcribeData.detail || 'Transcription failed' });
+  }
+
+  res.json({
+    space_id,
+    transcript: transcribeData.transcription
   });
 }));
 
