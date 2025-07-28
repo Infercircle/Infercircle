@@ -57,11 +57,21 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub;
         
         // Fetch the latest user data from the database
-        const dbUser = (session.user.email && session.user.email.length > 0) ? await db.user.findFirst({
-          where: { email: session.user.email }
-        }) : await db.user.findFirst({
-          where: { username: token.username as string }
-        });
+        let dbUser = null;
+        
+        // Try to find user by email first (for Google users)
+        if (session.user.email && session.user.email.length > 0) {
+          dbUser = await db.user.findFirst({
+            where: { email: session.user.email }
+          });
+        }
+        
+        // If not found by email, try username (for Twitter users)
+        if (!dbUser && token.username) {
+          dbUser = await db.user.findFirst({
+            where: { username: token.username as string }
+          });
+        }
         
         if (dbUser) {
           // Use the database values for name and other fields
@@ -69,7 +79,7 @@ export const authOptions: NextAuthOptions = {
             ...session,
             accessToken: token.accessToken,
             refreshToken: token.refreshToken,
-                    user: dbUser as User
+            user: dbUser as User
           }
         }
       }
@@ -77,7 +87,7 @@ export const authOptions: NextAuthOptions = {
         ...session,
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
-                user: {
+        user: {
           ...session.user,
           username: token.username,
           followersCount: token.followersCount,
@@ -88,6 +98,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       const account = user as User;
       
+      // For Google OAuth, we need at least an email
       // For Twitter OAuth, we need at least a username
       if (!account.email && !account.username) {
         console.log('No email or username provided');
@@ -104,7 +115,7 @@ export const authOptions: NextAuthOptions = {
           });
         }
         
-        // If not found by email, check by username
+        // If not found by email, check by username (for Twitter users)
         if (!dbUser && account.username && account.username.length > 0) {
           dbUser = await db.user.findFirst({
             where: { username: account.username }
@@ -125,22 +136,36 @@ export const authOptions: NextAuthOptions = {
           });
         } else {
           // If user doesn't exist, create one
-          // Ensure we have required fields
-          if (!account.username || account.username.length === 0) {
-            console.log('Cannot create user without username');
+          // For Google users, email is required but username is optional
+          // For Twitter users, username is required
+          if (account.email && account.email.length > 0) {
+            // Google user - create with email only
+            await db.user.create({
+              data: {
+                id: account.id,
+                email: account.email,
+                name: account.name,
+                image: account.image || "",
+                followersCount: account.followersCount,
+                username: account.username, // This will be null for Google users initially
+              },
+            });
+          } else if (account.username && account.username.length > 0) {
+            // Twitter user - create with username
+            await db.user.create({
+              data: {
+                id: account.id,
+                email: account.email,
+                name: account.name,
+                image: account.image || "",
+                followersCount: account.followersCount,
+                username: account.username,
+              },
+            });
+          } else {
+            console.log('Cannot create user without email or username');
             return false;
           }
-          
-          await db.user.create({
-            data: {
-              id: account.id,
-              email: account.email,
-              name: account.name,
-              image: account.image || "",
-              followersCount: account.followersCount,
-              username: account.username,
-            },
-          });
         }
         return true;
       } catch (error) {
@@ -149,7 +174,27 @@ export const authOptions: NextAuthOptions = {
         // If there's a unique constraint error, try to find and update the existing user
         if (error instanceof Error && error.message.includes('Unique constraint failed')) {
           try {
-            // Try to find existing user by username and update them
+            // Try to find existing user by email or username and update them
+            if (account.email && account.email.length > 0) {
+              const existingUser = await db.user.findFirst({
+                where: { email: account.email }
+              });
+              
+              if (existingUser) {
+                await db.user.update({
+                  where: { id: existingUser.id },
+                  data: {
+                    name: account.name || existingUser.name,
+                    image: account.image || existingUser.image || "",
+                    followersCount: account.followersCount || existingUser.followersCount,
+                    username: account.username || existingUser.username,
+                  },
+                });
+                return true;
+              }
+            }
+            
+            // If not found by email, try username
             if (account.username && account.username.length > 0) {
               const existingUser = await db.user.findFirst({
                 where: { username: account.username }
