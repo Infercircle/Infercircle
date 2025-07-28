@@ -128,6 +128,11 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
               }}>
                 Add 𝕏 Account
               </span>}
+              {!user.email && <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
+                signIn("google", { callbackUrl: "/dashboard" })
+              }}>
+                Add Google Account
+              </span>}
           </div>
         </div>
       </div>

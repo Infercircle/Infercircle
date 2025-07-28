@@ -54,7 +54,6 @@ export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeM
             router.push('/dashboard?addX=true');
         }
       }
-      setLoading(false); 
     } catch (error) {
       console.error("Error submitting invite code:", error);
       alert("An error occurred while processing the invite code.");
