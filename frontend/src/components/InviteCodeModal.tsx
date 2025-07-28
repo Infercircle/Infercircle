@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { FaLock } from "react-icons/fa6";
 import { useSession } from "next-auth/react";
 import { User } from "@prisma/client";
+import { useState } from "react";
 interface InviteCodeModalProps {
     inviteCode: string;
     setInviteCode: (code: string) => void;
@@ -20,8 +21,10 @@ interface InviteCodeModalProps {
 export function InviteCodeModal({ inviteCode, setInviteCode }: InviteCodeModalProps) {
   const router = useRouter();
     const { data: session } = useSession();
+    const [loading, setLoading] = useState(false);
 
   const handleSubmit = async() => {
+    setLoading(true);
     console.log("Invite Code: ", inviteCode);
     // Handle invite code submission
     const code = await fetch("/api/invite-code", {
@@ -44,6 +47,7 @@ export function InviteCodeModal({ inviteCode, setInviteCode }: InviteCodeModalPr
     }else {
         router.push('/dashboard?addX=true');
     }
+    setLoading(false);
   };
 
   return (
@@ -55,14 +59,19 @@ export function InviteCodeModal({ inviteCode, setInviteCode }: InviteCodeModalPr
               <FaLock className="absolute text-2xl text-gray-300" />
             </div>
           </div>
-          <CardTitle className="text-white text-xl font-semibold">Enter Invite Code</CardTitle>
+          <CardTitle className="text-white text-xl">Hii {session?.user.name}!</CardTitle>
           <CardDescription className="text-gray-400 text-sm leading-relaxed">
             {"We are in beta, please enter your invite code to access the platform. If you don't have one, please contact support."}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex-col gap-3 px-10 pb-6">
           <Input placeholder="Enter your invite code" onChange={(e) => setInviteCode(e.target.value)} />
-          <Button variant="filled" className="w-full bg-[#A259FF] hover:bg-[#8B4DFF] text-white font-medium" onClick={()=>{handleSubmit()}}>
+          <Button 
+            variant="filled" 
+            className="w-full bg-[#A259FF] hover:bg-[#8B4DFF] text-white font-medium" 
+            onClick={()=>{handleSubmit()}}
+            disabled={loading}
+          >
             Submit
           </Button>
         </CardFooter>

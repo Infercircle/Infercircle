@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const { code } = await request.json();
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         }
 
         // Mark the invite code as used
-        if (inviteCode.InviteCode == "TEAMINFER"){
+        if (inviteCode.InviteCode != "TEAMINFER"){
             await updateInviteCode(code, true);
         }
         

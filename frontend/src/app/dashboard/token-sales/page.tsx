@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import SearchAndFilters from "../../../components/token-sales/SearchAndFilters";
-import ProjectGrid from "../../../components/token-sales/ProjectGrid";
-import StatsBar from "../../../components/token-sales/StatsBar";
-import { TokenSaleProject, FilterState, SortOption, SearchSuggestion } from "../../../components/token-sales/types";
+import SearchAndFilters from "@/components/token-sales/SearchAndFilters";
+import ProjectGrid from "@/components/token-sales/ProjectGrid";
+import StatsBar from "@/components/token-sales/StatsBar";
+import { TokenSaleProject, FilterState, SortOption, SearchSuggestion } from "@/components/token-sales/types";
 
 interface ApiResponse {
   total: number;

@@ -1,10 +1,11 @@
 "use client"
 import React from "react";
 import Button from "./Button";
-import { FiSearch } from "react-icons/fi";
+import { FiPower, FiSearch } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
+import { User } from "@prisma/client";
 
 interface NavbarProps {
   collapsed?: boolean;
@@ -52,6 +53,16 @@ const { data: session, status } = useSession();
         <div className="flex items-center space-x-4">
           {/* Watchlist button with react-icon */}
           {showSearch && <SearchBar />}
+          {(session && status === "authenticated")  &&(
+            <button
+              onClick={() => signOut({ callbackUrl: '/', redirect: true })}
+              className="p-2 rounded transition-colors cursor-pointer"
+              aria-label="Sign out"
+              type="button"
+            >
+              <FiPower size={25} className="text-violet-500 hover:text-violet-400" />
+            </button>
+          )}
           {showConnectWallet && (
             <Button variant="filled" onClick={onOpenWalletModal}>
               <FaWallet className="mr-2" size={18} /> Wallets
@@ -63,7 +74,7 @@ const { data: session, status } = useSession();
             <>
               {(session && status === "authenticated")  ?
               (<Link href="/dashboard">
-                <Button variant="outline">Dashboard</Button>
+                {(session.user as User).inviteAccepted && <Button variant="outline">Dashboard</Button>}
               </Link>): (
                 <Link href="/auth/signin">
                 <Button variant="outline">Sign In</Button>
