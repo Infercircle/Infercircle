@@ -5,7 +5,10 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 
 // Import ApexCharts with proper typing and dynamic loading
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+const Chart = dynamic(() => import('react-apexcharts'), { 
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full"><span className="text-purple-400 animate-pulse text-5xl">.....</span></div>
+}) as any;
 
 interface SelectedAsset {
   name: string;
@@ -164,7 +167,7 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
-const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' }) => {
+const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loadingRank, setLoadingRank] = useState(false);
@@ -175,7 +178,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType);
+  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
   const [addressDist] = useState<AddressDistribution>({
     less_0001: 0.1,
     "0001_001": 0.15,
@@ -200,7 +203,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
-    setCurrentChartType(chartType);
+    setCurrentChartType(chartType as 'price' | 'balance');
   }, [chartType]);
 
   // Helper function to get the correct symbol for API calls

@@ -99,7 +99,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {[...Array(8)].map((_, idx) => (
           <div key={idx} className="animate-pulse">
-            <div className="bg-[#181A20] border border-[#23262F] rounded-lg p-6">
+            <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6">
               <div className="h-12 w-12 bg-[#23262F] rounded-full mb-4"></div>
               <div className="h-4 bg-[#23262F] rounded mb-2"></div>
               <div className="h-3 bg-[#23262F] rounded mb-4 w-2/3"></div>
@@ -126,7 +126,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
           return (
             <div
               key={project.key}
-              className="bg-[#181A20] border border-[#23262F] rounded-lg p-6 hover:border-[#A259FF]/40 transition-all duration-200 hover:shadow-lg hover:shadow-[#A259FF]/10 relative"
+              className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6 hover:border-[#A259FF]/40 transition-all duration-200 hover:shadow-lg hover:shadow-[#A259FF]/10 relative cursor-pointer"
             >
               {/* Status Indicator */}
               <div className="absolute top-4 right-4">
@@ -281,7 +281,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[#181A20] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#A259FF] transition-colors"
+            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[rgba(24,26,32,0.9)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#A259FF] transition-colors cursor-pointer"
           >
             Previous
           </button>
@@ -294,10 +294,10 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`px-4 py-2 border rounded-lg transition-colors ${
+                className={`px-4 py-2 border rounded-lg transition-colors cursor-pointer ${
                   currentPage === pageNum
                     ? 'border-[#A259FF] bg-[#A259FF] text-white'
-                    : 'border-[#23262F] bg-[#181A20] text-white hover:border-[#A259FF]'
+                    : 'border-[#23262F] bg-[rgba(24,26,32,0.9)] text-white hover:border-[#A259FF]'
                 }`}
               >
                 {pageNum}
@@ -308,7 +308,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
           <button
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[#181A20] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#A259FF] transition-colors"
+            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[rgba(24,26,32,0.9)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#A259FF] transition-colors cursor-pointer"
           >
             Next
           </button>

@@ -330,7 +330,7 @@ export default function TokenSalesPage() {
   const totalPages = Math.ceil(totalProjects / limit);
 
   return (
-    <div className="min-h-screen bg-[#0F1419] text-white p-6">
+    <div className="min-h-screen text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

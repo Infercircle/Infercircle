@@ -171,7 +171,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
             placeholder="Search projects..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="block w-full pl-10 pr-10 py-3 border border-[#23262F] rounded-lg bg-[#181A20] text-white placeholder-[#A3A3A3] focus:outline-none focus:ring-2 focus:ring-[#A259FF] focus:border-transparent"
+            className="block w-full pl-10 pr-10 py-3 border border-[#23262F] rounded-lg bg-[rgba(24,26,32,0.9)] text-white placeholder-[#A3A3A3] focus:outline-none focus:ring-2 focus:ring-[#A259FF] focus:border-transparent cursor-text"
           />
           
           {/* Clear search button */}
@@ -188,12 +188,12 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
 
           {/* Search suggestions dropdown */}
           {searchSuggestions.length > 0 && !selectedCoin && searchTerm && (
-            <div className="absolute z-50 w-full mt-1 bg-[#181A20] border border-[#23262F] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-50 w-full mt-1 bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {searchSuggestions.map((suggestion) => (
                 <button
                   key={suggestion.key}
                   onClick={() => onSearchSuggestionSelect(suggestion)}
-                  className="w-full px-4 py-3 text-left hover:bg-[#23262F] border-b border-[#23262F] last:border-b-0 focus:outline-none focus:bg-[#23262F]"
+                  className="w-full px-4 py-3 text-left hover:bg-[#23262F] border-b border-[#23262F] last:border-b-0 focus:outline-none focus:bg-[#23262F] cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -232,7 +232,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
           <select
             value={`${sortOption.field}-${sortOption.order}`}
             onChange={handleSortChange}
-            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[#181A20] text-white focus:outline-none focus:ring-2 focus:ring-[#A259FF]"
+            className="px-4 py-2 border border-[#23262F] rounded-lg bg-[rgba(24,26,32,0.9)] text-white focus:outline-none focus:ring-2 focus:ring-[#A259FF] cursor-pointer"
           >
             {getSortOptions()}
           </select>
@@ -240,10 +240,10 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
           {/* Advanced Filters Toggle */}
           <button
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`px-4 py-2 border rounded-lg transition-colors flex items-center gap-2 ${
+            className={`px-4 py-2 border rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
               showAdvancedFilters || getActiveFilterCount() > 0
                 ? 'border-[#A259FF] bg-[#A259FF]/10 text-[#A259FF]'
-                : 'border-[#23262F] bg-[#181A20] text-white hover:border-[#A259FF]'
+                : 'border-[#23262F] bg-[rgba(24,26,32,0.9)] text-white hover:border-[#A259FF]'
             }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,10 +265,10 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
           <button
             key={status}
             onClick={() => handleStatusChange(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               filters.status === status
                 ? 'bg-[#A259FF] text-white'
-                : 'bg-[#181A20] text-[#A3A3A3] border border-[#23262F] hover:border-[#A259FF]'
+                : 'bg-[rgba(24,26,32,0.9)] text-[#A3A3A3] border border-[#23262F] hover:border-[#A259FF]'
             }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -278,13 +278,13 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
 
       {/* Advanced Filters Panel */}
       {showAdvancedFilters && (
-        <div className="bg-[#181A20] border border-[#23262F] rounded-lg p-6">
+        <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
             {getActiveFilterCount() > 0 && (
               <button
                 onClick={clearAllFilters}
-                className="text-[#A259FF] hover:text-[#A259FF]/80 text-sm"
+                className="text-[#A259FF] hover:text-[#A259FF]/80 text-sm cursor-pointer"
               >
                 Clear All
               </button>
@@ -297,7 +297,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               <h4 className="text-sm font-medium text-white mb-3">Sale Types</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {TOKEN_SALE_TYPES.map((type) => (
-                  <label key={type} className="flex items-center">
+                  <label key={type} className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={filters.tokenSaleTypes.includes(type)}
@@ -326,7 +326,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               <h4 className="text-sm font-medium text-white mb-3">Launchpads</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {LAUNCHPAD_OPTIONS.map((launchpad) => (
-                  <label key={launchpad} className="flex items-center">
+                  <label key={launchpad} className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={filters.launchpads.includes(launchpad)}
@@ -355,7 +355,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               <h4 className="text-sm font-medium text-white mb-3">Categories</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {CATEGORY_OPTIONS.map((category) => (
-                  <label key={category} className="flex items-center">
+                  <label key={category} className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={filters.categories.includes(category)}
@@ -384,7 +384,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               <h4 className="text-sm font-medium text-white mb-3">Ecosystems</h4>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {ECOSYSTEM_OPTIONS.map((ecosystem) => (
-                  <label key={ecosystem} className="flex items-center">
+                  <label key={ecosystem} className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={filters.ecosystems.includes(ecosystem)}

@@ -67,7 +67,6 @@ export function InviteCodeModal({ inviteCode, setInviteCode }: InviteCodeModalPr
         <CardFooter className="flex-col gap-3 px-10 pb-6">
           <Input placeholder="Enter your invite code" onChange={(e) => setInviteCode(e.target.value)} />
           <Button 
-            variant="filled" 
             className="w-full bg-[#A259FF] hover:bg-[#8B4DFF] text-white font-medium" 
             onClick={()=>{handleSubmit()}}
             disabled={loading}
