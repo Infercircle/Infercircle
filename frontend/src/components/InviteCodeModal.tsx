@@ -17,37 +17,49 @@ import { useState } from "react";
 interface InviteCodeModalProps {
     inviteCode: string;
     setInviteCode: (code: string) => void;
+    addX?: boolean;
 }
-export function InviteCodeModal({ inviteCode, setInviteCode }: InviteCodeModalProps) {
+export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeModalProps) {
   const router = useRouter();
     const { data: session } = useSession();
     const [loading, setLoading] = useState(false);
 
   const handleSubmit = async() => {
-    setLoading(true);
-    console.log("Invite Code: ", inviteCode);
-    // Handle invite code submission
-    const code = await fetch("/api/invite-code", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ code: inviteCode }),
-    });
-    const response = await code.json();
-    console.log("Invite Code Response: ", response);
-    if (response.error) {
-      alert(response.error || "An error occurred while processing the invite code.");
-      return;
-    }
-    console.log("Invite Code Response: ", response);
-    const usr = session?.user as User;
-    if (usr.username && usr.username.length > 0) {
-        router.push('/dashboard');
-    }else {
+    try {     
+      setLoading(true);
+      console.log("Invite Code: ", inviteCode);
+      // Handle invite code submission
+      const code = await fetch("/api/invite-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: inviteCode }),
+      });
+      const response = await code.json();
+      console.log("Invite Code Response: ", response);
+      if (response.error) {
+        alert(response.error || "An error occurred while processing the invite code.");
+        setLoading(false);
+        return;
+      }
+      console.log("Invite Code Response: ", response);
+      if(addX){
         router.push('/dashboard?addX=true');
+      }else{
+        const usr = session?.user as User;
+        if (usr.username && usr.username.length > 0) {
+            router.push('/dashboard');
+        }else {
+            router.push('/dashboard?addX=true');
+        }
+      }
+      setLoading(false); 
+    } catch (error) {
+      console.error("Error submitting invite code:", error);
+      alert("An error occurred while processing the invite code.");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

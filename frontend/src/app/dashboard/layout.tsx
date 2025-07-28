@@ -9,10 +9,10 @@ import WalletModalContent from "@/components/WalletModalContent";
 import { ToastProvider } from "@/components/ToastProvider";
 import axios from "axios";
 import { useSession } from "next-auth/react";
-import { User } from "@/lib/types";
 import { AddXModal } from "@/components/AddXModal";
 import { useRouter } from "next/navigation";
 import { getUserById } from "@/actions/queries";
+import { User } from "@prisma/client";
 
 export const DashboardContext = createContext<any>(null);
 
@@ -27,7 +27,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const user = session?.user as User;
   const searchParams = useSearchParams();
-  const [addX, setAddX] = useState<string | null>(searchParams.get('addX'));
+  const [addX, setAddX] = useState<boolean>(searchParams.get('addX') === 'true');
+  const [dbUser, setDbUser] = useState<User | null>(user);
 
   useEffect(() => {
     if(user){
@@ -35,6 +36,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         if (dbUser && dbUser.inviteAccepted) {
           router.push('/');
         }
+        setDbUser(dbUser);
       });
     }
   },[user]);
@@ -144,16 +146,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line
   }, [wallets, refreshKey]);
 
+  console.log("part1", ((!user || !user.username || user.username.length < 0 || !user.email) && addX == true));
+  console.log("part2", (session && session.user && (session.user as User).inviteAccepted));
+
   return (
     <div>
-      {(!user || !user.username || user.username.length < 0) && (addX == "true") && (
+      {(!user || !user.username || user.username.length < 0 || !user.email) && (addX == true) && (
         <div className="fixed inset-0 flex items-center justify-center bg-transparent z-50">
-          <AddXModal onClose={setAddX}/>
+          <AddXModal onClose={setAddX} isGoogle={(user && (!user.username || user.username.length < 0)) ? false : true}/>
         </div>
       )}
       <div 
-        className={`${((!user || !user.username || user.username.length < 0) && addX == "true") ? "blur": ""} 
-                    ${session && session.user && (session.user as User).inviteAccepted ? "" : "blur-sm"}`}
+        className={`${((!user || !user.username || user.username.length < 0 || !user.email) 
+          || !(session && session.user && (session.user as User).inviteAccepted))  && addX == true
+          ? "blur": ""}`}
       >
         <DashboardContext.Provider value={{
           netWorth,
@@ -163,7 +169,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         }}>
           <ToastProvider>
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-            <div className={`${contentMarginClass} transition-all duration-300  ${session && session.user && (session.user as User).inviteAccepted ? "" : "blur-sm"}`}>
+            <div className={`${contentMarginClass} transition-all duration-300`}>
               <Navbar
                 collapsed={collapsed}
                 showConnectWallet={showWallet}

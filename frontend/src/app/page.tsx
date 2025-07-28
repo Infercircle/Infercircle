@@ -73,7 +73,7 @@ export default function Home() {
         <Navbar showAuthButtons={true} showConnectWallet={false} showSearch={false} />
         {(user && !user.inviteAccepted) ? (
           <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
-            <InviteCodeModal inviteCode={inviteCode} setInviteCode={setInviteCode} />
+            <InviteCodeModal inviteCode={inviteCode} setInviteCode={setInviteCode} addX={!user.email || !user.username} />
           </div>
         ):(
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4">
