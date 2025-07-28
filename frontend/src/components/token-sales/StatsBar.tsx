@@ -15,7 +15,7 @@ const StatsBar: React.FC<StatsBarProps> = ({
   totalPages
 }) => {
   return (
-    <div className="mb-6 bg-[#181A20] border border-[#23262F] rounded-lg p-4">
+    <div className="mb-6 bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-6">
           <div className="text-sm text-[#A3A3A3]">
