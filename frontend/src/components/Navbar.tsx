@@ -54,14 +54,14 @@ const { data: session, status } = useSession();
           {/* Watchlist button with react-icon */}
           {showSearch && <SearchBar />}
           {(session && status === "authenticated")  &&(
-            <button
+            <Button variant="outline"
               onClick={() => signOut({ callbackUrl: '/', redirect: true })}
               className="p-2 rounded transition-colors cursor-pointer"
               aria-label="Sign out"
               type="button"
             >
-              <FiPower size={25} className="text-violet-500 hover:text-violet-400" />
-            </button>
+              Sign Out
+            </Button>
           )}
           {showConnectWallet && (
             <Button variant="filled" onClick={onOpenWalletModal}>

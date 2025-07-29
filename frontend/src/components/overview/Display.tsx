@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import Tippy from '@tippyjs/react';
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
@@ -85,7 +86,7 @@ const MOCK_TWEETS: Tweet[] = [
     text: "🚨 How the Bitcoin Cycle Died 🚨💱 SOL Why the Crash? Old whales selling? 🏛️ Institutions buying 📈 Treasuries up 50% YTD ☀️ China's solar dominanc. Bitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity is Bitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity isBitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity isBitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity is"
   },
   {
-    sentiment: "positive",
+    sentiment: "negative",
     avatar: "https://randomuser.me/api/portraits/men/2.jpg",
     name: "Myles Snider",
     handle: "@myles_snider",
@@ -123,19 +124,37 @@ const MOCK_TWEETS: Tweet[] = [
     followers: "1.1K",
     tweetUrl: "https://twitter.com/ilodiwow/status/5",
     text: "The $PTB TGE and Portal to Bitcoin mainnet is SOOO around the corner, I literally can't wait anymore AAAA!!! When @PortaltoBitcoin open staking aswel"
+  },
+  {
+    sentiment: "neutral",
+    avatar: "https://randomuser.me/api/portraits/men/6.jpg",
+    name: "Crypto Neutralist",
+    handle: "@neutral_crypto",
+    timestamp: "5m",
+    followers: "4.2K",
+    tweetUrl: "https://twitter.com/neutral_crypto/status/6",
+    text: "Market is moving sideways. No major news or price action at the moment. Let's see how things develop."
   }
 ];
 
 const sentimentIcon = (sentiment: string) => {
   let icon = null;
+  let tooltip = '';
+  let bgColor = '';
   if (sentiment === "positive") {
-    icon = <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7 7 7M12 3v18" /></svg>;
+    icon = <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7 7 7M12 3v18" /></svg>;
+    tooltip = 'Positive';
+    bgColor = 'bg-green-600';
   } else if (sentiment === "negative") {
-    icon = <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7-7-7M12 21V3" /></svg>;
+    icon = <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7-7-7M12 21V3" /></svg>;
+    tooltip = 'Negative';
+    bgColor = 'bg-red-600';
   } else {
-    icon = <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>;
+    icon = <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>;
+    tooltip = 'Neutral';
+    bgColor = 'bg-gray-400';
   }
-  return <span>{icon}</span>;
+  return <Tippy content={tooltip}><span className={`inline-flex items-center justify-center w-5 h-5 rounded ${bgColor}`}>{icon}</span></Tippy>;
 };
 
 const ExternalLinkIcon = () => (
@@ -151,6 +170,7 @@ interface DisplayProps {
   onCloseChart?: () => void;
   chartType?: 'price' | 'balance';
   connectedWallets?: number;
+  sharedLogoCache?: Record<string, string>;
 }
 
 const CHART_FILTERS = [
@@ -168,14 +188,11 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
-const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const, connectedWallets = 0 }) => {
+const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const, connectedWallets = 0, sharedLogoCache = {} }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
-  const [loadingRank, setLoadingRank] = useState(false);
   const [rankRetryCount, setRankRetryCount] = useState(0);
   const [rankCache, setRankCache] = useState<Record<string, number>>({});
-  const [logoCache, setLogoCache] = useState<Record<string, string>>({});
-  const [logoRetryCount, setLogoRetryCount] = useState(0);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
@@ -197,7 +214,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     "10k_100k": 0.03,
     above_100k: 0.02,
   });
-  const [tweets] = useState<Tweet[]>(MOCK_TWEETS);
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [tweetBuffer, setTweetBuffer] = useState<Tweet[]>([]);
+  const [newTweetIndex, setNewTweetIndex] = useState<number | null>(null);
+  const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
@@ -213,36 +234,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     return SYMBOL_MAPPINGS[lowerSymbol] || lowerSymbol;
   }, []);
 
-  // Logo fetch/retry logic for chartAsset
-  useEffect(() => {
-    if (!chartAsset?.symbol) return;
-    let isMounted = true;
-    const symbol = chartAsset.symbol.toLowerCase();
-    const apiSymbol = getApiSymbol(symbol);
-    if (!logoCache[symbol]) {
-      const fetchLogo = async () => {
-        try {
-          const res = await fetch(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
-          const data = await res.json();
-          if (data.logo && isMounted) {
-            setLogoCache(prev => ({ ...prev, [symbol]: data.logo }));
-            setLogoRetryCount(0);
-          } else {
-            throw new Error('No logo');
-          }
-        } catch (error) {
-          console.error('Logo fetch error:', error);
-          if (isMounted && logoRetryCount < 3) {
-            setTimeout(() => setLogoRetryCount((c: number) => c + 1), 3000);
-          }
-        }
-      };
-      fetchLogo();
-    }
-    return () => { isMounted = false; };
-  }, [chartAsset?.symbol, logoCache, logoRetryCount, API_BASE, getApiSymbol]);
-
-  // Fetch rank data when selectedAsset changes
+  // Fetch rank data when selectedAsset changes (background processing)
   useEffect(() => {
     if (!selectedAsset?.symbol) {
       setRank(null);
@@ -259,8 +251,8 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       return;
     }
 
+    // Fetch rank in background without blocking UI
     const fetchRank = async () => {
-      setLoadingRank(true);
       try {
         const res = await fetch(`${API_BASE}/tokens/cmc/price?symbol=${apiSymbol}`);
         if (res.ok) {
@@ -279,20 +271,18 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           setRank(null);
           // Increment retry count for failed attempts
           setRankRetryCount((prev: number) => prev + 1);
-        } finally {
-        setLoadingRank(false);
-      }
+        }
     };
 
-    fetchRank();
+    // Fetch rank in background with small delay
+    setTimeout(() => fetchRank(), 200);
   }, [selectedAsset?.symbol, API_BASE, rankCache, getApiSymbol]);
 
-  // Retry logic for failed rank fetches
+  // Retry logic for failed rank fetches (background processing)
   useEffect(() => {
     if (rankRetryCount > 0 && rankRetryCount <= 3 && selectedAsset?.symbol) {
       const retryTimeout = setTimeout(() => {
         const fetchRank = async () => {
-          setLoadingRank(true);
           try {
             const symbol = selectedAsset.symbol.toLowerCase();
             const apiSymbol = getApiSymbol(symbol);
@@ -315,9 +305,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
               if (rankRetryCount < 3) {
                 setRankRetryCount((prev: number) => prev + 1);
               }
-            } finally {
-            setLoadingRank(false);
-          }
+            }
         };
 
         fetchRank();
@@ -327,7 +315,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     }
   }, [rankRetryCount, selectedAsset?.symbol, API_BASE, getApiSymbol]);
 
-  // Fetch chart data when chart view is active or filter changes
+  // Fetch chart data when chart view is active or filter changes (background processing)
   useEffect(() => {
     if (showPriceChart && chartAsset?.symbol) {
       const fetchChartData = async () => {
@@ -364,9 +352,139 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           setLoadingChart(false);
         }
       };
-      fetchChartData();
+      // Fetch chart data in background with small delay
+      setTimeout(() => fetchChartData(), 100);
     }
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
+
+  // Fetch tweets for selected asset with batch optimization
+  const fetchTweets = useCallback(async (symbol: string) => {
+    if (!symbol) return;
+    
+    try {
+      // Fetch tweets in batches of 5 for better performance
+      const batchSize = 5;
+      const totalLimit = 10;
+      const batches = Math.ceil(totalLimit / batchSize);
+      const allTweets: Tweet[] = [];
+      
+      for (let i = 0; i < batches; i++) {
+        const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
+        
+        const response = await fetch(`${API_BASE}/twitter/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: symbol, 
+            limit: currentLimit, 
+            product: 'Latest',
+            offset: i * batchSize 
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && Array.isArray(data.data)) {
+            // Transform API response to match Tweet interface
+            const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
+              sentiment: tweet.sentiment || 'neutral',
+              avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+              name: tweet.name || 'Unknown',
+              handle: tweet.handle || '@unknown',
+              timestamp: tweet.timestamp || 'now',
+              followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+              tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+              text: tweet.text || ''
+            }));
+            
+            allTweets.push(...transformedTweets);
+          }
+        }
+        
+        // Small delay between batches to be respectful to API
+        if (i < batches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // Add all fetched tweets to queue
+      if (allTweets.length > 0) {
+        setTweetQueue(prev => [...prev, ...allTweets]);
+      }
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+    }
+  }, [API_BASE]);
+
+  // Animate tweets from queue to display
+  useEffect(() => {
+    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
+      setIsAnimating(true);
+      const newTweet = tweetQueue[0];
+      
+      // Add tweet to display
+      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
+      setNewTweetIndex(0);
+      
+      // Remove from queue
+      setTweetQueue(prev => prev.slice(1));
+      
+      // Reset animation after 5 seconds (optimized for better UX)
+      setTimeout(() => {
+        setNewTweetIndex(null);
+        setIsAnimating(false);
+      }, 5000);
+    }
+  }, [tweetQueue, isAnimating, expandedIndex]);
+
+  // Fetch tweets when selected asset changes
+  useEffect(() => {
+    if (selectedAsset?.symbol) {
+      // Clear existing tweets and queue for new asset
+      setTweets([]);
+      setTweetQueue([]);
+      setTweetBuffer([]);
+      // Fetch tweets in background without blocking UI
+      setTimeout(() => fetchTweets(selectedAsset.symbol), 100);
+    } else {
+      setTweets([]);
+      setTweetQueue([]);
+      setTweetBuffer([]);
+    }
+  }, [selectedAsset?.symbol, fetchTweets]);
+
+  // Poll for new tweets every 60 seconds when an asset is selected (optimized)
+  useEffect(() => {
+    if (!selectedAsset?.symbol) return;
+
+    const interval = setInterval(() => {
+      fetchTweets(selectedAsset.symbol);
+    }, 60000); // Poll every 60 seconds (optimized)
+
+    return () => clearInterval(interval);
+  }, [selectedAsset?.symbol, fetchTweets]);
+
+  // Handle expanded state - buffer new tweets
+  useEffect(() => {
+    if (expandedIndex !== null && tweetQueue.length > 0) {
+      // Buffer tweets when expanded
+      setTweetBuffer(prev => [...tweetQueue, ...prev].slice(0, 20));
+      setTweetQueue([]);
+    }
+  }, [expandedIndex, tweetQueue]);
+
+  // When expandedIndex goes from not-null to null, flush buffer
+  useEffect(() => {
+    if (expandedIndex === null && tweetBuffer.length > 0) {
+      setTweets(prev => [
+        ...tweetBuffer,
+        ...prev.slice(0, 20 - tweetBuffer.length)
+      ]);
+      setNewTweetIndex(tweetBuffer.length - 1); // Animate the last buffered tweet
+      setTimeout(() => setNewTweetIndex(null), 1200);
+      setTweetBuffer([]);
+    }
+  }, [expandedIndex, tweetBuffer]);
 
   // Helper for address bands
   const getBand = (band: keyof AddressDistribution) => {
@@ -384,8 +502,8 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displaySymbol = selectedAsset ? selectedAsset.symbol : "";
   const displayPrice = selectedAsset ? selectedAsset.price : null;
   const displayChange = selectedAsset ? selectedAsset.priceChange : null;
-  const displayLogo = selectedAsset?.icon || null;
-  const displayRank = loadingRank ? "Loading..." : rank !== null ? `#${rank}` : null;
+  const displayLogo = selectedAsset?.icon || sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || null;
+  const displayRank = rank !== null ? `#${rank}` : null;
 
   // Show message if no asset is selected
   if (connectedWallets === 0) {
@@ -482,12 +600,16 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       {/* Social Sentiment */}
       <div className="mt-2">
         <div className="text-[#A259FF] font-semibold mb-2">Social Sentiment</div>
-        {expandedIndex === null ? (
+        {tweets.length === 0 ? (
+          <div className="flex items-center justify-center h-32">
+            <span className="text-gray-500 text-sm">No tweets available for this asset</span>
+          </div>
+        ) : expandedIndex === null ? (
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
             {tweets.map((tweet, idx) => (
               <div
                 key={idx}
-                className={`flex items-start gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 border border-transparent bg-[rgba(36,37,42,0.25)] hover:bg-[rgba(50,52,60,0.95)]${expandedIndex === idx ? " shadow-lg" : ""}`}
+                className={`flex items-start gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 border border-transparent bg-[rgba(36,37,42,0.25)] hover:bg-[rgba(50,52,60,0.95)]${expandedIndex === idx ? " shadow-lg" : ""} ${idx === newTweetIndex ? "animate-slideInFromTop" : ""}`}
                 style={{ minHeight: 80, maxHeight: 80, overflow: "hidden" }}
                 onClick={() => setExpandedIndex(idx)}
               >
@@ -732,3 +854,23 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
 };
 
 export default Display;
+
+<style jsx global>{`
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slideInFromTop {
+  animation: slideInFromTop 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+`}</style>
