@@ -150,6 +150,7 @@ interface DisplayProps {
   chartAsset?: SelectedAsset | null;
   onCloseChart?: () => void;
   chartType?: 'price' | 'balance';
+  connectedWallets?: number;
 }
 
 const CHART_FILTERS = [
@@ -167,7 +168,7 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
-const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const }) => {
+const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const, connectedWallets = 0 }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loadingRank, setLoadingRank] = useState(false);
@@ -386,6 +387,16 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displayLogo = selectedAsset?.icon || null;
   const displayRank = loadingRank ? "Loading..." : rank !== null ? `#${rank}` : null;
 
+  // Show message if no asset is selected
+  if (connectedWallets === 0) {
+    return (
+      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-6 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+        <div className="flex items-center justify-center h-full">
+          <span className="text-gray-500 italic text-base">No asset to display</span>
+        </div>
+      </div>
+    );
+  }
   // Show loading state if no asset is selected
   if (!selectedAsset) {
     return (

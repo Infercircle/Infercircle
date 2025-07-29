@@ -2,7 +2,7 @@
 
 import { signIn, useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
-import { User } from "@/lib/types";
+import { User } from "next-auth"; 
 
 interface ProfileCardProps {
   netWorth?: number;
@@ -26,7 +26,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         setEliteLoading(true);
         setEliteError(null);
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
-        const url = `${API_BASE}/elite-curators/elite-followers/${user.id}`;
+        const url = `${API_BASE}/elite-curators/elite-followers/${undefined}`;
         try {
           const res = await fetch(url);
           let data: any = {};
@@ -66,7 +66,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image}
+            src={user?.image || undefined}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />
@@ -81,7 +81,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           {/* Follows metrics */}
           <div className="flex gap-4 mt-1 text-xs sm:text-sm text-[#A3A3A3]">
             {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
-            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
+            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : '0'}</span> Elite Curators</span>}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
                 signIn("twitter", { callbackUrl: "/dashboard" })
@@ -111,7 +111,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-16 h-16 aspect-square rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image}
+            src={user?.image || undefined}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />

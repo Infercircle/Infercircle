@@ -30,7 +30,7 @@ interface WalletModalContentProps {
 
 const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, tron, ton, setWallets, onWalletAdded, refreshWallets, onWalletsChanged }) => {
   const { data: session } = useSession();
-  const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
+  const userId = (session?.user as any)?.id || '';
   const [newEth, setNewEth] = useState("");
   const [newSol, setNewSol] = useState("");
   const [addingEth, setAddingEth] = useState(false);
@@ -62,8 +62,6 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const [editTonValue, setEditTonValue] = useState("");
   const [maskedTon, setMaskedTon] = useState<{[k:number]: boolean}>({});
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
   // Add new eth address
   const handleEthConfirm = async () => {
     if (newEth.trim() && !eth.includes(newEth.trim())) {
@@ -71,10 +69,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       showToast("Ethereum address added!", "success");
       if (onWalletAdded) onWalletAdded(newEth.trim(), 'eth');
       // Call backend to persist (fire and forget)
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newEth.trim(), chain: 'eth', twitter_id: twitterId })
+        body: JSON.stringify({ wallet_address: newEth.trim(), chain: 'eth', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -88,10 +86,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       setWallets(prev => ({ ...prev, sol: [...prev.sol, newSol.trim()] }));
       showToast("Solana address added!", "success");
       if (onWalletAdded) onWalletAdded(newSol.trim(), 'sol');
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newSol.trim(), chain: 'sol', twitter_id: twitterId })
+        body: JSON.stringify({ wallet_address: newSol.trim(), chain: 'sol', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -105,10 +103,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       const oldAddress = eth[idx];
       setWallets(prev => ({ ...prev, eth: prev.eth.map((a, i) => i === idx ? editEthValue.trim() : a) }));
       showToast("Ethereum address updated!", "success");
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editEthValue.trim(), chain: 'eth', twitter_id: twitterId })
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editEthValue.trim(), chain: 'eth', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -122,10 +120,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       const oldAddress = sol[idx];
       setWallets(prev => ({ ...prev, sol: prev.sol.map((a, i) => i === idx ? editSolValue.trim() : a) }));
       showToast("Solana address updated!", "success");
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editSolValue.trim(), chain: 'sol', twitter_id: twitterId })
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editSolValue.trim(), chain: 'sol', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -139,10 +137,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     setWallets(prev => ({ ...prev, eth: prev.eth.filter((_, i) => i !== idx) }));
     showToast("Ethereum address removed!", "success");
     // Call backend to delete
-    await fetch(`${API_BASE}/userwallets`, {
+    await fetch('/api/wallets', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet_address: address, chain: 'eth', twitter_id: twitterId })
+      body: JSON.stringify({ wallet_address: address, chain: 'eth', user_id: userId })
     });
     if (refreshWallets) await refreshWallets();
     if (onWalletsChanged) onWalletsChanged();
@@ -152,10 +150,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     const address = sol[idx];
     setWallets(prev => ({ ...prev, sol: prev.sol.filter((_, i) => i !== idx) }));
     showToast("Solana address removed!", "success");
-    await fetch(`${API_BASE}/userwallets`, {
+    await fetch('/api/wallets', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet_address: address, chain: 'sol', twitter_id: twitterId })
+      body: JSON.stringify({ wallet_address: address, chain: 'sol', user_id: userId })
     });
     if (refreshWallets) await refreshWallets();
     if (onWalletsChanged) onWalletsChanged();
@@ -167,10 +165,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       setWallets(prev => ({ ...prev, btc: [...prev.btc, newBtc.trim()] }));
       showToast("Bitcoin address added!", "success");
       if (onWalletAdded) onWalletAdded(newBtc.trim(), 'btc');
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newBtc.trim(), chain: 'btc', twitter_id: twitterId })
+        body: JSON.stringify({ wallet_address: newBtc.trim(), chain: 'btc', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -183,10 +181,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       const oldAddress = btc[idx];
       setWallets(prev => ({ ...prev, btc: prev.btc.map((a, i) => i === idx ? editBtcValue.trim() : a) }));
       showToast("Bitcoin address updated!", "success");
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editBtcValue.trim(), chain: 'btc', twitter_id: twitterId })
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editBtcValue.trim(), chain: 'btc', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -198,10 +196,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     const address = btc[idx];
     setWallets(prev => ({ ...prev, btc: prev.btc.filter((_, i) => i !== idx) }));
     showToast("Bitcoin address removed!", "success");
-    await fetch(`${API_BASE}/userwallets`, {
+    await fetch('/api/wallets', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet_address: address, chain: 'btc', twitter_id: twitterId })
+      body: JSON.stringify({ wallet_address: address, chain: 'btc', user_id: userId })
     });
     if (refreshWallets) await refreshWallets();
     if (onWalletsChanged) onWalletsChanged();
@@ -212,10 +210,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       setWallets(prev => ({ ...prev, tron: [...prev.tron, newTron.trim()] }));
       showToast("TRON address added!", "success");
       if (onWalletAdded) onWalletAdded(newTron.trim(), 'tron');
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newTron.trim(), chain: 'tron', twitter_id: twitterId })
+        body: JSON.stringify({ wallet_address: newTron.trim(), chain: 'tron', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -228,10 +226,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       const oldAddress = tron[idx];
       setWallets(prev => ({ ...prev, tron: prev.tron.map((a, i) => i === idx ? editTronValue.trim() : a) }));
       showToast("TRON address updated!", "success");
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTronValue.trim(), chain: 'tron', twitter_id: twitterId })
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTronValue.trim(), chain: 'tron', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -243,10 +241,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     const address = tron[idx];
     setWallets(prev => ({ ...prev, tron: prev.tron.filter((_, i) => i !== idx) }));
     showToast("TRON address removed!", "success");
-    await fetch(`${API_BASE}/userwallets`, {
+    await fetch('/api/wallets', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet_address: address, chain: 'tron', twitter_id: twitterId })
+      body: JSON.stringify({ wallet_address: address, chain: 'tron', user_id: userId })
     });
     if (refreshWallets) await refreshWallets();
     if (onWalletsChanged) onWalletsChanged();
@@ -257,10 +255,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       setWallets(prev => ({ ...prev, ton: [...prev.ton, newTon.trim()] }));
       showToast("TON address added!", "success");
       if (onWalletAdded) onWalletAdded(newTon.trim(), 'ton');
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newTon.trim(), chain: 'ton', twitter_id: twitterId })
+        body: JSON.stringify({ wallet_address: newTon.trim(), chain: 'ton', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -273,10 +271,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
       const oldAddress = ton[idx];
       setWallets(prev => ({ ...prev, ton: prev.ton.map((a, i) => i === idx ? editTonValue.trim() : a) }));
       showToast("TON address updated!", "success");
-      await fetch(`${API_BASE}/userwallets`, {
+      await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTonValue.trim(), chain: 'ton', twitter_id: twitterId })
+        body: JSON.stringify({ old_wallet_address: oldAddress, new_wallet_address: editTonValue.trim(), chain: 'ton', user_id: userId })
       });
       if (refreshWallets) await refreshWallets();
       if (onWalletsChanged) onWalletsChanged();
@@ -288,10 +286,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     const address = ton[idx];
     setWallets(prev => ({ ...prev, ton: prev.ton.filter((_, i) => i !== idx) }));
     showToast("TON address removed!", "success");
-    await fetch(`${API_BASE}/userwallets`, {
+    await fetch('/api/wallets', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet_address: address, chain: 'ton', twitter_id: twitterId })
+      body: JSON.stringify({ wallet_address: address, chain: 'ton', user_id: userId })
     });
     if (refreshWallets) await refreshWallets();
     if (onWalletsChanged) onWalletsChanged();

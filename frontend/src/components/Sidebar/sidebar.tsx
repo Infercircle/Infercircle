@@ -10,7 +10,6 @@ import { SiGitbook } from "react-icons/si";
 import { FiLogOut } from "react-icons/fi";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import { User } from "@/lib/types";
 
 interface SidebarProps {
   collapsed: boolean;

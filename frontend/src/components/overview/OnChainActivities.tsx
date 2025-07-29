@@ -65,9 +65,10 @@ interface OnChainActivitiesProps {
   onBalanceChartRequest?: (asset: Asset) => void;
   activeChartType?: 'price' | 'balance' | null;
   activeChartAsset?: Asset | null;
+  connectedWallets?: number;
 }
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0 }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -87,13 +88,18 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       try {
         setLoading(true);
         // 1. Fetch all wallets for the user
-        const walletsRes = await axios.get(`${API_BASE}/userwallets/${twitterId}`);
-        const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{wallet_address: string, chain: string}>;
+        const userId = (session?.user as any)?.id || '';
+        const walletsRes = await axios.get(`/api/wallets?user_id=${userId}`);
+        const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
         // 2. For each wallet, fetch balances
         let allTokens: Asset[] = [];
         let uniqueSymbols = new Set<string>();
         for (const w of walletsArr) {
-          const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.wallet_address}`);
+          // Use walletAddress for new API
+          if (!w.walletAddress || w.walletAddress.trim() === '') {
+            continue;
+          }
+          const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.walletAddress}`);
           const balances = (balancesRes.data as any).balances;
           for (const chain in balances) {
             for (const token of balances[chain]) {
@@ -199,6 +205,42 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     }
   };
 
+  if (connectedWallets === 0) {
+    return (
+      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-lg font-semibold text-white">Portfolio Overview</div>
+          <button 
+            onClick={() => setShowAllAssets(!showAllAssets)}
+            className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
+          >
+            {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
+            <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
+          </button>
+        </div>
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
+          <table className="min-w-full text-sm text-left align-middle">
+            <thead>
+              <tr className="text-[#A3A3A3] border-b border-[#23262F]">
+                <th className="py-2 px-2 font-medium text-left">Asset</th>
+                <th className="py-2 px-2 font-medium text-left">Price</th>
+                <th className="py-2 px-2 font-medium text-left">Balance</th>
+                <th className="py-2 px-2 font-medium text-left">Value</th>
+                <th className="py-2 px-2 font-medium text-center">Price</th>
+                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-gray-500 italic">Add a wallet to get started</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
       {/* Preloader overlay */}
@@ -209,7 +251,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         <div className="text-lg font-semibold text-white">Portfolio Overview</div>
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
-          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23272b]/20 transition-colors cursor-pointer"
+          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
           {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{assets.length}</span>
