@@ -52,8 +52,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     tron: string[];
     ton: string[];
   }>({ eth: [], sol: [], btc: [], tron: [], ton: [] });
-  const connectedWallets = wallets.eth.length + wallets.sol.length + wallets.btc.length + wallets.tron.length + wallets.ton.length;
-
+  // Compute connectedWallets directly from wallets
+  const connectedWallets =
+    wallets.eth.length +
+    wallets.sol.length +
+    wallets.btc.length +
+    wallets.tron.length +
+    wallets.ton.length;
   // Net worth state
   const [netWorth, setNetWorth] = useState(0);
   // Total price change state
@@ -67,20 +72,26 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Helper to fetch and sum balances for all wallets and calculate net worth price change
   const fetchAndSumBalances = async () => {
+    console.log('fetchAndSumBalances called');
     setLoadingNetWorth(true);
     let total = 0;
     let total24hAgo = 0;
     const allWallets = [
-      ...wallets.eth.map(addr => ({ addr, chain: 'eth' })),
-      ...wallets.sol.map(addr => ({ addr, chain: 'sol' })),
-      ...wallets.btc.map(addr => ({ addr, chain: 'btc' })),
-      ...wallets.tron.map(addr => ({ addr, chain: 'tron' })),
-      ...wallets.ton.map(addr => ({ addr, chain: 'ton' })),
+      ...wallets.eth.map(walletAddress => ({ addr: walletAddress, chain: 'eth' })),
+      ...wallets.sol.map(walletAddress => ({ addr: walletAddress, chain: 'sol' })),
+      ...wallets.btc.map(walletAddress => ({ addr: walletAddress, chain: 'btc' })),
+      ...wallets.tron.map(walletAddress => ({ addr: walletAddress, chain: 'tron' })),
+      ...wallets.ton.map(walletAddress => ({ addr: walletAddress, chain: 'ton' })),
     ];
     for (const { addr } of allWallets) {
+      // Skip if addr is undefined or empty
+      if (!addr || addr.trim() === '') {
+        continue;
+      }
       try {
         const res = await axios.get(`${API_BASE}/balances/address/${addr}`);
         const data = res.data as any;
+        console.log('Balances API response for', addr, data);
         if (data.totalBalance && data.totalBalance24hAgo) {
           // Sum all chains for this wallet
           total += Object.values(data.totalBalance).reduce((a: number, b: any) => a + Number(b || 0), 0);
@@ -100,6 +111,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Add this callback to handle instant balance fetch and net worth update
   const handleWalletAdded = async (addr: string, chain: string) => {
+    // Skip if addr is undefined or empty
+    if (!addr || addr.trim() === '') {
+      return;
+    }
     try {
       // proxy for balance fetch
       const res = await axios.get(`${API_BASE}/balances/address/${addr}`);
@@ -116,14 +131,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Fetch wallets from backend on mount and when user logs in
   const refreshWallets = async () => {
-    if (!twitterId) return;
+    const userId = (user as any)?.id || '';
+    if (!userId) return;
     try {
-      const res = await axios.get(`${API_BASE}/userwallets/${twitterId}`);
-      const walletsArr = ((res.data as any).wallets || []) as Array<{wallet_address: string, chain: string}>;
+      const res = await axios.get(`/api/wallets?user_id=${userId}`);
+      const walletsArr = ((res.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
       // Group wallets by chain
       const grouped: { eth: string[]; sol: string[]; btc: string[]; tron: string[]; ton: string[] } = { eth: [], sol: [], btc: [], tron: [], ton: [] };
       for (const w of walletsArr) {
-        if (grouped[w.chain as keyof typeof grouped]) grouped[w.chain as keyof typeof grouped].push(w.wallet_address);
+        // Skip if walletAddress is undefined or empty
+        if (!w.walletAddress || w.walletAddress.trim() === '') {
+          continue;
+        }
+        if (grouped[w.chain as keyof typeof grouped]) grouped[w.chain as keyof typeof grouped].push(w.walletAddress);
       }
       setWallets(grouped);
     } catch (e) {
@@ -138,6 +158,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Recalculate net worth and price change when wallets or refreshKey change
   React.useEffect(() => {
+    console.log('useEffect [wallets, refreshKey] fired. connectedWallets:', connectedWallets, 'wallets:', wallets);
     if (connectedWallets > 0) fetchAndSumBalances();
     else {
       setNetWorth(0);
@@ -145,9 +166,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
     // eslint-disable-next-line
   }, [wallets, refreshKey]);
-
-  console.log("part1", ((!user || !user.username || user.username.length < 0 || !user.email) && addX == true));
-  console.log("part2", (session && session.user && (session.user as User).inviteAccepted));
 
   return (
     <div>
@@ -165,7 +183,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           netWorth,
           totalPriceChange,
           refreshKey,
-          loadingNetWorth
+          loadingNetWorth,
+          connectedWallets
         }}>
           <ToastProvider>
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />

@@ -2,15 +2,16 @@
 
 import { signIn, useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
-import { User } from "next-auth"; 
+import { User } from "next-auth";
 
 interface ProfileCardProps {
   netWorth?: number;
   totalPriceChange?: number;
   loadingNetWorth?: boolean;
+  connectedWallets?: number;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false }) => {
+const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
     const { data: session, status } = useSession();
     const [eliteFollowers, setEliteFollowers] = useState<number | null>(null);
     const [eliteLoading, setEliteLoading] = useState(false);
@@ -26,7 +27,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         setEliteLoading(true);
         setEliteError(null);
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
-        const url = `${API_BASE}/elite-curators/elite-followers/${undefined}`;
+        const url = `${API_BASE}/elite-curators/elite-followers/${user.id}`;
         try {
           const res = await fetch(url);
           let data: any = {};
@@ -81,7 +82,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           {/* Follows metrics */}
           <div className="flex gap-4 mt-1 text-xs sm:text-sm text-[#A3A3A3]">
             {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
-            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : '0'}</span> Elite Curators</span>}
+            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
                 signIn("twitter", { callbackUrl: "/dashboard" })
@@ -89,19 +90,23 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
                 Add X Account
               </span>}
           </div>
-          {/* Net Worth and Price Change */}
+          {/* Net Worth and Price Change or Add Wallet Message*/}
           <div className="flex gap-3 items-center mt-2">
-            <div className="relative">
-              <span className="text-gray-400 text-xs sm:text-sm mr-1">Net Worth</span>
-              <span className={`transition-opacity duration-500 text-white font-medium ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              <span className={`absolute left-0 top-0 flex items-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                <span className="text-purple-400 animate-pulse">.....</span>
-              </span>
-            </div>
-            <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
-              title="Total 24h Price Change">
-              {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
-            </span>
+            <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-semibold text-xs sm:text-sm mr-1`}>Net Worth</span>
+            {connectedWallets === 0 ? (
+              <span className="text-xs text-gray-500 italic">$0.00</span>
+            ) : (
+              <>
+                <span className={`transition-opacity duration-500 text-white font-medium ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className={`absolute left-0 top-0 flex items-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                  <span className="text-purple-400 animate-pulse">.....</span>
+                </span>
+                <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                  title="Total 24h Price Change">
+                  {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -138,18 +143,24 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
       </div>
       {/* Desktop Net Worth */}
       <div className="hidden md:flex md:text-right flex-col items-end">
-        <div className="text-gray-400 text-sm">Net Worth</div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className={`transition-opacity duration-500 ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-              <span className="text-purple-400 animate-pulse">.....</span>
-            </div>
-          </div>
-          <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
-            title="Total 24h Price Change">
-            {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
-          </span>
+          <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-semibold text-sm`}>Net Worth</span>
+          {connectedWallets === 0 ? (
+            <span className="text-sm text-gray-500 italic">$0.00</span>
+          ) : (
+            <>
+              <div className="relative">
+                <div className={`transition-opacity duration-500 ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                  <span className="text-purple-400 animate-pulse">.....</span>
+                </div>
+              </div>
+              <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                title="Total 24h Price Change">
+                {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
