@@ -46,6 +46,9 @@ export const authOptions: NextAuthOptions = {
         token.username = (user as any).username
         token.followersCount = (user as any).followersCount
         token.id = (user as any).id
+        if(account?.provider == 'twitter'){
+          token.twitterId = account.providerAccountId;
+        }
       }
       
       return token
@@ -91,24 +94,33 @@ export const authOptions: NextAuthOptions = {
           ...session.user,
           username: token.username,
           followersCount: token.followersCount,
+          twitterId: token.twitterId,
         } as User
       }
     },
 
-  async signIn({ user }) {
+  async signIn({ user, account: act }) {
     const account = user as User;
+
     if (!account.email && !account.username) {
       return false;
     }
 
-    if(account.username && account.followersCount){
-      // Get the current session
-        const session = await getServerSession();
-        const dbUser = session?.user as User;
+    if (account.username && account.followersCount) {
+      // Get the current session with the full authOptions to get extended user data
+      const session = await getServerSession(authOptions);
+      
+      // If user is already logged in, merge the accounts
+      if (session?.user) {
+        const dbUser = session.user as User;
+        
+        // If user already has both email and username, just return true
         if (dbUser && dbUser.email && dbUser.email.length > 0 && dbUser.username && dbUser.username.length > 0) {
           return true;
         }
-        if(session && session?.user?.email && (!dbUser.username || dbUser.username.length <= 0)) {
+        
+        // If user is logged in with email but no username (Google user adding Twitter)
+        if (session?.user?.email && (!dbUser.username || dbUser.username.length <= 0)) {
           await db.user.update({
             where: { email: session.user.email },
             data: {
@@ -116,32 +128,55 @@ export const authOptions: NextAuthOptions = {
               image: account.image || session.user.image || "",
               followersCount: account.followersCount,
               username: account.username,
+              twitterId: act?.provider === 'twitter' ? act.providerAccountId : null,
             },
           });
           return true;
         }
-    } else if (account.email){
-      // If the user has an email but no username, we can still create or update the user
-      const session = await getServerSession();
-      const dbUser = session?.user as User;
-      if (dbUser && dbUser.email && dbUser.email.length > 0 && dbUser.username && dbUser.username.length > 0) {
-        return true;
+        
+        // If user is logged in with username but no email (Twitter user adding Google)
+        if (session?.user?.username && (!dbUser.email || dbUser.email.length <= 0)) {
+          await db.user.update({
+            where: { username: session.user.username },
+            data: {
+              name: account.name || session.user.name,
+              image: account.image || session.user.image || "",
+              email: account.email,
+            },
+          });
+          return true;
+        }
       }
-      if(session && session?.user?.username && (!dbUser.email || dbUser.email.length <= 0)) {
-        await db.user.update({
-          where: { username: session.user.username },
-          data: {
-            name: account.name || session.user.name,
-            image: account.image || session.user.image || "",
-            email: account.email,
-          },
-        });
-        return true;
+    } else if (account.email) {
+      // Get the current session with the full authOptions
+      const session = await getServerSession(authOptions);
+      
+      // If user is already logged in, merge the accounts
+      if (session?.user) {
+        const dbUser = session.user as User;
+        
+        // If user already has both email and username, just return true
+        if (dbUser && dbUser.email && dbUser.email.length > 0 && dbUser.username && dbUser.username.length > 0) {
+          return true;
+        }
+        
+        // If user is logged in with username but no email (Twitter user adding Google)
+        if (session?.user?.username && (!dbUser.email || dbUser.email.length <= 0)) {
+          await db.user.update({
+            where: { username: session.user.username },
+            data: {
+              name: session.user.name || account.name,
+              image: session.user.image || account.image || "",
+              email: account.email,
+            },
+          });
+          return true;
+        }
       }
     }
 
     try {
-      // Check if user exists
+      // Check if user exists (for new users, not logged in)
       let dbUser = null;
         
       if (account.email && account.email.length > 0) {
@@ -167,6 +202,7 @@ export const authOptions: NextAuthOptions = {
             image: account.image || user.image || "",
             followersCount: account.followersCount,
             username: account.username,
+            twitterId: act?.provider === 'twitter' ? act.providerAccountId : null,
           },
         });
       }

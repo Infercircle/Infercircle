@@ -39,8 +39,9 @@ model User {
   username       String?   @unique
   followersCount Int?
   inviteAccepted Boolean   @default(false)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now())
+  twitterId      String?   @unique 
 
   wallets        UserWallet[]  @relation("UserWallets")
 }

@@ -167,6 +167,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line
   }, [wallets, refreshKey]);
 
+
   return (
     <div>
       {(!user || !user.username || user.username.length < 0 || !user.email) && (addX == true) && (
