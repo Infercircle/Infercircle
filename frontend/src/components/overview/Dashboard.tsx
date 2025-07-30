@@ -13,6 +13,14 @@ interface DashboardProps {
   refreshKey?: number;
   loadingNetWorth?: boolean;
   connectedWallets?: number;
+  // Add wallet data props
+  wallets?: {
+    eth: string[];
+    sol: string[];
+    btc: string[];
+    tron: string[];
+    ton: string[];
+  };
 }
 
 interface SelectedAsset {
@@ -29,7 +37,7 @@ interface SelectedAsset {
   icon: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets }) => {
   const { data: session, status } = useSession();
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
@@ -95,17 +103,18 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     </div> */}
     {/* Third Row: OnChain Activities & Display */}
     <div className="col-span-12 md:col-span-7 flex flex-col">
-      <OnChainActivities 
-        refreshKey={refreshKey} 
-        onAssetSelect={handleAssetSelect} 
-        selectedAsset={selectedAsset} 
-        onFirstAssetLoad={handleFirstAssetLoad} 
-        onPriceChartRequest={handlePriceChartRequest} 
+      <OnChainActivities
+        refreshKey={refreshKey}
+        onAssetSelect={handleAssetSelect}
+        selectedAsset={selectedAsset}
+        onFirstAssetLoad={handleFirstAssetLoad}
+        onPriceChartRequest={handlePriceChartRequest}
         onBalanceChartRequest={handleBalanceChartRequest}
         activeChartType={showPriceChart ? chartType : null}
         activeChartAsset={showPriceChart ? chartAsset : null}
         connectedWallets={connectedWallets}
         onLogoCacheUpdate={handleLogoCacheUpdate}
+        wallets={wallets}
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">

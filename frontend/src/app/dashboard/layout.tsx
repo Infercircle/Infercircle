@@ -185,7 +185,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           totalPriceChange,
           refreshKey,
           loadingNetWorth,
-          connectedWallets
+          connectedWallets,
+          wallets
         }}>
           <ToastProvider>
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
