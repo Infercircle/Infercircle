@@ -24,7 +24,7 @@ const sidebarItems = [
       { label: "Watchlist", icon: FiStar, href: "/dashboard/watchlist" },
       { label: "Token Index", icon: FiBarChart2, href: "/dashboard/token-index" },
       { label: "Signal Index", icon: FiTrendingUp, href: "/dashboard/signal-index" },
-      { label: "CT Nerds", icon: FiUsers, href: "/dashboard/ct-nerds" },
+      { label: "Elite Curators", icon: FiUsers, href: "/dashboard/ct-nerds" },
       { label: "Spaces Summarizer", icon: FaSquareXTwitter, href: "/dashboard/spaces-summarizer" },
     ],
   },
@@ -34,9 +34,9 @@ const sidebarItems = [
     items: [
       { label: "Assets", icon: FiDatabase, href: "/dashboard/assets" },
       { label: "Onchain Tracking", icon: FiSmile, href: "/dashboard/onchain-tracking" },
-      { label: "Token Sales", icon: FiBox, href: "/dashboard/token-sales" },
-      { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
-      { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
+      { label: "ICO/IDO", icon: FiBox, href: "/dashboard/token-sales" },
+      // { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
+      // { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
     ],
   },
   {

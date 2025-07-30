@@ -65,9 +65,11 @@ interface OnChainActivitiesProps {
   onBalanceChartRequest?: (asset: Asset) => void;
   activeChartType?: 'price' | 'balance' | null;
   activeChartAsset?: Asset | null;
+  connectedWallets?: number;
+  onLogoCacheUpdate?: (logoCache: Record<string, string>) => void;
 }
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -75,10 +77,56 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [logoCache, setLogoCache] = useState<Record<string, string>>({});
   const [showAllAssets, setShowAllAssets] = useState(false);
   const fetchingSymbols = useRef<Set<string>>(new Set());
+  const [sentimentCache, setSentimentCache] = useState<Record<string, number>>({});
 
   // Filter assets based on showAllAssets state
   const filteredAssets = showAllAssets ? assets : assets.filter(asset => (asset.value || 0) >= 1);
   const hiddenAssetsCount = assets.length - filteredAssets.length;
+
+  // Fetch sentiment for all assets in batches of 5
+  const fetchAssetSentiment = async (assetList: Asset[]) => {
+    if (assetList.length === 0) return;
+
+    try {
+      const uniqueAssets = assetList.filter((asset, index, self) => 
+        index === self.findIndex(a => a.symbol.toLowerCase() === asset.symbol.toLowerCase())
+      );
+
+      // Process in batches of 5
+      const batchSize = 5;
+      const newSentimentCache: Record<string, number> = {};
+      
+      for (let i = 0; i < uniqueAssets.length; i += batchSize) {
+        const batch = uniqueAssets.slice(i, i + batchSize);
+        
+        try {
+          const response = await axios.post(`${API_BASE}/twitter/sentiment-batch`, {
+            assets: batch.map(asset => ({ symbol: asset.symbol, name: asset.name }))
+          });
+
+          if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+            Object.entries(response.data.results as Record<string, any>).forEach(([symbol, data]: [string, any]) => {
+              if (data.sentiment !== undefined && data.error === null) {
+                newSentimentCache[symbol.toLowerCase()] = data.sentiment;
+              }
+            });
+          }
+          
+          // Update cache after each batch
+          setSentimentCache(prev => ({ ...prev, ...newSentimentCache }));
+          
+          // Small delay between batches to be respectful to API
+          if (i + batchSize < uniqueAssets.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (error) {
+          console.error(`Error fetching sentiment for batch ${i / batchSize + 1}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching asset sentiment:', error);
+    }
+  };
 
   useEffect(() => {
     if (!twitterId) return;
@@ -87,13 +135,19 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       try {
         setLoading(true);
         // 1. Fetch all wallets for the user
-        const walletsRes = await axios.get(`${API_BASE}/userwallets/${twitterId}`);
-        const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{wallet_address: string, chain: string}>;
+        const userId = (session?.user as any)?.id || '';
+        const walletsRes = await axios.get(`/api/wallets?user_id=${userId}`);
+        const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
+        
         // 2. For each wallet, fetch balances
         let allTokens: Asset[] = [];
         let uniqueSymbols = new Set<string>();
+        
         for (const w of walletsArr) {
-          const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.wallet_address}`);
+          if (!w.walletAddress || w.walletAddress.trim() === '') {
+            continue;
+          }
+          const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.walletAddress}`);
           const balances = (balancesRes.data as any).balances;
           for (const chain in balances) {
             for (const token of balances[chain]) {
@@ -101,49 +155,57 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 name: token.name,
                 symbol: token.symbol,
                 chain: chain.charAt(0).toUpperCase() + chain.slice(1),
-                price: token.price, // number
-                balance: token.balance, // number
-                value: token.usd, // number
-                priceChange: token.priceChange24hPercent, // now using percent
-                balanceChange: token.balanceChange24h !== undefined ? token.balanceChange24h : undefined, // if available
-                sentimentChange: token.sentimentChange24h !== undefined ? token.sentimentChange24h : undefined, // if available
-                sentiment: token.sentiment !== undefined ? token.sentiment : undefined, // if available
-                icon: '', // will be filled in below
+                price: token.price,
+                balance: token.balance,
+                value: token.usd,
+                priceChange: token.priceChange24hPercent,
+                balanceChange: token.balanceChange24h !== undefined ? token.balanceChange24h : undefined,
+                sentimentChange: token.sentimentChange24h !== undefined ? token.sentimentChange24h : undefined,
+                sentiment: token.sentiment !== undefined ? token.sentiment : undefined,
+                icon: '', // Will be filled progressively
               });
               if (token.symbol) uniqueSymbols.add(token.symbol.toLowerCase());
             }
           }
         }
-        // 3. Throttled icon fetches (5 at a time), only for missing icons
-        const newLogoCache: Record<string, string> = { ...logoCache };
-        const toFetch = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
-        await throttleAll(
-          toFetch.map((symbol) => async () => {
-            try {
-              const apiSymbol = getApiSymbol(symbol);
-              const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
-              if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof logoRes.data.logo === 'string' && logoRes.data.logo) {
-                newLogoCache[symbol] = logoRes.data.logo;
-              }
-            } catch {}
-          }),
-          5 // concurrency limit
-        );
-        setLogoCache(newLogoCache);
-        // 4. Attach logos to tokens from cache
-        allTokens = allTokens.map(t => ({ ...t, icon: newLogoCache[t.symbol?.toLowerCase()] || '' }));
-        // Sort by value (usd) in descending order
+        
+        // 3. INSTANT DISPLAY: Show balances immediately without waiting for logos
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
         setAssets(allTokens);
+        setLoading(false); // Stop loading immediately
         
-        // 5. Notify parent about first asset if available
+        // 4. Notify parent about first asset immediately
         if (allTokens.length > 0 && onFirstAssetLoad) {
           onFirstAssetLoad(allTokens[0]);
         }
         
-        setLoading(false);
-
-        // 5. Periodic retry for missing icons every 5 seconds
+        // 5. BACKGROUND PROCESSING: Load logos progressively
+        const newLogoCache: Record<string, string> = { ...logoCache };
+        const toFetch = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
+        
+        // Process logos in background without blocking UI
+        throttleAll(
+          toFetch.map((symbol) => async () => {
+            try {
+              const apiSymbol = getApiSymbol(symbol);
+              const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
+              if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
+                newLogoCache[symbol] = (logoRes.data as any).logo;
+                setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
+                // Share logo cache with parent component for Display
+                if (onLogoCacheUpdate) {
+                  onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
+                }
+              }
+            } catch {}
+          }),
+          5
+        );
+        
+        // 6. BACKGROUND PROCESSING: Load sentiment progressively
+        fetchAssetSentiment(allTokens);
+        
+        // 7. Periodic retry for missing icons every 5 seconds
         if (retryInterval) clearInterval(retryInterval);
         retryInterval = setInterval(async () => {
           const missingSymbols = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
@@ -153,9 +215,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               try {
                 const apiSymbol = getApiSymbol(symbol);
                 const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
-                if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof logoRes.data.logo === 'string' && logoRes.data.logo) {
-                  newLogoCache[symbol] = logoRes.data.logo;
-                  setLogoCache({ ...newLogoCache });
+                if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
+                  newLogoCache[symbol] = (logoRes.data as any).logo;
+                  setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
+                  // Share logo cache with parent component for Display
+                  if (onLogoCacheUpdate) {
+                    onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
+                  }
                 }
               } catch {}
             }),
@@ -179,6 +245,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     setAssets(prevAssets => prevAssets.map(t => ({ ...t, icon: logoCache[t.symbol?.toLowerCase()] || '' })));
   }, [logoCache]);
 
+  // Update assets with sentiment data whenever sentimentCache changes
+  useEffect(() => {
+    setAssets(prevAssets => prevAssets.map(asset => {
+      const sentiment = sentimentCache[asset.symbol.toLowerCase()];
+      return sentiment !== undefined ? { ...asset, sentiment } : asset;
+    }));
+  }, [sentimentCache]);
+
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
       onAssetSelect(asset);
@@ -199,6 +273,42 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     }
   };
 
+  if (connectedWallets === 0) {
+    return (
+      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-lg font-semibold text-white">Portfolio Overview</div>
+          <button 
+            onClick={() => setShowAllAssets(!showAllAssets)}
+            className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
+          >
+            {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
+            <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
+          </button>
+        </div>
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
+          <table className="min-w-full text-sm text-left align-middle">
+            <thead>
+              <tr className="text-[#A3A3A3] border-b border-[#23262F]">
+                <th className="py-2 px-2 font-medium text-left">Asset</th>
+                <th className="py-2 px-2 font-medium text-left">Price</th>
+                <th className="py-2 px-2 font-medium text-left">Balance</th>
+                <th className="py-2 px-2 font-medium text-left">Value</th>
+                <th className="py-2 px-2 font-medium text-center">Price</th>
+                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-gray-500 italic">Add a wallet to get started</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
       {/* Preloader overlay */}
@@ -209,7 +319,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         <div className="text-lg font-semibold text-white">Portfolio Overview</div>
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
-          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23272b]/20 transition-colors cursor-pointer"
+          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
           {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{assets.length}</span>

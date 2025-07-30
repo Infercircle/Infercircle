@@ -24,6 +24,7 @@ const IcoIdo = () => {
   const [icoIdoData, setIcoIdoData] = useState<UpcomingIDO[] | []>([]);
   const [selectedFilter, setSelectedFilter] = useState<'upcoming' | 'active' | 'past'>('upcoming');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Function to get relative date based on filter
   const getRelativeDate = (dateString: string, filterType: string) => {
@@ -103,6 +104,7 @@ const IcoIdo = () => {
   useEffect(() => {
     // Simulate fetching data from an API
     const fetchIcoIdoData = async() => {
+      setLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/${selectedFilter}`,{
         method: "POST",
         headers: {
@@ -113,11 +115,16 @@ const IcoIdo = () => {
       // console.log(data);
 
       setIcoIdoData(data.data);
+      setLoading(false);
     };
     fetchIcoIdoData();
   }, [selectedFilter])
   return (
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
+      {/* Preloader overlay */}
+      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+      </div>
       <div className="flex items-center justify-between mb-2">
         <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
           <div className="text-lg font-semibold text-white">ICO / IDO</div>
@@ -153,37 +160,39 @@ const IcoIdo = () => {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent">
-        <table className="min-w-full text-xs text-left">
-          <thead>
-            <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium">When</th>
-              <th className="py-2 px-2 font-medium">Project</th>
-              <th className="py-2 px-2 font-medium">Type</th>
-              <th className="py-2 px-2 font-medium">Launchpad</th>
-            </tr>
-          </thead>
-          <tbody className="overflow-hidden">
-            {icoIdoData.length>0 && icoIdoData.map((item, idx) => (
-              <tr key={idx} className="border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition">
-                <td className="py-2 px-2 text-white text-xs">
-                  {getRelativeDate(
-                    selectedFilter === 'upcoming' ? item.when : item.till, 
-                    selectedFilter
-                  )}
-                </td>
-                <td className="py-2 px-2 flex items-center gap-2">
-                  <img src={item.image} alt={item.name} className="w-6 h-6 rounded-full" />
-                  <div>
-                    <div className="text-white font-medium">{item.name}</div>
-                    <div className="text-[#A3A3A3] text-xs">{item.symbol}</div>
-                  </div>
-                </td>
-                <td className="py-2 px-2 text-white">{item.type}</td>
-                <td className="py-2 px-2 text-white">{item.launchpads[0]?.name +` ${item.launchpads.length>2 ? `+${item.launchpads.length-1}` :''}` || "TBA"}</td>
+        {!loading && (
+          <table className="min-w-full text-xs text-left">
+            <thead>
+              <tr className="text-[#A3A3A3] border-b border-[#23262F]">
+                <th className="py-2 px-2 font-medium">When</th>
+                <th className="py-2 px-2 font-medium">Project</th>
+                <th className="py-2 px-2 font-medium">Type</th>
+                <th className="py-2 px-2 font-medium">Launchpad</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="overflow-hidden">
+              {icoIdoData.length>0 && icoIdoData.map((item, idx) => (
+                <tr key={idx} className="border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition">
+                  <td className="py-2 px-2 text-white text-xs">
+                    {getRelativeDate(
+                      selectedFilter === 'upcoming' ? item.when : item.till, 
+                      selectedFilter
+                    )}
+                  </td>
+                  <td className="py-2 px-2 flex items-center gap-2">
+                    <img src={item.image} alt={item.name} className="w-6 h-6 rounded-full" />
+                    <div>
+                      <div className="text-white font-medium">{item.name}</div>
+                      <div className="text-[#A3A3A3] text-xs">{item.symbol}</div>
+                    </div>
+                  </td>
+                  <td className="py-2 px-2 text-white">{item.type}</td>
+                  <td className="py-2 px-2 text-white">{item.launchpads[0]?.name +` ${item.launchpads.length>2 ? `+${item.launchpads.length-1}` :''}` || "TBA"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

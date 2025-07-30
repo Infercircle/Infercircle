@@ -12,6 +12,7 @@ interface DashboardProps {
   totalPriceChange?: number;
   refreshKey?: number;
   loadingNetWorth?: boolean;
+  connectedWallets?: number;
 }
 
 interface SelectedAsset {
@@ -28,12 +29,13 @@ interface SelectedAsset {
   icon: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
   const { data: session, status } = useSession();
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
   const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
   const [chartType, setChartType] = useState<'price' | 'balance'>('price');
+  const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>({});
 
   if(!session || status !== "authenticated") {
     return (
@@ -77,11 +79,15 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     setShowPriceChart(true);
   };
 
+  const handleLogoCacheUpdate = (logoCache: Record<string, string>) => {
+    setSharedLogoCache(prev => ({ ...prev, ...logoCache }));
+  };
+
   return (
     <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}
       <div className="col-span-12">
-        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} />
+        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} connectedWallets={connectedWallets} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
     {/* <div className="col-span-12">
@@ -98,10 +104,12 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         onBalanceChartRequest={handleBalanceChartRequest}
         activeChartType={showPriceChart ? chartType : null}
         activeChartAsset={showPriceChart ? chartAsset : null}
+        connectedWallets={connectedWallets}
+        onLogoCacheUpdate={handleLogoCacheUpdate}
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">
-      <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} />
+      <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} connectedWallets={connectedWallets} sharedLogoCache={sharedLogoCache} />
     </div>
     {/* Bottom Row: Watchlist, ICO/IDO */}
     {/* <div className="col-span-12 md:col-span-6">
