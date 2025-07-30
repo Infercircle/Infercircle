@@ -6,6 +6,7 @@ declare module "next-auth" {
       id?: string;
       username?: string;
       followersCount?: number;
+      twitterId?: string;
     } & DefaultSession["user"];
     accessToken?: string;
     refreshToken?: string;
@@ -15,5 +16,6 @@ declare module "next-auth" {
     id?: string;
     username?: string;
     followersCount?: number;
+    twitterId?: string;
   }
 } 
