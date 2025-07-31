@@ -77,12 +77,54 @@ interface OnChainActivitiesProps {
   };
 }
 
+// Cache management utilities
+// Logos are static assets, so no expiry needed
+
+// Helper function to get cached logos from localStorage
+const getCachedLogos = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const cached = localStorage.getItem('logoCache');
+    if (!cached) return {};
+    
+    const parsed = JSON.parse(cached);
+    
+    // Handle both new format (with timestamp) and legacy format (string only)
+    const validEntries: Record<string, string> = {};
+    Object.entries(parsed).forEach(([symbol, data]: [string, any]) => {
+      if (data && typeof data === 'object' && data.url) {
+        // New format: { url: string, timestamp: number }
+        validEntries[symbol] = data.url;
+      } else if (typeof data === 'string') {
+        // Legacy format: direct string
+        validEntries[symbol] = data;
+      }
+    });
+    
+    return validEntries;
+  } catch {
+    return {};
+  }
+};
+
+// Helper function to save logos to localStorage
+const saveLogosToCache = (logos: Record<string, string>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    // Simple format: just store the URL directly
+    localStorage.setItem('logoCache', JSON.stringify(logos));
+    console.log(`Logo cache: Saved ${Object.keys(logos).length} logos to localStorage`);
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [logoCache, setLogoCache] = useState<Record<string, string>>({});
+  const [logoCache, setLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
   const [showAllAssets, setShowAllAssets] = useState(false);
   const fetchingSymbols = useRef<Set<string>>(new Set());
   const [sentimentCache, setSentimentCache] = useState<Record<string, number>>({});
@@ -182,19 +224,27 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           }
         }
         
-        // 3. INSTANT DISPLAY: Show balances immediately without waiting for logos
+        // 3. INSTANT DISPLAY: Show balances immediately with cached logos
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
-        setAssets(allTokens);
+        
+        // Apply cached logos immediately to assets
+        const cachedLogos = getCachedLogos();
+        const assetsWithCachedLogos = allTokens.map(token => ({
+          ...token,
+          icon: cachedLogos[token.symbol?.toLowerCase()] || ''
+        }));
+        
+        setAssets(assetsWithCachedLogos);
         setLoading(false); // Stop loading immediately
         
         // 4. Notify parent about first asset immediately
         if (allTokens.length > 0 && onFirstAssetLoad) {
-          onFirstAssetLoad(allTokens[0]);
+          onFirstAssetLoad(assetsWithCachedLogos[0]);
         }
         
-        // 5. BACKGROUND PROCESSING: Load logos progressively
-        const newLogoCache: Record<string, string> = { ...logoCache };
-        const toFetch = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
+        // 5. BACKGROUND PROCESSING: Load logos progressively (only fetch missing ones)
+        const currentCache = getCachedLogos(); // Get fresh cache from localStorage
+        const toFetch = Array.from(uniqueSymbols).filter(symbol => !currentCache[symbol]);
         
         // Process logos in background without blocking UI
         throttleAll(
@@ -203,11 +253,27 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               const apiSymbol = getApiSymbol(symbol);
               const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
               if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
-                newLogoCache[symbol] = (logoRes.data as any).logo;
-                setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
+                const newLogo = (logoRes.data as any).logo;
+                
+                // Update both state and localStorage
+                setLogoCache(prev => {
+                  const updated = { ...prev, [symbol]: newLogo };
+                  saveLogosToCache(updated); // Save to localStorage
+                  return updated;
+                });
+                
+                // Update assets immediately with new logo
+                setAssets(prevAssets => 
+                  prevAssets.map(asset => 
+                    asset.symbol?.toLowerCase() === symbol 
+                      ? { ...asset, icon: newLogo }
+                      : asset
+                  )
+                );
+                
                 // Share logo cache with parent component for Display
                 if (onLogoCacheUpdate) {
-                  onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
+                  onLogoCacheUpdate({ [symbol]: newLogo });
                 }
               }
             } catch {}
@@ -218,22 +284,40 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         // 6. BACKGROUND PROCESSING: Load sentiment progressively
         fetchAssetSentiment(allTokens);
         
-        // 7. Periodic retry for missing icons every 5 seconds
+        // 7. Periodic retry for missing icons every 5 seconds (only for symbols not in cache)
         if (retryInterval) clearInterval(retryInterval);
         retryInterval = setInterval(async () => {
-          const missingSymbols = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
+          const currentCache = getCachedLogos(); // Get fresh cache
+          const missingSymbols = Array.from(uniqueSymbols).filter(symbol => !currentCache[symbol]);
           if (missingSymbols.length === 0) return;
+          
           await throttleAll(
             missingSymbols.map(symbol => async () => {
               try {
                 const apiSymbol = getApiSymbol(symbol);
                 const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
                 if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
-                  newLogoCache[symbol] = (logoRes.data as any).logo;
-                  setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
+                  const newLogo = (logoRes.data as any).logo;
+                  
+                  // Update both state and localStorage
+                  setLogoCache(prev => {
+                    const updated = { ...prev, [symbol]: newLogo };
+                    saveLogosToCache(updated); // Save to localStorage
+                    return updated;
+                  });
+                  
+                  // Update assets immediately with new logo
+                  setAssets(prevAssets => 
+                    prevAssets.map(asset => 
+                      asset.symbol?.toLowerCase() === symbol 
+                        ? { ...asset, icon: newLogo }
+                        : asset
+                    )
+                  );
+                  
                   // Share logo cache with parent component for Display
                   if (onLogoCacheUpdate) {
-                    onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
+                    onLogoCacheUpdate({ [symbol]: newLogo });
                   }
                 }
               } catch {}
@@ -253,11 +337,6 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     // eslint-disable-next-line
   }, [twitterId, refreshKey, wallets]);
 
-  // Recompute assets with new logos whenever logoCache changes
-  useEffect(() => {
-    setAssets(prevAssets => prevAssets.map(t => ({ ...t, icon: logoCache[t.symbol?.toLowerCase()] || '' })));
-  }, [logoCache]);
-
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
     setAssets(prevAssets => prevAssets.map(asset => {
@@ -265,6 +344,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       return sentiment !== undefined ? { ...asset, sentiment } : asset;
     }));
   }, [sentimentCache]);
+
+  // Log cache statistics on mount
+  useEffect(() => {
+    // Log cache statistics
+    const cachedLogos = getCachedLogos();
+    console.log(`Logo cache: ${Object.keys(cachedLogos).length} logos loaded from localStorage`);
+  }, []);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
