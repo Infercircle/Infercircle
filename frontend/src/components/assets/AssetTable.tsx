@@ -91,7 +91,7 @@ const AssetTable: React.FC = () => {
       if (!cachedData[cacheKey]) setLoading(true);
       setError(null);
       try {
-        let url = `http://localhost:8080/tokens/assets?page=${page}&per_page=${perPage}`;
+        let url = `${process.env.NEXT_PUBLIC_API_BASE}/tokens/assets?page=${page}&per_page=${perPage}`;
         // You can add tab-based filtering here if needed
         const res = await axios.get<TokenData[]>(url);
         const tokens = res.data;

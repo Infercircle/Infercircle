@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model InviteCode {
+  InviteCode String  @id
+  email      String?
+  username   String?
+  used       Boolean @default(false)
+}
+
+model User {
+  id             String       @id
+  name           String?
+  email          String?      @unique
+  image          String?
+  username       String?      @unique
+  followersCount Int?
+  inviteAccepted Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now())
+  twitterId      String?      @unique
+  UserWallet     UserWallet[] @relation("UserWallets")
+}
+
+model UserWallet {
+  id            String   @id
+  walletAddress String
+  chain         String
+  createdAt     DateTime @default(now())
+  User          User[]   @relation("UserWallets")
+}
+
+model elite_curators {
+  id              Int       @id @default(autoincrement())
+  twitter_id      String    @unique @db.VarChar(32)
+  username        String    @unique @db.VarChar(64)
+  twitter_score   Float?
+  tags            Json?
+  categories      Json?
+  subscribed_at   DateTime? @db.Timestamp(6)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  followers_count Int?
+}
+
+model top_elite_curators {
+  id         Int      @id @default(autoincrement())
+  twitter_id String   @unique @db.VarChar(32)
+  username   String   @unique @db.VarChar(64)
+  processed  Boolean? @default(false)
+}
+
+model AssetSentiMentScore {
+  id        String  @id
+  name      String  @unique
+  symbol    String
+  image     String?  
+  sentiment String @default("0") 
+}

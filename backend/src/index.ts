@@ -12,7 +12,7 @@ import eliteCuratorsRoutes from "./routes/eliteCurators";
 import { automationManager } from "./automation";
 import suggestionsRoutes from "./routes/suggestions";
 import balancesRoutes from "./routes/balances";
-
+import { startMindShareCalculation } from "./lib/worker";
 dotenv.config();
 
 const app: Application = express();
@@ -44,6 +44,10 @@ app.use("/suggestions", suggestionsRoutes);
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
+
+
+startMindShareCalculation();
+setInterval(startMindShareCalculation, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);

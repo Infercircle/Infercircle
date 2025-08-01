@@ -83,95 +83,110 @@ router.post("/stream", asyncHandler(async (req: Request, res: Response) => {
 
 // POST /twitter/sentiment-batch
 // Body: { assets: Array<{symbol: string, name: string}> }
-// Returns sentiment for each asset based on recent tweets
+// Simple version using a promise pool utility
+const processInPool = async <T, R>(
+  items: T[], 
+  processor: (item: T) => Promise<R>, 
+  concurrency: number = 10
+): Promise<R[]> => {
+  const results: R[] = [];
+  const executing: Promise<void>[] = [];
+
+  for (const item of items) {
+    const promise = processor(item).then(result => {
+      results.push(result);
+    });
+    
+    executing.push(promise);
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
+      executing.splice(executing.findIndex(p => p === promise), 1);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+};
+
 router.post("/sentiment-batch", asyncHandler(async (req: Request, res: Response) => {
   const { assets } = req.body;
   if (!assets || !Array.isArray(assets)) {
     return res.status(400).json({ error: "Assets array is required" });
   }
 
-  const sentimentResults: Record<string, any> = {};
-  const batchSize = 5; // Process 5 assets at a time to avoid rate limits
-  
-  // Process assets in batches
-  for (let i = 0; i < assets.length; i += batchSize) {
-    const batch = assets.slice(i, i + batchSize);
-    
-    // Process batch concurrently
-    const batchPromises = batch.map(async (asset: any) => {
-      const symbol = asset.symbol?.toLowerCase();
-      if (!symbol) return null;
+  const processSingleAsset = async (asset: any) => {
+    const symbol = asset.symbol?.toLowerCase();
+    const image = asset.image || "";
+    const id = asset.id;
+    const name = asset.name || "";
+    if (!symbol) return null;
 
-      try {
-        // Fetch tweets for this asset
-        const helperRes = await fetch("https://helper-apis-and-scrappers.onrender.com/twitter/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            query: symbol, 
-            limit: 20, // More tweets for better sentiment accuracy
-            product: "Latest" 
-          })
-        });
+    try {
+      // Small random delay for rate limiting
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
 
-        if (!helperRes.ok) {
-          console.warn(`Failed to fetch tweets for ${symbol}`);
-          return { symbol, sentiment: 0, count: 0, error: "Failed to fetch tweets" };
+      const helperRes = await fetch(`${process.env.HELPER_APIS_URL}/twitter/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          query: symbol, 
+          limit: 20,
+          product: "Latest" 
+        })
+      });
+
+      if (!helperRes.ok) {
+        console.warn(`Failed to fetch tweets for ${symbol}`);
+        return { symbol, sentiment: 0, count: 0, image, error: "Failed to fetch tweets" };
+      }
+
+      const helperData = await helperRes.json();
+      const tweets = Array.isArray(helperData) ? helperData : 
+                    helperData.data || helperData.tweets || helperData.results || [];
+      
+      if (!tweets || tweets.length === 0) {
+        return { symbol, sentiment: 0, count: 0, image, error: "No tweets found" };
+      }
+
+      let totalSentiment = 0;
+      let validTweets = 0;
+      
+      tweets.forEach((tweet: any) => {
+        const text = tweet.content || tweet.raw_data?.rawContent || 
+                    tweet.raw_data?.content || tweet.text || "";
+        if (text && text.trim().length > 0) {
+          const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
+          totalSentiment += sentiment.compound;
+          validTweets++;
         }
-
-        const helperData = await helperRes.json();
-        const tweets = Array.isArray(helperData) ? helperData : helperData.data || helperData.tweets || helperData.results || [];
-        
-        if (!tweets || tweets.length === 0) {
-          return { symbol, sentiment: 0, count: 0, error: "No tweets found" };
-        }
-
-        // Calculate sentiment for all tweets
-        let totalSentiment = 0;
-        let validTweets = 0;
-        
-        tweets.forEach((tweet: any) => {
-          const text = tweet.content || tweet.raw_data?.rawContent || tweet.raw_data?.content || tweet.text || "";
-          if (text && text.trim().length > 0) {
-            const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
-            totalSentiment += sentiment.compound;
-            validTweets++;
-          }
-        });
-
-        // Calculate average sentiment and convert to percentage
-        const avgSentiment = validTweets > 0 ? totalSentiment / validTweets : 0;
-        const sentimentPercentage = Math.round(((avgSentiment + 1) / 2) * 100); // Convert -1 to 1 range to 0-100%
+      });
 
       return {
-          symbol,
-          sentiment: sentimentPercentage,
-          count: validTweets,
-          avgSentimentScore: avgSentiment,
-          error: null
-        };
+        id,
+        name,
+        symbol,
+        sentiment: totalSentiment,
+        count: validTweets,
+        image,
+        error: null
+      };
 
-      } catch (error) {
-        console.error(`Error processing sentiment for ${symbol}:`, error);
-        return { symbol, sentiment: 0, count: 0, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    });
-
-    // Wait for batch to complete
-    const batchResults = await Promise.all(batchPromises);
-    
-    // Add results to main results object
-    batchResults.forEach(result => {
-      if (result) {
-        sentimentResults[result.symbol] = result;
-      }
-    });
-
-    // Small delay between batches to be respectful to the API
-    if (i + batchSize < assets.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`Error processing sentiment for ${symbol}:`, error);
+      return { symbol, sentiment: 0, count: 0, image, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-  }
+  };
+
+  // Process all assets with controlled concurrency
+  const results = await processInPool(assets, processSingleAsset, 8);
+  
+  const sentimentResults: Record<string, any> = {};
+  results.forEach(result => {
+    if (result) {
+      sentimentResults[result.symbol] = result;
+    }
+  });
 
   res.status(200).json({
     status: "success",
