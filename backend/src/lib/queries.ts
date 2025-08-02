@@ -32,3 +32,7 @@ export async function getAssetById(id: string) {
     where: { id },
   });
 }
+
+export async function getAllAssetSentimentScores() {
+  return db.assetSentiMentScore.findMany();
+}

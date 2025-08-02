@@ -1,25 +1,25 @@
 import axios from "axios";
-import { createAssetMindShare, getAssetById } from "./queries";
+import { createAssetMindShare, getAllAssetSentimentScores, getAssetById } from "./queries";
 
 export async function startMindShareCalculation() {
     console.log("Starting the mindshare calculation............");
-    const response = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
-      params: {
-        vs_currency: "usd",
-        order: "market_cap_desc",
-        per_page: 200,
-        page: 1,
-        sparkline: true,
-        price_change_percentage: "1h,24h,7d"
-      },
-      headers: {
-        // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
-        // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
-      }
-    });
-    console.log("GOT tokens...........");
+    // const response = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
+    //   params: {
+    //     vs_currency: "usd",
+    //     order: "market_cap_desc",
+    //     per_page: 200,
+    //     page: 1,
+    //     sparkline: true,
+    //     price_change_percentage: "1h,24h,7d"
+    //   },
+    //   headers: {
+    //     // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
+    //     // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
+    //   }
+    // });
+    // console.log("GOT tokens...........");
     
-    const data = response.data as {"id": string, "symbol": string, "name": string, "image": string}[];
+    const data = await getAllAssetSentimentScores() as {"id": string, "symbol": string, "name": string, "image": string}[];
     // Filter unique assets by symbol
     const uniqueData = data.filter((asset, index, self) => 
       index === self.findIndex(a => a.symbol.toLowerCase() === asset.symbol.toLowerCase() && a.name.toLowerCase() === asset.name.toLowerCase())
@@ -68,6 +68,9 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
                 image: res.image as string
             });
             console.log("done for ",res.name);
+            setTimeout(() => {
+                console.log("Waiting for 5 seconds before next request...");
+            }, 5000);
         } catch (error) {
             console.error(`Failed to create/update asset ${res.name}:`, error);
         }
