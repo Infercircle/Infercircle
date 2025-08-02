@@ -1,5 +1,5 @@
 import axios from "axios";
-import { createAssetMindShare } from "./queries";
+import { createAssetMindShare, getAssetById } from "./queries";
 
 export async function startMindShareCalculation() {
     console.log("Starting the mindshare calculation............");
@@ -39,16 +39,22 @@ export async function startMindShareCalculation() {
     }
 }
 
-async function getSentiment(data: { id: string, symbol: string, name: string, image?: string }[]) {
+export async function getSentiment(data: { id: string, symbol: string, name: string, image?: string }[]): Promise<{symbol: string, sentiment: string}[]> {
     console.log("getting sentiment for ",data.length);
     const result = await axios.post(`${process.env.BASE_URL}/twitter/sentiment-batch`, {
         assets: data.map(asset => ({ id: asset.id, symbol: asset.symbol, name: asset.name, image: asset.image }))
     });
     const Fresult = Object.values((result.data as unknown).results as {id: string, name: string, image: string, symbol: string, sentiment: string}[]).flat();
     console.log("Got Fresult.....");
+
+    let resultArray: {symbol: string, sentiment: string, image: string}[] = [];
     
     await Promise.all(Fresult.map(async(res)=>{
         try {
+          if(!res.image || res.image === "") {
+            const getAsset = await getAssetById(res.id);
+            res.image = getAsset?.image || "";
+          }
             await createAssetMindShare({
                 id: res.id,
                 name: res.name,
@@ -56,9 +62,15 @@ async function getSentiment(data: { id: string, symbol: string, name: string, im
                 symbol: res.symbol,
                 sentiment: res.sentiment.toString()
             });
+            resultArray.push({
+                symbol: res.symbol,
+                sentiment: res.sentiment.toString(),
+                image: res.image as string
+            });
             console.log("done for ",res.name);
         } catch (error) {
             console.error(`Failed to create/update asset ${res.name}:`, error);
         }
     }));
+    return resultArray;
 }

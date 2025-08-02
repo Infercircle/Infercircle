@@ -1,38 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { User, AssetSentiMentScore } from "@prisma/client";
+import { getAllAssetSentimentScores } from "@/actions/queries";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-// Symbol mapping for tokens that have changed their symbols
-const SYMBOL_MAPPINGS: Record<string, string> = {
-  'matic': 'pol', // MATIC rebranded to POL
-  'polygon': 'pol',
-};
-
-// Helper function to get the correct symbol for API calls
-const getApiSymbol = (symbol: string): string => {
-  const lowerSymbol = symbol.toLowerCase();
-  return SYMBOL_MAPPINGS[lowerSymbol] || lowerSymbol;
-};
-
-// Throttle helper: runs async tasks with a concurrency limit
-async function throttleAll<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
-  const results: T[] = [];
-  let i = 0;
-  const run = async () => {
-    while (i < tasks.length) {
-      const cur = i++;
-      try {
-        results[cur] = await tasks[cur]();
-      } catch (e) {
-        results[cur] = undefined as any;
-      }
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, run));
-  return results;
-}
 
 // Helper to format balances (e.g., 10000 -> 10K, 0.058 -> 0.058)
 function formatBalance(balance: number, symbol: string) {
@@ -53,6 +26,7 @@ interface Asset {
   balanceChange?: number;
   sentimentChange?: number;
   sentiment?: number;
+  mindShare?: number;
   icon: string;
 }
 
@@ -69,76 +43,42 @@ interface OnChainActivitiesProps {
   onLogoCacheUpdate?: (logoCache: Record<string, string>) => void;
 }
 
+type AssetSentimentArrayMap = {
+  [symbol: string]: AssetSentiMentScore[];
+};
+
 const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<Asset[]>(assets);
   const [loading, setLoading] = useState(true);
-  const [logoCache, setLogoCache] = useState<Record<string, string>>({});
   const [showAllAssets, setShowAllAssets] = useState(false);
   const fetchingSymbols = useRef<Set<string>>(new Set());
   const [sentimentCache, setSentimentCache] = useState<Record<string, number>>({});
+  // const [assetSentiMentScoreList, setAssetSentiMentScoreList] = useState<AssetSentimentArrayMap>({});
+  const [totalScore, setTotalScore] = useState<number>(0);
 
-  // Filter assets based on showAllAssets state
-  const filteredAssets = showAllAssets ? assets : assets.filter(asset => (asset.value || 0) >= 1);
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
-  // Fetch sentiment for all assets in batches of 5
-  const fetchAssetSentiment = async (assetList: Asset[]) => {
-    if (assetList.length === 0) return;
-
-    try {
-      const uniqueAssets = assetList.filter((asset, index, self) => 
-        index === self.findIndex(a => a.symbol.toLowerCase() === asset.symbol.toLowerCase())
-      );
-
-      // Process in batches of 5
-      const batchSize = 5;
-      const newSentimentCache: Record<string, number> = {};
-      
-      for (let i = 0; i < uniqueAssets.length; i += batchSize) {
-        const batch = uniqueAssets.slice(i, i + batchSize);
-        
-        try {
-          const response = await axios.post(`${API_BASE}/twitter/sentiment-batch`, {
-            assets: batch.map(asset => ({ symbol: asset.symbol, name: asset.name }))
-          });
-
-          if (response.data && typeof response.data === 'object' && 'results' in response.data) {
-            Object.entries(response.data.results as Record<string, any>).forEach(([symbol, data]: [string, any]) => {
-              if (data.sentiment !== undefined && data.error === null) {
-                newSentimentCache[symbol.toLowerCase()] = data.sentiment;
-              }
-            });
-          }
-          
-          // Update cache after each batch
-          setSentimentCache(prev => ({ ...prev, ...newSentimentCache }));
-          
-          // Small delay between batches to be respectful to API
-          if (i + batchSize < uniqueAssets.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } catch (error) {
-          console.error(`Error fetching sentiment for batch ${i / batchSize + 1}:`, error);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching asset sentiment:', error);
-    }
-  };
 
   useEffect(() => {
     if (!twitterId) return;
     let retryInterval: NodeJS.Timeout | null = null;
-    const fetchAssets = async () => {
+    const fetchAssets = async (assetSentiMentScoreList: AssetSentimentArrayMap, totalScore: number) => {
+      let LocalScore = totalScore || 0;
       try {
+        if(!assetSentiMentScoreList || Object.keys(assetSentiMentScoreList).length === 0) {
+          console.log("No asset sentiment scores found, fetching from API...");
+          return;
+        }else{
+          console.log("Asset Sentiment Score List:", assetSentiMentScoreList['sol']);
+        }
         setLoading(true);
         // 1. Fetch all wallets for the user
         const userId = (session?.user as any)?.id || '';
         const walletsRes = await axios.get(`/api/wallets?user_id=${userId}`);
         const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
-        
         // 2. For each wallet, fetch balances
         let allTokens: Asset[] = [];
         let uniqueSymbols = new Set<string>();
@@ -149,9 +89,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           }
           const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.walletAddress}`);
           const balances = (balancesRes.data as any).balances;
+          console.log(assetSentiMentScoreList);
           for (const chain in balances) {
             for (const token of balances[chain]) {
-              allTokens.push({
+              let notFoundArr: { id: string, name: string, symbol: string, image: string, blockchain: string, address: string }[] = [];
+              let assetObj = {
                 name: token.name,
                 symbol: token.symbol,
                 chain: chain.charAt(0).toUpperCase() + chain.slice(1),
@@ -162,90 +104,96 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 balanceChange: token.balanceChange24h !== undefined ? token.balanceChange24h : undefined,
                 sentimentChange: token.sentimentChange24h !== undefined ? token.sentimentChange24h : undefined,
                 sentiment: token.sentiment !== undefined ? token.sentiment : undefined,
+                mindShare: token.mindShare !== undefined ? token.mindShare : undefined,
                 icon: '', // Will be filled progressively
-              });
+              };
+              console.log(assetSentiMentScoreList);
+              console.log("Asset Object", token);
+              console.log(assetSentiMentScoreList[token.symbol.toLowerCase()]);
+              if(assetSentiMentScoreList[token.symbol.toLowerCase()]){
+                const allAssets = assetSentiMentScoreList[token.symbol.toLowerCase()];
+                console.log("Got in Here", allAssets);
+                for(const asset of allAssets) {
+                  if(asset.name.toLowerCase() == token.name.toLowerCase()){
+                    console.log("Found in Asset Sentiment List", token.symbol, token.name);
+                    assetObj.icon = asset.image || "";
+                    assetObj.sentiment = parseFloat(asset.sentiment).toFixed(2);
+                    assetObj.mindShare = (((parseFloat(asset.sentiment) / LocalScore) * 100).toFixed(2));
+                    break;
+                  }
+                }
+              }
+              if(assetObj.icon == '' || assetObj.sentiment === undefined) {
+                console.log("Not Found in Asset Sentiment List", token.symbol.toLowerCase(), token.name.toLowerCase());
+                notFoundArr.push({
+                  id: token.id,
+                  name: token.name,
+                  symbol: token.symbol,
+                  image: token.image,
+                  blockchain: chain,
+                  address: token.ethereumAddress,
+                });
+              }
+              if(notFoundArr.length > 0) {
+                const missingDataResponse = await fetch(`${API_BASE}/mindshare/addAsset`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ assets: notFoundArr }),
+                });
+                const missingData = await missingDataResponse.json() as { results: { symbol: string, sentiment: string, image: string }[] };
+
+                missingData.results.forEach((res) => {
+                  if (res.symbol.toLowerCase() === token.symbol.toLowerCase()) {
+                    LocalScore += parseFloat(res.sentiment);
+                    assetObj.icon = res.image || "";
+                    assetObj.sentiment = parseFloat(res.sentiment).toFixed(2);
+                    assetObj.mindShare = (((parseFloat(res.sentiment) / LocalScore) * 100).toFixed(2));
+                  }
+                });
+              }
+              
+              allTokens.push(assetObj);
               if (token.symbol) uniqueSymbols.add(token.symbol.toLowerCase());
             }
           }
         }
-        
+
         // 3. INSTANT DISPLAY: Show balances immediately without waiting for logos
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
         setAssets(allTokens);
+        const filteredAssets = showAllAssets ? assets : assets.filter(asset => (asset.value || 0) >= 1);
+        setFilteredAssets(filteredAssets);
         setLoading(false); // Stop loading immediately
         
         // 4. Notify parent about first asset immediately
         if (allTokens.length > 0 && onFirstAssetLoad) {
           onFirstAssetLoad(allTokens[0]);
         }
-        
-        // 5. BACKGROUND PROCESSING: Load logos progressively
-        const newLogoCache: Record<string, string> = { ...logoCache };
-        const toFetch = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
-        
-        // Process logos in background without blocking UI
-        throttleAll(
-          toFetch.map((symbol) => async () => {
-            try {
-              const apiSymbol = getApiSymbol(symbol);
-              const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
-              if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
-                newLogoCache[symbol] = (logoRes.data as any).logo;
-                setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
-                // Share logo cache with parent component for Display
-                if (onLogoCacheUpdate) {
-                  onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
-                }
-              }
-            } catch {}
-          }),
-          5
-        );
-        
-        // 6. BACKGROUND PROCESSING: Load sentiment progressively
-        fetchAssetSentiment(allTokens);
-        
-        // 7. Periodic retry for missing icons every 5 seconds
-        if (retryInterval) clearInterval(retryInterval);
-        retryInterval = setInterval(async () => {
-          const missingSymbols = Array.from(uniqueSymbols).filter(symbol => !newLogoCache[symbol]);
-          if (missingSymbols.length === 0) return;
-          await throttleAll(
-            missingSymbols.map(symbol => async () => {
-              try {
-                const apiSymbol = getApiSymbol(symbol);
-                const logoRes = await axios.get(`${API_BASE}/tokens/cmc?symbol=${apiSymbol}`);
-                if (logoRes.data && typeof logoRes.data === 'object' && 'logo' in logoRes.data && typeof (logoRes.data as any).logo === 'string' && (logoRes.data as any).logo) {
-                  newLogoCache[symbol] = (logoRes.data as any).logo;
-                  setLogoCache(prev => ({ ...prev, [symbol]: (logoRes.data as any).logo }));
-                  // Share logo cache with parent component for Display
-                  if (onLogoCacheUpdate) {
-                    onLogoCacheUpdate({ ...newLogoCache, [symbol]: (logoRes.data as any).logo });
-                  }
-                }
-              } catch {}
-            }),
-            5
-          );
-        }, 5000);
+        setTotalScore(LocalScore);
       } catch {
         setAssets([]);
         setLoading(false);
       }
     };
-    fetchAssets();
+
+    fetch("/api/sentiments").then(async (res)=>{
+      const data = await res.json()
+      // setAssetSentiMentScoreList(data.arrayMap);
+      // console.log("Asset Sentiment Score List:", assetSentiMentScoreList);
+      console.log(data.arrayMap);
+      console.log("Total Score:", data.totalScore);
+      console.log(!data.arrayMap || Object.keys(data.arrayMap).length === 0);
+      setTotalScore(data.totalScore);
+      fetchAssets(data.arrayMap, data.totalScore);
+    });
     return () => {
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
   }, [twitterId, refreshKey]);
 
-  // Recompute assets with new logos whenever logoCache changes
-  useEffect(() => {
-    setAssets(prevAssets => prevAssets.map(t => ({ ...t, icon: logoCache[t.symbol?.toLowerCase()] || '' })));
-  }, [logoCache]);
-
-  // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
     setAssets(prevAssets => prevAssets.map(asset => {
       const sentiment = sentimentCache[asset.symbol.toLowerCase()];
@@ -296,7 +244,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 <th className="py-2 px-2 font-medium text-left">Value</th>
                 <th className="py-2 px-2 font-medium text-center">Price</th>
                 <th className="py-2 px-2 font-medium text-center">Sentiment</th>
-                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+                <th className="py-2 px-2 font-medium text-center">Mindshare</th>
               </tr>
             </thead>
             <tbody>
@@ -335,18 +283,18 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               <th className="py-2 px-2 font-medium text-left">Value</th>
               <th className="py-2 px-2 font-medium text-center">Price</th>
               <th className="py-2 px-2 font-medium text-center">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center">Sentiment</th>
+              <th className="py-2 px-2 font-medium text-center">Mindshare</th>
             </tr>
           </thead>
           <tbody>
-            {filteredAssets.map((asset, idx) => (
+            {assets.map((asset, idx) => (
               <tr 
                 key={asset.symbol + asset.chain + idx} 
                 className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition cursor-pointer ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]/60' : ''}`}
                 onClick={() => handleAssetClick(asset)}
               >
                 <td className="py-2 px-2 flex items-center gap-2 justify-start">
-                  {asset.icon ? (
+                  {asset.icon && asset.icon.includes("https") ? (
                     <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain" />
                   ) : (
                     <span className="text-2xl">{asset.symbol ? asset.symbol[0] : '?'}</span>
@@ -380,7 +328,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 </td>
                 <td className="py-2 px-2 text-white text-left align-middle">{asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}</td>
                 <td className={`py-2 px-2 font-semibold text-center align-middle ${asset.priceChange !== undefined && asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{asset.priceChange !== undefined ? `${asset.priceChange >= 0 ? '+' : ''}${Number(asset.priceChange).toFixed(2)}%` : '--'}</td>
-                <td className={`py-2 px-2 font-semibold text-center align-middle`}>{asset.sentimentChange !== undefined ? asset.sentimentChange : '--'}</td>
+                <td className={`py-2 px-2 font-semibold text-center align-middle`}>{asset.sentiment !== undefined ? asset.sentiment : '--'}</td>
                 <td className="py-2 px-2 text-center align-middle">
                   {/* Placeholder for circular progress */}
                   <div className="relative w-10 h-10 flex items-center justify-center m-auto">
@@ -390,15 +338,15 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                         cx="20"
                         cy="20"
                         r="18"
-                        stroke={asset.sentiment !== undefined && asset.sentiment >= 50 ? '#22c55e' : '#ef4444'}
+                        stroke={asset.mindShare !== undefined && asset.mindShare >= 50 ? '#22c55e' : '#ef4444'}
                         strokeWidth="4"
                         fill="none"
-                        strokeDasharray="113"
-                        strokeDashoffset={asset.sentiment !== undefined ? 113 - (asset.sentiment / 100) * 113 : 113}
+                        strokeDasharray={113}
+                        strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare / totalScore) * 113 : 113}
                         strokeLinecap="round"
                       />
                     </svg>
-                    <span className="text-white text-xs font-bold z-10">{asset.sentiment !== undefined ? `${asset.sentiment}%` : '--'}</span>
+                    <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare}%` : '--'}</span>
                   </div>
                 </td>
               </tr>

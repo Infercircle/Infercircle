@@ -6,6 +6,8 @@ const nextConfig = {
       's2.coinmarketcap.com',
       'pbs.twimg.com',
       'abs.twimg.com', 
+      'coin-images.coingecko.com',
+      '*',
     ],
   },
 };

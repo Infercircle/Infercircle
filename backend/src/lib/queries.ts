@@ -26,3 +26,9 @@ export async function createAssetMindShare(
     },
   });
 }
+
+export async function getAssetById(id: string) {
+  return db.assetSentiMentScore.findUnique({
+    where: { id },
+  });
+}

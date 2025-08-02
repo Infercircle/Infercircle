@@ -32,32 +32,38 @@ model TopEliteCurators {
 }
 
 model User {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   name           String?
-  email          String?   @unique
+  email          String?      @unique
   image          String?
-  username       String?   @unique
+  username       String?      @unique
   followersCount Int?
-  inviteAccepted Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @default(now())
-  twitterId      String?   @unique 
-
-  wallets        UserWallet[]  @relation("UserWallets")
+  inviteAccepted Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now())
+  twitterId      String?      @unique
+  wallets        UserWallet[] @relation("UserWallets")
 }
 
 model UserWallet {
-  id             String        @id @default(cuid())
-  walletAddress  String
-  chain          String
-  createdAt      DateTime      @default(now())
-
-  users          User[]        @relation("UserWallets")
+  id            String   @id @default(cuid())
+  walletAddress String
+  chain         String
+  createdAt     DateTime @default(now())
+  users         User[]   @relation("UserWallets")
 }
 
 model InviteCode {
-  InviteCode  String  @id
-  email       String?
-  username    String?
-  used        Boolean @default(false)
+  InviteCode String  @id
+  email      String?
+  username   String?
+  used       Boolean @default(false)
+}
+
+model AssetSentiMentScore {
+  id        String  @id
+  name      String  @unique
+  symbol    String
+  image     String?
+  sentiment String  @default("0")
 }

@@ -45,8 +45,9 @@ app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
 
-
-startMindShareCalculation();
+if(process.env.NODE_ENV === "PRODUCTION") {
+  startMindShareCalculation();
+}
 setInterval(startMindShareCalculation, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
