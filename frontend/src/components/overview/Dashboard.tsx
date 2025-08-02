@@ -7,12 +7,47 @@ import IcoIdo from "./IcoIdo";
 // import Suggested from "./Suggested";
 import { useSession } from "next-auth/react";
 
+// Helper function to get cached logos from localStorage
+const getCachedLogos = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const cached = localStorage.getItem('logoCache');
+    if (!cached) return {};
+    
+    const parsed = JSON.parse(cached);
+    
+    // Handle both new format (with timestamp) and legacy format (string only)
+    const validEntries: Record<string, string> = {};
+    Object.entries(parsed).forEach(([symbol, data]: [string, any]) => {
+      if (data && typeof data === 'object' && data.url) {
+        // New format: { url: string, timestamp: number }
+        validEntries[symbol] = data.url;
+      } else if (typeof data === 'string') {
+        // Legacy format: direct string
+        validEntries[symbol] = data;
+      }
+    });
+    
+    return validEntries;
+  } catch {
+    return {};
+  }
+};
+
 interface DashboardProps {
   netWorth?: number;
   totalPriceChange?: number;
   refreshKey?: number;
   loadingNetWorth?: boolean;
   connectedWallets?: number;
+  // Add wallet data props
+  wallets?: {
+    eth: string[];
+    sol: string[];
+    btc: string[];
+    tron: string[];
+    ton: string[];
+  };
 }
 
 interface SelectedAsset {
@@ -29,13 +64,13 @@ interface SelectedAsset {
   icon: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets }) => {
   const { data: session, status } = useSession();
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
   const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
   const [chartType, setChartType] = useState<'price' | 'balance'>('price');
-  const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>({});
+  const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
 
   if(!session || status !== "authenticated") {
     return (
@@ -95,17 +130,18 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     </div> */}
     {/* Third Row: OnChain Activities & Display */}
     <div className="col-span-12 md:col-span-7 flex flex-col">
-      <OnChainActivities 
-        refreshKey={refreshKey} 
-        onAssetSelect={handleAssetSelect} 
-        selectedAsset={selectedAsset} 
-        onFirstAssetLoad={handleFirstAssetLoad} 
-        onPriceChartRequest={handlePriceChartRequest} 
+      <OnChainActivities
+        refreshKey={refreshKey}
+        onAssetSelect={handleAssetSelect}
+        selectedAsset={selectedAsset}
+        onFirstAssetLoad={handleFirstAssetLoad}
+        onPriceChartRequest={handlePriceChartRequest}
         onBalanceChartRequest={handleBalanceChartRequest}
         activeChartType={showPriceChart ? chartType : null}
         activeChartAsset={showPriceChart ? chartAsset : null}
         connectedWallets={connectedWallets}
         onLogoCacheUpdate={handleLogoCacheUpdate}
+        wallets={wallets}
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">

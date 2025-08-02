@@ -41,13 +41,21 @@ interface OnChainActivitiesProps {
   activeChartAsset?: Asset | null;
   connectedWallets?: number;
   onLogoCacheUpdate?: (logoCache: Record<string, string>) => void;
+  // Add wallet data props to avoid duplicate fetching
+  wallets?: {
+    eth: string[];
+    sol: string[];
+    btc: string[];
+    tron: string[];
+    ton: string[];
+  };
 }
 
 type AssetSentimentArrayMap = {
   [symbol: string]: AssetSentiMentScore[];
 };
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -63,7 +71,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
 
   useEffect(() => {
-    if (!twitterId) return;
+    if (!twitterId || !wallets) return;
     let retryInterval: NodeJS.Timeout | null = null;
     const fetchAssets = async (assetSentiMentScoreList: AssetSentimentArrayMap, totalScore: number) => {
       let LocalScore = totalScore || 0;
@@ -75,15 +83,28 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           console.log("Asset Sentiment Score List:", assetSentiMentScoreList['sol']);
         }
         setLoading(true);
-        // 1. Fetch all wallets for the user
-        const userId = (session?.user as any)?.id || '';
-        const walletsRes = await axios.get(`/api/wallets?user_id=${userId}`);
-        const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
+// <<<<<<< HEAD
+//         // 1. Fetch all wallets for the user
+//         const userId = (session?.user as any)?.id || '';
+//         const walletsRes = await axios.get(`/api/wallets?user_id=${userId}`);
+//         const walletsArr = ((walletsRes.data as any).wallets || []) as Array<{walletAddress: string, chain: string}>;
+// =======
+        
+        // Use the wallets data passed from parent instead of fetching again
+        const allWallets = [
+          ...wallets.eth.map(walletAddress => ({ walletAddress, chain: 'eth' })),
+          ...wallets.sol.map(walletAddress => ({ walletAddress, chain: 'sol' })),
+          ...wallets.btc.map(walletAddress => ({ walletAddress, chain: 'btc' })),
+          ...wallets.tron.map(walletAddress => ({ walletAddress, chain: 'tron' })),
+          ...wallets.ton.map(walletAddress => ({ walletAddress, chain: 'ton' })),
+        ];
+        
+// >>>>>>> 3bd6b8eedb3b14574463e593aa8f758fa01bef8d
         // 2. For each wallet, fetch balances
         let allTokens: Asset[] = [];
         let uniqueSymbols = new Set<string>();
         
-        for (const w of walletsArr) {
+        for (const w of allWallets) {
           if (!w.walletAddress || w.walletAddress.trim() === '') {
             continue;
           }
@@ -159,7 +180,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             }
           }
         }
-
+        console.log("All tokens fetched:", allTokens.length, "Unique symbols:", uniqueSymbols.size);
         // 3. INSTANT DISPLAY: Show balances immediately without waiting for logos
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
         setAssets(allTokens);
@@ -192,14 +213,22 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
-  }, [twitterId, refreshKey]);
+  }, [twitterId, refreshKey, wallets]);
 
+  // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
     setAssets(prevAssets => prevAssets.map(asset => {
       const sentiment = sentimentCache[asset.symbol.toLowerCase()];
       return sentiment !== undefined ? { ...asset, sentiment } : asset;
     }));
   }, [sentimentCache]);
+
+  // Log cache statistics on mount
+  // useEffect(() => {
+  //   // Log cache statistics
+  //   const cachedLogos = getCachedLogos();
+  //   console.log(`Logo cache: ${Object.keys(cachedLogos).length} logos loaded from localStorage`);
+  // }, []);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {

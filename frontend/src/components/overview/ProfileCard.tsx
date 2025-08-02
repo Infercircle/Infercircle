@@ -21,13 +21,13 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
       const fetchEliteFollowers = async () => {
         if (!session || status !== "authenticated") return;
         const user = session.user as User;
-        if (!user || !user.id) {
+        if (!user || !user.twitterId) {
           return;
         }
         setEliteLoading(true);
         setEliteError(null);
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
-        const url = `${API_BASE}/elite-curators/elite-followers/${user.id}`;
+        const url = `${API_BASE}/elite-curators/elite-followers/${user.twitterId}`;
         try {
           const res = await fetch(url);
           let data: any = {};
