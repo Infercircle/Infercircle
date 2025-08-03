@@ -3,21 +3,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiPlay, FiFileText, FiMessageSquare, FiClock, FiUsers, FiCopy, FiX, FiCheckCircle, FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
 import { FaSquareXTwitter } from 'react-icons/fa6';
+import { marked } from 'marked';
 
 interface SpaceResult {
-  id: string;
-  title: string;
-  host: string;
-  participants: number;
-  duration: string;
-  transcript: string;
+  space_id?: string;
+  broadcast_id?: string;
   summary: string;
-  timestamp: string;
-  speakers: Array<{
-    name: string;
-    handle: string;
-    pfp: string;
-  }>;
+  transcript: string;
+  metadata: {
+    confidence: number;
+    speakers: number;
+    chapters: number;
+  };
+  download?: {
+    file_path: string;
+    file_size: number;
+    duration: number;
+  };
 }
 
 // Typewriter component
@@ -28,7 +30,8 @@ function Typewriter({ text, speed = 25, className = "" }: { text: string; speed?
     if (!text) return;
     let i = 0;
     const type = () => {
-      setDisplayed(text.slice(0, i + 1));
+      const currentText = text.slice(0, i + 1);
+      setDisplayed(currentText);
       i++;
       if (i < text.length) {
         setTimeout(type, speed);
@@ -37,11 +40,27 @@ function Typewriter({ text, speed = 25, className = "" }: { text: string; speed?
     type();
     return () => {};
   }, [text, speed]);
-  return <span className={className}>{displayed}</span>;
+  
+  // Configure marked options for better rendering
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+  
+  // Render markdown for the displayed text
+  const renderedContent = marked.parse(displayed);
+  
+  return (
+    <div 
+      className={className}
+      dangerouslySetInnerHTML={{ __html: renderedContent }}
+    />
+  );
 }
 
 export default function SpacesSummarizerPage() {
-  const [spaceUrl, setSpaceUrl] = useState('');
+  const [url, setUrl] = useState('');
+  const [contentType, setContentType] = useState<'space' | 'broadcast'>('space');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'transcript' | 'summary'>('summary');
   const [result, setResult] = useState<SpaceResult | null>(null);
@@ -50,83 +69,52 @@ export default function SpacesSummarizerPage() {
   const [transcriptFadeKey, setTranscriptFadeKey] = useState(0);
   const [showInstructions, setShowInstructions] = useState(true);
   const [copiedParagraphIndex, setCopiedParagraphIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   // Finder state for per-mention navigation
   const [transcriptSearch, setTranscriptSearch] = useState("");
   const [transcriptMentions, setTranscriptMentions] = useState<{ paragraph: number; match: number; }[]>([]);
   const [currentMention, setCurrentMention] = useState(0);
   const transcriptRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const mockSpaceResult: SpaceResult = {
-    id: '1a2b3c4d5e6f',
-    title: 'The Future of Web3 and DeFi in 2024',
-    host: '@crypto_expert',
-    participants: 1250,
-    duration: '1h 23m',
-    transcript: `[00:00:00] Host: Welcome everyone to today's space about the future of Web3 and DeFi in 2024. We have some amazing speakers joining us today.
-
-[00:02:15] Speaker 1: Thanks for having me. I think 2024 is going to be a pivotal year for DeFi. We're seeing institutional adoption like never before.
-
-[00:05:30] Speaker 2: Absolutely agree. The regulatory clarity we're getting is really helping with mainstream adoption. But we need to focus on user experience.
-
-[00:08:45] Host: Great point about UX. What specific trends are you seeing in the DeFi space right now?
-
-[00:12:20] Speaker 1: Real yield farming is making a comeback, but with much better risk management. We're also seeing a lot of innovation in cross-chain solutions.
-
-[00:15:10] Speaker 2: And let's not forget about the rise of social DeFi. Platforms that combine social features with DeFi are gaining traction.
-
-[00:18:30] Host: What about the challenges? What should developers and users be aware of?
-
-[00:22:15] Speaker 1: Security remains the biggest concern. We need better auditing standards and insurance solutions.
-
-[00:25:40] Speaker 2: And scalability. Layer 2 solutions are helping, but we need more innovation here.
-
-[00:28:55] Host: Excellent insights everyone. Let's take some questions from the audience...`,
-    summary: `This Twitter Space discussed the future of Web3 and DeFi in 2024, featuring insights from industry experts. Key topics included:
-
-• Institutional adoption reaching new heights in 2024
-• Regulatory clarity driving mainstream adoption
-• Focus on improving user experience in DeFi platforms
-• Real yield farming making a comeback with better risk management
-• Innovation in cross-chain solutions
-• Rise of social DeFi platforms combining social features with DeFi
-• Security and scalability as major challenges
-• Need for better auditing standards and insurance solutions
-• Layer 2 solutions helping with scalability but requiring more innovation
-
-The discussion highlighted both opportunities and challenges facing the DeFi ecosystem as it moves toward mainstream adoption.`,
-    timestamp: '2024-01-15T14:30:00Z',
-    speakers: [
-      {
-        name: 'Crypto Expert',
-        handle: '@crypto_expert',
-        pfp: 'https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg'
-      },
-      {
-        name: 'DeFi Analyst',
-        handle: '@defi_analyst',
-        pfp: 'https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg'
-      },
-      {
-        name: 'Web3 Builder',
-        handle: '@web3_builder',
-        pfp: 'https://pbs.twimg.com/profile_images/1875319786856427520/727-k6ov.jpg'
-      }
-    ]
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spaceUrl.trim()) return;
+    if (!url.trim()) return;
 
     setResult(null); // Clear previous result immediately
     setPersistedSummary(""); // Clear persisted summary
+    setError(null); // Clear previous errors
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setResult(mockSpaceResult);
+    try {
+      const endpoint = contentType === 'space' 
+        ? '/api/twitterspaces/spaces/summarize'
+        : '/api/twitterspaces/broadcasts/summarize';
+      
+      const body = contentType === 'space' 
+        ? { space_url: url.trim(), is_ended: false }
+        : { broadcast_url: url.trim() };
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process space');
+      }
+
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      console.error('Error processing space:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process space');
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   // When a new result is set, update persistedSummary
@@ -184,16 +172,26 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
     setCurrentMention((prev) => (prev - 1 + transcriptMentions.length) % transcriptMentions.length);
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   const handleCopy = async () => {
     if (!result) return;
     
     const contentToCopy = activeTab === 'summary' 
-      ? `Space Summary: ${result.title}\n\n${result.summary}`
-      : `Space Transcript: ${result.title}\n\n${result.transcript}`;
+      ? `Space Summary\n\n${result.summary}`
+      : `Space Transcript\n\n${result.transcript}`;
     
     try {
       await navigator.clipboard.writeText(contentToCopy);
@@ -221,33 +219,75 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <span className="text-2xl sm:text-4xl text-white font-bold">𝕏</span>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Space Summarizer</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Content Summarizer</h1>
           </div>
           <p className="text-gray-400 text-sm sm:text-base">
-            Get AI-powered transcriptions and summaries of Twitter Spaces. Simply paste a Twitter Space URL below.
+            Get AI-powered transcriptions and summaries of Twitter Spaces and Broadcasts. Simply paste a URL below.
           </p>
         </div>
 
-                {/* Input Form */}
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-900/20 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
+            <div className="flex items-center gap-2 text-red-400">
+              <FiX className="w-4 h-4" />
+              <span className="text-sm sm:text-base">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Input Form */}
         <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Content Type Toggle */}
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm font-medium text-gray-300">Content Type:</label>
+              <div className="flex bg-[#181A20] rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => setContentType('space')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    contentType === 'space'
+                      ? 'bg-[#A259FF] text-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  Spaces
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContentType('broadcast')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    contentType === 'broadcast'
+                      ? 'bg-[#A259FF] text-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  Broadcasts
+                </button>
+              </div>
+            </div>
+            
             <div>
-              <label htmlFor="spaceUrl" className="block text-sm font-medium text-gray-300 mb-2">
-                Twitter Space URL
+              <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-2">
+                {contentType === 'space' ? 'Twitter Space URL' : 'Twitter Broadcast URL'}
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="url"
-                  id="spaceUrl"
-                  value={spaceUrl}
-                  onChange={(e) => setSpaceUrl(e.target.value)}
-                  placeholder="https://twitter.com/i/spaces/..."
+                  id="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder={contentType === 'space' 
+                    ? "https://twitter.com/i/spaces/... or https://x.com/i/spaces/..."
+                    : "https://twitter.com/i/broadcasts/... or https://x.com/i/broadcasts/..."
+                  }
                   className="flex-1 px-3 sm:px-4 py-3 border border-[#23272b] bg-[#181A20] text-white rounded-lg placeholder-gray-500 text-sm sm:text-base"
                   required
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !spaceUrl.trim()}
+                  disabled={isLoading || !url.trim()}
                   className="px-4 sm:px-6 py-3 bg-[#A259FF] text-white rounded-lg hover:bg-[#8B4DFF] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
                 >
                   {isLoading ? (
@@ -258,7 +298,7 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
                   ) : (
                     <>
                       <FiPlay className="w-4 h-4" />
-                      Summarize Space
+                      Summarize {contentType === 'space' ? 'Space' : 'Broadcast'}
                     </>
                   )}
                 </button>
@@ -274,24 +314,33 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
             <div className="bg-gradient-to-r from-[rgba(24,26,32,0.2)] to-[rgba(42,46,53,0.2)] p-4 sm:p-6 border-b border-[#23272b]">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-0">
                 <div className="flex-1">
-                  <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">{result.title}</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                    {contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} {result.space_id || result.broadcast_id}
+                  </h2>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400">
                     <div className="flex items-center gap-1">
                       <FaSquareXTwitter className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{result.host}</span>
+                      <span>{contentType === 'space' ? 'Space' : 'Broadcast'} ID: {result.space_id || result.broadcast_id}</span>
                     </div>
+                    {result.download && (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <FiClock className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span>{formatDuration(result.download.duration)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FiFileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span>{(result.download.file_size / 1024 / 1024).toFixed(1)} MB</span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex items-center gap-1">
                       <FiUsers className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{result.participants.toLocaleString()} participants</span>
+                      <span>{result.metadata.speakers} speakers</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <FiClock className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{result.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FiFileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">{formatTimestamp(result.timestamp)}</span>
-                      <span className="sm:hidden">{new Date(result.timestamp).toLocaleDateString()}</span>
+                      <FiMessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>{result.metadata.chapters} chapters</span>
                     </div>
                   </div>
                 </div>
@@ -339,53 +388,38 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
                 <div className="space-y-4">
                   <div className="fade-in bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-[#A259FF] mb-3 text-base sm:text-lg">AI Summary</h3>
-                    <p className="text-gray-300 whitespace-pre-line text-sm sm:text-base leading-relaxed">
+                    <div className="text-gray-300 text-sm sm:text-base leading-relaxed prose prose-invert max-w-none">
                       {result && !persistedSummary ? (
-                        <Typewriter text={result.summary} speed={22} />
+                        <Typewriter 
+                          text={result.summary} 
+                          speed={22} 
+                          className="prose prose-invert max-w-none"
+                        />
                       ) : (
-                        <span>{persistedSummary}</span>
+                        <div dangerouslySetInnerHTML={{ 
+                          __html: marked.parse(persistedSummary) 
+                        }} />
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Key Topics</h4>
-                      <ul className="text-sm sm:text-base text-gray-400 space-y-1">
-                        <li>• Web3 & DeFi Trends</li>
-                        <li>• Institutional Adoption</li>
-                        <li>• Regulatory Clarity</li>
-                        <li>• User Experience</li>
-                      </ul>
+                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Confidence</h4>
+                      <p className="text-sm sm:text-base text-gray-400">
+                        {(result.metadata.confidence * 100).toFixed(1)}%
+                      </p>
                     </div>
                     <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
                       <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Speakers</h4>
-                      <div className="space-y-2">
-                        {result.speakers && result.speakers.map((speaker, index) => (
-                          <a
-                            key={index}
-                            href={`https://twitter.com/${speaker.handle.replace('@', '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-[rgba(139,77,255,0.1)] transition-colors cursor-pointer"
-                          >
-                            <img
-                              src={speaker.pfp}
-                              alt={speaker.name}
-                              className="w-6 h-6 rounded-full object-cover"
-                            />
-                            <span className="text-sm text-gray-300 hover:text-white transition-colors">
-                              {speaker.name}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {speaker.handle}
-                            </span>
-                          </a>
-                        ))}
-                      </div>
+                      <p className="text-sm sm:text-base text-gray-400">
+                        {result.metadata.speakers} speakers detected
+                      </p>
                     </div>
                     <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Duration</h4>
-                      <p className="text-sm sm:text-base text-gray-400">{result.duration}</p>
+                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Chapters</h4>
+                      <p className="text-sm sm:text-base text-gray-400">
+                        {result.metadata.chapters} chapters identified
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -470,10 +504,11 @@ The discussion highlighted both opportunities and challenges facing the DeFi eco
             </button>
             <h3 className="font-semibold text-[#A259FF] mb-2 text-sm sm:text-base">How to use:</h3>
             <ol className="text-gray-300 space-y-2 text-xs sm:text-sm">
-              <li>1. Find a recorded Twitter Space you want to analyze (live or unrecorded spaces are not supported)</li>
-              <li>2. Copy the URL from the space (e.g., https://twitter.com/i/spaces/1a2b3c4d5e6f)</li>
-              <li>3. Paste the URL in the input field above</li>
-              <li>4. Click 'Analyze Space' to get AI-powered transcription and summary</li>
+              <li>1. Choose the content type (Spaces or Broadcasts)</li>
+              <li>2. Find a Twitter Space or Broadcast you want to analyze</li>
+              <li>3. Copy the URL (e.g., https://twitter.com/i/spaces/1a2b3c4d5e6f or https://x.com/i/broadcasts/1a2b3c4d5e6f)</li>
+              <li>4. Paste the URL in the input field above</li>
+              <li>5. Click 'Summarize' to get AI-powered transcription and summary</li>
             </ol>
           </div>
         )}

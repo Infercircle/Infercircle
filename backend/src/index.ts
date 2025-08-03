@@ -45,7 +45,7 @@ app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   
   // Start Elite Curators automation after server starts
@@ -56,3 +56,8 @@ app.listen(port, () => {
   //   });
   // }, 5000); // Wait 5 seconds for server to fully start
 });
+
+// Set server timeout to a very high value (no timeout)
+server.timeout = 0;
+server.keepAliveTimeout = 0;
+server.headersTimeout = 0;

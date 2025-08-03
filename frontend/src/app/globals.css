@@ -113,3 +113,96 @@ min-height: 2px;
     opacity: 1;
   }
 }
+
+/* Markdown styling for better rendering */
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+  color: inherit !important;
+  font-weight: 600 !important;
+  margin-top: 1.5em !important;
+  margin-bottom: 0.5em !important;
+  text-decoration: none !important;
+}
+
+.prose-invert h1 {
+  font-size: 1.5em !important;
+}
+
+.prose-invert h2 {
+  font-size: 1.3em !important;
+}
+
+.prose-invert h3 {
+  font-size: 1.1em !important;
+}
+
+.prose-invert strong {
+  color: inherit !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+.prose-invert em {
+  font-style: italic !important;
+  text-decoration: none !important;
+}
+
+.prose-invert ul,
+.prose-invert ol {
+  margin-left: 1.5em !important;
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.prose-invert li {
+  margin-bottom: 0.25em !important;
+}
+
+.prose-invert blockquote {
+  border-left: 2px solid #666 !important;
+  padding-left: 1em !important;
+  margin: 1em 0 !important;
+  font-style: italic !important;
+  color: inherit !important;
+}
+
+.prose-invert code {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  padding: 0.125em 0.25em !important;
+  border-radius: 0.25em !important;
+  font-family: monospace !important;
+  color: inherit !important;
+}
+
+.prose-invert a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.prose-invert a:hover {
+  text-decoration: underline !important;
+}
+
+/* Fix for emoji and special characters */
+.prose-invert {
+  line-height: 1.6 !important;
+}
+
+.prose-invert p {
+  margin-bottom: 1em !important;
+  text-decoration: none !important;
+}
+
+/* Remove any underlines from all elements */
+.prose-invert * {
+  text-decoration: none !important;
+}
+
+/* Hide horizontal rules */
+.prose-invert hr {
+  display: none !important;
+}

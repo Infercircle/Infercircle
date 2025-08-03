@@ -25,7 +25,7 @@ const sidebarItems = [
       { label: "Token Index", icon: FiBarChart2, href: "/dashboard/token-index" },
       { label: "Signal Index", icon: FiTrendingUp, href: "/dashboard/signal-index" },
       { label: "Elite Curators", icon: FiUsers, href: "/dashboard/ct-nerds" },
-      { label: "Spaces Summarizer", icon: FaSquareXTwitter, href: "/dashboard/spaces-summarizer" },
+      { label: "Content Summarizer", icon: FaSquareXTwitter, href: "/dashboard/spaces-summarizer" },
     ],
   },
   {
