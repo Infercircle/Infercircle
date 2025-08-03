@@ -40,3 +40,7 @@ export async function updateUserInvite(id: string, inviteAccepted: boolean) {
     },
   });
 }
+
+export async function getAllAssetSentimentScores() {
+  return db.assetSentiMentScore.findMany();
+}

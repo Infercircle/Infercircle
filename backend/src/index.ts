@@ -12,7 +12,7 @@ import eliteCuratorsRoutes from "./routes/eliteCurators";
 import { automationManager } from "./automation";
 import suggestionsRoutes from "./routes/suggestions";
 import balancesRoutes from "./routes/balances";
-
+import { startMindShareCalculation } from "./lib/worker";
 dotenv.config();
 
 const app: Application = express();
@@ -45,7 +45,13 @@ app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });
 
-const server = app.listen(port, () => {
+
+if(process.env.NODE_ENV === "PRODUCTION") {
+  startMindShareCalculation();
+}
+setInterval(startMindShareCalculation, 24 * 60 * 60 * 1000);
+
+app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   
   // Start Elite Curators automation after server starts
@@ -57,7 +63,3 @@ const server = app.listen(port, () => {
   // }, 5000); // Wait 5 seconds for server to fully start
 });
 
-// Set server timeout to a very high value (no timeout)
-server.timeout = 0;
-server.keepAliveTimeout = 0;
-server.headersTimeout = 0;

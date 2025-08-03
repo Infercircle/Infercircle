@@ -335,7 +335,7 @@ export default function TokenSalesPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Token Sales Dashboard</h1>
-          <p className="text-[#A3A3A3]">Discover and track ICOs, IDOs, IEOs, and other token sales</p>
+          <p className="text-[#A3A3A3]">Discover and track Initial Coin Offerings (ICOs), Initial DEX Offerings (IDOs), Initial Exchange Offerings (IEOs), and other token sales</p>
         </div>
 
         {/* Search and Filters */}
