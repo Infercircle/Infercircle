@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOption';
 import { generateInviteCode, getAllInviteCodes } from '@/actions/queries';
 
-const AUTHORIZED_EMAILS = ['Infercircle@gmail.com', 'kesharwanis084@gmail.com'];
+const AUTHORIZED_EMAILS = ['infercircle@gmail.com', 'kesharwanis084@gmail.com'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
     }
 
-    if (!AUTHORIZED_EMAILS.includes(session.user.email)) {
+    if (!AUTHORIZED_EMAILS.includes(session.user.email.toLocaleLowerCase())) {
       return NextResponse.json({ error: 'Unauthorized - Invalid email' }, { status: 403 });
     }
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
     }
 
-    if (!AUTHORIZED_EMAILS.includes(session.user.email)) {
+    if (!AUTHORIZED_EMAILS.includes(session.user.email.toLocaleLowerCase())) {
       return NextResponse.json({ error: 'Unauthorized - Invalid email' }, { status: 403 });
     }
 

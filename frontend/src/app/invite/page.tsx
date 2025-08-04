@@ -107,7 +107,7 @@ export default function InviteCodePage() {
     );
   }
 
-  if (!session?.user?.email || !authorizedEmails.includes(session.user.email)) {
+  if (!session?.user?.email || !authorizedEmails.includes(session.user.email.toLocaleLowerCase())) {
     return (
       <div className="min-h-screen bg-[#0c0e12] flex items-center justify-center">
         <div className="text-white">Unauthorized access</div>
@@ -151,7 +151,7 @@ export default function InviteCodePage() {
                 <Label htmlFor="username" className="text-white">Username (Optional)</Label>
                 <Input
                   id="username"
-                  placeholder="username"
+                  placeholder="Twitter username"
                   value={newCodeData.username}
                   onChange={(e) => setNewCodeData({ ...newCodeData, username: e.target.value })}
                   className="bg-[#23272b] border-[#2d3338] text-white placeholder-gray-400"
