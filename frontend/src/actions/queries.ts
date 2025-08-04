@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { nanoid } from "nanoid";
 
 export async function getUserById(id: string) {
   return db.user.findUnique({
@@ -43,4 +44,26 @@ export async function updateUserInvite(id: string, inviteAccepted: boolean) {
 
 export async function getAllAssetSentimentScores() {
   return db.assetSentiMentScore.findMany();
+}
+
+export async function generateInviteCode(email?: string | null, username?: string | null) {
+  // Generate a unique invite code using nanoid
+  const code = nanoid(12).toUpperCase();
+  
+  return db.inviteCode.create({
+    data: {
+      InviteCode: code,
+      email,
+      username,
+      used: false,
+    },
+  });
+}
+
+export async function getAllInviteCodes() {
+  return db.inviteCode.findMany({
+    orderBy: {
+      InviteCode: 'desc'
+    }
+  });
 }
