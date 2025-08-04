@@ -127,7 +127,7 @@ const IcoIdo = () => {
       </div>
       <div className="flex items-center justify-between mb-2">
         <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
-          <div className="text-lg font-semibold text-white">ICO / IDO</div>
+          <div className="text-base font-semibold text-white">ICO / IDO</div>
           <FiExternalLink />
         </Link>
         <div className="relative dropdown-container">

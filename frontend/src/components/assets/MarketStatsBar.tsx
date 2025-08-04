@@ -10,7 +10,7 @@ const stats = [
 ];
 
 const MarketStatsBar: React.FC = () => (
-  <div className="flex flex-wrap items-center gap-6 text-xs text-gray-400 px-2 py-2 pb-6">
+  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 px-2 py-2 pb-4">
     {stats.map((stat, idx) => (
       <span key={idx} className="flex items-center gap-1">
         <span className="font-semibold text-gray-300">{stat.label}:</span>

@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
   };
 
   return (
-    <div className="grid grid-cols-12 gap-6 h-full w-full pb-4">
+          <div className="grid grid-cols-12 gap-4 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}
       <div className="col-span-12">
         <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} connectedWallets={connectedWallets} />

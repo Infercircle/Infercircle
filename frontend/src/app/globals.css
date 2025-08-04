@@ -129,15 +129,15 @@ min-height: 2px;
 }
 
 .prose-invert h1 {
-  font-size: 1.5em !important;
-}
-
-.prose-invert h2 {
   font-size: 1.3em !important;
 }
 
-.prose-invert h3 {
+.prose-invert h2 {
   font-size: 1.1em !important;
+}
+
+.prose-invert h3 {
+  font-size: 1em !important;
 }
 
 .prose-invert strong {

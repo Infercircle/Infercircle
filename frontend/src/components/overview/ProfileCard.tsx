@@ -61,7 +61,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
     const user = session.user as User;
 
   return (
-    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center md:justify-between gap-3 md:gap-0 w-full min-h-[100px] md:min-h-[120px] shadow-lg">
+    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center md:justify-between gap-3 md:gap-0 w-full min-h-[90px] md:min-h-[100px] shadow-lg">
       {/* Mobile Layout */}
       <div className="flex items-start gap-3 w-full md:hidden">
         {/* Avatar */}
@@ -76,7 +76,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         <div className="flex flex-col flex-1 min-w-0">
           {/* Name and username (single line, truncate) */}
           <div className="flex items-center min-w-0">
-            <span className="text-base sm:text-lg font-semibold text-white truncate whitespace-nowrap max-w-[60%]">{user?.name}</span>
+            <span className="text-sm sm:text-base font-semibold text-white truncate whitespace-nowrap max-w-[60%]">{user?.name}</span>
             {user.username && <span className="text-gray-400 text-xs sm:text-sm truncate whitespace-nowrap ml-1 max-w-[40%]">@{user.username}</span>}
           </div>
           {/* Follows metrics */}
@@ -123,7 +123,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         </div>
         {/* User info */}
         <div>
-          <div className="text-lg font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-base">@{user.username}</span>}</div>
+          <div className="text-base font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-sm">@{user.username}</span>}</div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
             {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
             {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}

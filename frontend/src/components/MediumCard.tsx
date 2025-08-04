@@ -77,7 +77,7 @@ export default function MediumCard() {
             className="block bg-[#181c20] rounded-lg shadow p-4 border border-[#23272b] hover:bg-[#23272b]/60 transition"
           >
             <div className="flex items-center mb-2">
-              <span className="font-semibold text-lg text-gray-100">
+              <span className="font-semibold text-base text-gray-100">
                 {article.title}
               </span>
             </div>

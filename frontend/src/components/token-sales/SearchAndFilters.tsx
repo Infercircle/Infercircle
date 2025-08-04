@@ -278,9 +278,9 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
 
       {/* Advanced Filters Panel */}
       {showAdvancedFilters && (
-        <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6">
+        <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Advanced Filters</h3>
+            <h3 className="text-base font-semibold text-white">Advanced Filters</h3>
             {getActiveFilterCount() > 0 && (
               <button
                 onClick={clearAllFilters}

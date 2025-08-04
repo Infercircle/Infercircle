@@ -297,19 +297,19 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
 
   return (
     <div className="w-full max-w-xl">
-      <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-        <FaWallet className="text-2xl" />
+      <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <FaWallet className="text-xl" />
         My Wallets
       </h2>
       {/* No tabs, just inputted wallets */}
       {/* Wallet Inputs */}
       <div className="space-y-5">
         {/* Ethereum Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
+        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">Ethereum wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingEth(true)} aria-label="Add Ethereum address">
-              <FiPlus className="text-lg text-[#A259FF]" />
+              <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
           {/* List all eth addresses */}
@@ -372,11 +372,11 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
           </div>
         </div>
         {/* Solana Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
+        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">Solana wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingSol(true)} aria-label="Add Solana address">
-              <FiPlus className="text-lg text-[#A259FF]" />
+              <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
           {/* List all sol addresses */}
@@ -440,11 +440,11 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
         </div>
 
         {/* Bitcoin Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
+        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">Bitcoin wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingBtc(true)} aria-label="Add Bitcoin address">
-              <FiPlus className="text-lg text-[#A259FF]" />
+              <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
           <div className="space-y-2">
@@ -510,7 +510,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">TRON wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingTron(true)} aria-label="Add TRON address">
-              <FiPlus className="text-lg text-[#A259FF]" />
+              <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
           <div className="space-y-2">
@@ -572,11 +572,11 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
         </div>
 
         {/* TON Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
+        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">TON wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingTon(true)} aria-label="Add TON address">
-              <FiPlus className="text-lg text-[#A259FF]" />
+              <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
           <div className="space-y-2">

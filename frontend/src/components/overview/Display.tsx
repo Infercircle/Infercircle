@@ -505,20 +505,21 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displayLogo = selectedAsset?.icon || sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
-  // Show message if no asset is selected
+  // Show message if no wallets are connected
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-6 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
-          <span className="text-gray-500 italic text-base">No asset to display</span>
+          <span className="text-gray-500 italic text-base">Add a wallet to view asset details</span>
         </div>
       </div>
     );
   }
-  // Show loading state if no asset is selected
+  
+  // Show loading state if no asset is selected but wallets are connected
   if (!selectedAsset) {
     return (
-      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-6 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
           <span className="text-purple-400 animate-pulse text-5xl">.....</span>
         </div>
@@ -527,7 +528,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-6 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-hidden relative">
+    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-hidden relative">
       {/* Main Content */}
       <div className={`transition-opacity duration-500 overflow-y-auto ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
@@ -538,7 +539,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
               <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
           )}
           <div>
-            <div className="text-white font-semibold text-lg flex items-center gap-2">
+            <div className="text-white font-semibold text-base flex items-center gap-2">
                 {displayName} <span className="text-xs text-[#A3A3A3] font-normal">{displaySymbol}</span>
                 {displayRank && <span className="bg-[#23262F] text-xs px-2 py-0.5 rounded-full ml-2">{displayRank}</span>}
               </div>
@@ -692,7 +693,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           ) : chartError ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-red-400 text-lg font-semibold mb-2">Chart Error</div>
+                <div className="text-red-400 text-base font-semibold mb-2">Chart Error</div>
                 <div className="text-[#666] text-sm">{chartError}</div>
               </div>
             </div>
@@ -830,7 +831,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
-                      <div className="text-[#A259FF] text-lg font-semibold mb-2">No Chart Data</div>
+                      <div className="text-[#A259FF] text-base font-semibold mb-2">No Chart Data</div>
                       <div className="text-[#666] text-sm">Unable to load price data for this asset</div>
                     </div>
                   </div>
@@ -840,7 +841,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-[#A259FF] text-lg font-semibold mb-2">Price Chart</div>
+                <div className="text-[#A259FF] text-base font-semibold mb-2">Price Chart</div>
                 <div className="text-[#666] text-sm">
                   Chart area - ready for integration
                 </div>

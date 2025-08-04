@@ -66,11 +66,11 @@ export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeM
       <Card className="w-full max-w-md bg-[#181c20] border border-[#23272b] shadow-2xl min-w-96">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-[#A259FF]/10 rounded-full flex items-center justify-center">
-              <FaLock className="absolute text-2xl text-gray-300" />
+            <div className="w-12 h-12 bg-[#A259FF]/10 rounded-full flex items-center justify-center">
+              <FaLock className="absolute text-xl text-gray-300" />
             </div>
           </div>
-          <CardTitle className="text-white text-xl">Hii {session?.user.name}!</CardTitle>
+          <CardTitle className="text-white text-lg">Hii {session?.user.name}!</CardTitle>
           <CardDescription className="text-gray-400 text-sm leading-relaxed">
             {"We are in beta, please enter your invite code to access the platform. If you don't have one, please contact support."}
           </CardDescription>

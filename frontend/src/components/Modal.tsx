@@ -28,7 +28,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
       onClick={onClose} // Handle outside click here
     >
       <div
-        className="bg-[#181A20] rounded-2xl p-6 shadow-xl relative w-full max-w-[550px] max-w-[90vw] w-full mx-4 border border-[#23272b]"
+        className="bg-[#181A20] rounded-2xl p-4 shadow-xl relative w-full max-w-[550px] max-w-[90vw] w-full mx-4 border border-[#23272b]"
         onClick={(e) => e.stopPropagation()} // Prevent click from bubbling
         style={{ maxHeight: '60vh' }}
       >

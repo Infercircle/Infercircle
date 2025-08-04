@@ -96,10 +96,10 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         {[...Array(8)].map((_, idx) => (
           <div key={idx} className="animate-pulse">
-            <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6">
+            <div className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-4">
               <div className="h-12 w-12 bg-[#23262F] rounded-full mb-4"></div>
               <div className="h-4 bg-[#23262F] rounded mb-2"></div>
               <div className="h-3 bg-[#23262F] rounded mb-4 w-2/3"></div>
@@ -118,7 +118,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
   return (
     <>
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         {projects.map((project) => {
           const projectStatus = getProjectStatus(project);
           const daysInfo = getDaysRemaining(project.till, projectStatus.status);
@@ -126,7 +126,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
           return (
             <div
               key={project.key}
-              className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-6 hover:border-[#A259FF]/40 transition-all duration-200 hover:shadow-lg hover:shadow-[#A259FF]/10 relative cursor-pointer"
+              className="bg-[rgba(24,26,32,0.9)] border border-[#23262F] rounded-lg p-4 hover:border-[#A259FF]/40 transition-all duration-200 hover:shadow-lg hover:shadow-[#A259FF]/10 relative cursor-pointer"
             >
               {/* Status Indicator */}
               <div className="absolute top-4 right-4">
@@ -145,7 +145,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
                     className="w-12 h-12 rounded-full"
                   />
                   <div>
-                    <h3 className="font-semibold text-white text-lg">{project.name}</h3>
+                    <h3 className="font-semibold text-white text-base">{project.name}</h3>
                     <p className="text-[#A3A3A3] text-sm">{project.symbol}</p>
                   </div>
                 </div>
@@ -270,7 +270,7 @@ const ProjectGrid: React.FC<ProjectGridProps> = ({
       {/* Empty State */}
       {projects.length === 0 && !loading && (
         <div className="text-center py-12">
-          <div className="text-[#A3A3A3] text-lg mb-2">No projects found</div>
+          <div className="text-[#A3A3A3] text-base mb-2">No projects found</div>
           <p className="text-[#A3A3A3] text-sm">Try adjusting your search or filters</p>
         </div>
       )}

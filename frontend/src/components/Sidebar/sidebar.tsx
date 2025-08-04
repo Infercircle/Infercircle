@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
       }`}
     >
       {/* Logo & Collapse Button */}
-      <div className="flex items-center justify-between px-3 py-[15px] transition-all duration-300 border-b border-[#2a2e35] bg-[rgba(17,20,22,0.4)] backdrop-blur-sm">
+      <div className="flex items-center justify-between px-2 py-3 transition-all duration-300 border-b border-[#2a2e35] bg-[rgba(17,20,22,0.4)] backdrop-blur-sm">
         {!collapsed ? (
           <Link href="/">
           <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
@@ -82,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             <Tippy content="Expand sidebar" placement="right">
               <div>
                 <BsLayoutSidebarInsetReverse
-                  className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
+                  className="w-4 h-4 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
                   onClick={() => setCollapsed(false)}
                 />
               </div>
@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
           <Tippy content="Collapse sidebar" placement="bottom">
             <div>
               <BsLayoutSidebarInset
-                className="w-5 h-5 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
+                className="w-4 h-4 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
                 style={{ cursor: 'w-resize' }}
                 onClick={() => setCollapsed(true)}
               />
@@ -109,11 +109,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             <Tippy key={`collapsed-${idx}`} content={item.label} placement="right">
               <Link href={item.href}>
                 <div
-                  className={`flex items-center justify-center p-2.5 mx-2 rounded cursor-pointer transition-all duration-200 ${
+                  className={`flex items-center justify-center p-2 mx-2 rounded cursor-pointer transition-all duration-200 ${
                     item.isActive ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99]"
                   }`}
                 >
-                  {React.createElement(item.icon, { className: "w-5 h-5" })}
+                  {React.createElement(item.icon, { className: "w-4 h-4" })}
                 </div>
               </Link>
             </Tippy>
@@ -143,7 +143,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                   onClick={() => toggleGroup(item.group)}
                 >
                   <span className="flex items-center gap-2">
-                    {React.createElement(item.icon, { className: "w-5 h-5" })}
+                    {React.createElement(item.icon, { className: "w-4 h-4" })}
                     {item.group}
                   </span>
                   <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
@@ -197,11 +197,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               <Tippy content={session.user?.name} placement="right">
                 <Link href="/dashboard/account">
                   <div
-                    className={`flex items-center justify-center py-2.5 px-6 rounded transition-all duration-200 ${
+                    className={`flex items-center justify-center py-2 px-4 rounded transition-all duration-200 ${
                       pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 cursor-pointer">
+                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer">
                       {session.user?.image && (
                         <img
                           src={session.user.image}
@@ -219,7 +219,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                   <div className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all duration-200 ${
                     pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
                   }`}>
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                       {session.user?.image && (
                         <img
                           src={session.user.image}
@@ -235,7 +235,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                     </div>
                     <Tippy content="Sign out" placement="top">
                       <FiLogOut 
-                        className="w-4 h-4 text-[#A3A3A3] hover:text-white transition-colors cursor-pointer" 
+                        className="w-3 h-3 text-[#A3A3A3] hover:text-white transition-colors cursor-pointer" 
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -255,7 +255,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                 <Tippy content={accountItem.label} placement="right">
                   <Link href={accountItem.href}>
                     <div
-                      className={`flex items-center justify-center py-2.5 px-6  rounded cursor-pointer transition-all duration-200 ${
+                      className={`flex items-center justify-center py-2 px-4 rounded cursor-pointer transition-all duration-200 ${
                         pathname === accountItem.href ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99]"
                       }`}
                     >
@@ -292,28 +292,28 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                 href="https://x.com/infercircle"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center py-1 px-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+                className="flex items-center justify-center py-1 px-4 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
               >
-                <span className="text-lg">𝕏</span>
+                <span className="text-base">𝕏</span>
               </a>
             </Tippy>
           ) : (
             <div className="flex justify-center gap-4 py-1">
+                              <a
+                  href="https://x.com/infercircle"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+                >
+                  <span className="text-base">𝕏</span>
+                </a>
               <a
-                href="https://x.com/infercircle"
+                href="https://docs.infercircle.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center w-8 h-8 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+                                  className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
               >
-                <span className="text-lg">𝕏</span>
-              </a>
-              <a
-                href="https://infercircle.gitbook.io/infercircle-docs/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-8 h-8 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
-              >
-                <SiGitbook className="w-5 h-5" />
+                                  <SiGitbook className="w-4 h-4" />
               </a>
             </div>
           )}

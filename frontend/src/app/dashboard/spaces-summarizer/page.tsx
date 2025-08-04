@@ -218,8 +218,8 @@ export default function SpacesSummarizerPage() {
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <span className="text-2xl sm:text-4xl text-white font-bold">𝕏</span>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Content Summarizer</h1>
+            <span className="text-xl sm:text-3xl text-white font-bold">𝕏</span>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Content Summarizer</h1>
           </div>
           <p className="text-gray-400 text-sm sm:text-base">
             Get AI-powered transcriptions and summaries of Twitter Spaces and Broadcasts. Simply paste a URL below.
@@ -237,7 +237,7 @@ export default function SpacesSummarizerPage() {
         )}
 
         {/* Input Form */}
-        <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
+        <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-3 sm:p-4 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Content Type Toggle */}
             <div className="flex items-center gap-4 mb-4">
@@ -288,7 +288,7 @@ export default function SpacesSummarizerPage() {
                 <button
                   type="submit"
                   disabled={isLoading || !url.trim()}
-                  className="px-4 sm:px-6 py-3 bg-[#A259FF] text-white rounded-lg hover:bg-[#8B4DFF] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
+                  className="px-3 sm:px-4 py-2 bg-[#A259FF] text-white rounded-lg hover:bg-[#8B4DFF] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm"
                 >
                   {isLoading ? (
                     <>
@@ -297,7 +297,7 @@ export default function SpacesSummarizerPage() {
                     </>
                   ) : (
                     <>
-                      <FiPlay className="w-4 h-4" />
+                      <FiPlay className="w-3 h-3" />
                       Summarize {contentType === 'space' ? 'Space' : 'Broadcast'}
                     </>
                   )}

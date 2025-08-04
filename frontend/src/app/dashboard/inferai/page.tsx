@@ -105,15 +105,15 @@ export default function InferAIPage() {
     <div className="h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-2xl mx-auto" style={{ transform: 'translateY(-150px)' }}>
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-3">
             <span>InferAI</span>
-            <GrRobot className="w-9 h-9 text-[#A259FF]" />
+            <GrRobot className="w-7 h-7 text-[#A259FF]" />
           </h1>
-          <p className="text-[#A3A3A3] text-lg">Your AI-powered Crypto Analysis Assistant</p>
+          <p className="text-[#A3A3A3] text-base">Your AI-powered Crypto Analysis Assistant</p>
         </div>
 
         <div className="relative">
-          <div className="bg-[#181A20] border border-[#23272b] rounded-2xl shadow-lg px-6 pt-2 pb-8 min-h-[60px] relative">
+          <div className="bg-[#181A20] border border-[#23272b] rounded-2xl shadow-lg px-4 pt-2 pb-6 min-h-[60px] relative">
             <textarea
               value={input}
               onChange={handleInputChange}
@@ -138,14 +138,14 @@ export default function InferAIPage() {
                 className="p-2 bg-transparent rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
                 tabIndex={-1}
               >
-                <FiPaperclip className="w-4 h-4 text-[#A3A3A3]" />
+                <FiPaperclip className="w-3 h-3 text-[#A3A3A3]" />
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!input.trim()}
                 className="p-2 bg-transparent disabled:bg-transparent disabled:cursor-not-allowed rounded-full transition-colors duration-200 flex items-center justify-center shadow-lg group cursor-pointer"
               >
-                <BsArrowUpCircleFill className={`w-7 h-7 transition-colors duration-200 ${!input.trim() ? 'text-[#46484d]' : 'text-[#A259FF] group-hover:text-[#8B4DFF]'}`} />
+                <BsArrowUpCircleFill className={`w-6 h-6 transition-colors duration-200 ${!input.trim() ? 'text-[#46484d]' : 'text-[#A259FF] group-hover:text-[#8B4DFF]'}`} />
               </button>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function InferAIPage() {
                   onClick={() => handleSuggestionClick(suggestion)}
                   className="w-full text-left px-4 py-3 hover:bg-[#23272b] transition-colors duration-150 border-b border-[#23272b] last:border-b-0 text-white cursor-pointer flex items-center gap-2"
                 >
-                  <FiSearch className="w-4 h-4 text-[#A3A3A3] flex-shrink-0" />
+                  <FiSearch className="w-3 h-3 text-[#A3A3A3] flex-shrink-0" />
                   {highlightMatch(suggestion, input)}
                 </button>
               ))}
