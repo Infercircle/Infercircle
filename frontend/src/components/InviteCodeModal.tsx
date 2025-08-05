@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 
 import { useRouter } from 'next/navigation';
 
-import { FaLock } from "react-icons/fa6";
+import { FaUser } from "react-icons/fa";
 import { useSession } from "next-auth/react";
 import { User } from "@prisma/client";
 import { useState } from "react";
@@ -63,14 +63,18 @@ export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeM
 
   return (
     <div className="relative">
-      <Card className="w-full max-w-md bg-[#181c20] border border-[#23272b] shadow-2xl min-w-96">
+      <Card className="w-full max-w-md bg-white/[0.02] backdrop-blur-2xl border border-white/[0.08] shadow-2xl shadow-black/10 min-w-96">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-[#A259FF]/10 rounded-full flex items-center justify-center">
-              <FaLock className="absolute text-xl text-gray-300" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
+              <img
+                src={session?.user?.image || undefined}
+                alt="Profile Avatar"
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
           </div>
-          <CardTitle className="text-white text-lg">Hii {session?.user.name}!</CardTitle>
+          <CardTitle className="text-white text-lg">Hi {session?.user.name}!</CardTitle>
           <CardDescription className="text-gray-400 text-sm leading-relaxed">
             {"We are in beta, please enter your invite code to access the platform. If you don't have one, please contact support."}
           </CardDescription>
@@ -78,7 +82,7 @@ export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeM
         <CardFooter className="flex-col gap-3 px-10 pb-6">
           <Input placeholder="Enter your invite code" onChange={(e) => setInviteCode(e.target.value)} />
           <Button 
-            className="w-full bg-[#A259FF] hover:bg-[#8B4DFF] text-white font-medium" 
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium" 
             onClick={()=>{handleSubmit()}}
             disabled={loading}
           >

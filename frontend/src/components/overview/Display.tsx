@@ -855,23 +855,3 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
 };
 
 export default Display;
-
-<style jsx global>{`
-@keyframes slideInFromTop {
-  0% {
-    opacity: 0;
-    transform: translateY(-40px);
-  }
-  80% {
-    opacity: 1;
-    transform: translateY(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.animate-slideInFromTop {
-  animation: slideInFromTop 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-}
-`}</style>

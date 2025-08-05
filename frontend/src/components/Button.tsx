@@ -35,7 +35,7 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const colorSet = COLORS[color as keyof typeof COLORS] || COLORS.violet;
-  let baseClasses = `inline-flex items-center justify-center h-8 transition-all duration-200 rounded font-semibold text-sm cursor-pointer relative ${px} ${className}`;
+  let baseClasses = `inline-flex items-center justify-center h-10 transition-all duration-200 rounded font-semibold text-sm cursor-pointer relative ${px} ${className}`;
 
   if (variant === "filled") {
     baseClasses += ` ${colorSet.fill} ${colorSet.text} ${colorSet.hoverFill} border-t border-l border-white/20 border-r border-b border-black/20 active:border-t active:border-l active:border-black/20 active:border-r active:border-b active:border-white/20 active:translate-y-0.5`;
@@ -48,7 +48,7 @@ const Button: React.FC<ButtonProps> = ({
   const content = (
     <span className="button-content flex items-center gap-1">
       {children}
-      {rightIcon && <FiArrowRight size={14} />}
+      {rightIcon && <FiArrowRight size={16} />}
     </span>
   );
 
