@@ -224,3 +224,21 @@ min-height: 2px;
 .animate-slideInFromTop {
   animation: slideInFromTop 1.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
+
+/* Tippy.js custom styling - black background */
+.tippy-box {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.tippy-arrow {
+  display: none !important;
+}
+
+.tippy-content {
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}

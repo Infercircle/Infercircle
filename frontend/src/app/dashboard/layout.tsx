@@ -2,6 +2,7 @@
 
 import React, { useState, createContext, Suspense, useEffect } from "react";
 import Sidebar from "@/components/Sidebar/sidebar";
+import MobileSidebar from "@/components/Sidebar/MobileSidebar";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -16,19 +17,49 @@ import { User } from "@prisma/client";
 
 export const DashboardContext = createContext<any>(null);
 
+// Separate component to handle search params
+function SearchParamsHandler({ onAddXChange }: { onAddXChange: (addX: boolean) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const addX = searchParams.get('addX') === 'true';
+    onAddXChange(addX);
+  }, [searchParams, onAddXChange]);
+  
+  return null;
+}
+
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const contentMarginClass = collapsed ? "ml-16" : "ml-60";
+  const contentMarginClass = collapsed ? "ml-14 md:ml-14" : "ml-0 md:ml-56";
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
   const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/spaces-summarizer" && pathname !== "/dashboard/pre-tge" && pathname !== "/dashboard/post-tge-projects" && pathname !== "/dashboard/token-sales";
   const showWallet = !isInferAI && pathname !== "/dashboard/spaces-summarizer";
+  const showMobileMenu = pathname.startsWith("/dashboard");
   const { data: session, status } = useSession();
   const router = useRouter();
   const user = session?.user as User;
-  const searchParams = useSearchParams();
-  const [addX, setAddX] = useState<boolean>(searchParams.get('addX') === 'true');
+  const [addX, setAddX] = useState<boolean>(false);
   const [dbUser, setDbUser] = useState<User | null>(user);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  // Disable page scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if(user){
@@ -186,6 +217,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div>
+      <Suspense fallback={null}>
+        <SearchParamsHandler onAddXChange={setAddX} />
+      </Suspense>
       {(!user || !user.username || user.username.length < 0 || !user.email) && (addX == true) && (
         <div className="fixed inset-0 flex items-center justify-center bg-transparent z-50">
           <AddXModal onClose={setAddX} isGoogle={(user && (!user.username || user.username.length < 0)) ? false : true}/>
@@ -206,7 +240,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         }}>
           <ToastProvider>
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-            <div className={`${contentMarginClass} transition-all duration-300`}>
+            
+            <div className={`${contentMarginClass} transition-all duration-300 ${mobileMenuOpen ? 'opacity-20' : 'opacity-100'}`}>
               <Navbar
                 collapsed={collapsed}
                 showConnectWallet={showWallet}
@@ -214,6 +249,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 showSearch={showSearch}
                 onOpenWalletModal={openWalletModal}
                 connectedWallets={connectedWallets}
+                onToggleMobileMenu={showMobileMenu ? toggleMobileMenu : undefined}
               />
               <main className="pt-4 px-4">
                 {children}
@@ -232,6 +268,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 onWalletsChanged={() => setRefreshKey(k => k + 1)}
               />
             </Modal>
+            
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+              <div className="fixed inset-0 z-50 md:hidden">
+                {/* Transparent backdrop for click-outside functionality */}
+                <div 
+                  className="absolute inset-0"
+                  onClick={closeMobileMenu}
+                />
+                
+                {/* Mobile Sidebar - Same size as desktop */}
+                <div className="absolute left-0 top-0 h-full w-56 bg-[rgba(24,26,32,0.98)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040]">
+                  <MobileSidebar onClose={closeMobileMenu} />
+                </div>
+              </div>
+            )}
           </ToastProvider>
         </DashboardContext.Provider>
       </div>
@@ -240,9 +292,5 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </Suspense>
-  );
+  return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 } 

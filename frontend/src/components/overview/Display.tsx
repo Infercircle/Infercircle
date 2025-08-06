@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Tippy from '@tippyjs/react';
+import { IoFilter } from "react-icons/io5";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
@@ -55,87 +56,25 @@ interface Tweet {
   text: string;
 }
 
-interface AddressDistribution {
-  less_0001: number;
-  "0001_001": number;
-  "001_01": number;
-  "01_1": number;
-  "1_10": number;
-  "10_100": number;
-  "100_1k": number;
-  "1k_10k": number;
-  "10k_100k": number;
-  above_100k: number;
-}
+// interface AddressDistribution {
+//   less_0001: number;
+//   "0001_001": number;
+//   "001_01": number;
+//   "01_1": number;
+//   "1_10": number;
+//   "10_100": number;
+//   "100_1k": number;
+//   "1k_10k": number;
+//   "10k_100k": number;
+//   above_100k: number;
+// }
 
-interface WhaleDistribution {
-  "1k_10k": number;
-  "10k_100k": number;
-  above_100k: number;
-}
+// interface WhaleDistribution {
+//   "1k_10k": number;
+//   "10k_100k": number;
+//   above_100k: number;
+// }
 
-const MOCK_TWEETS: Tweet[] = [
-  {
-    sentiment: "negative",
-    avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-    name: "InvestAnswers",
-    handle: "@invest_answers",
-    timestamp: "1m",
-    followers: "3.39K",
-    tweetUrl: "https://twitter.com/invest_answers/status/1",
-    text: "🚨 How the Bitcoin Cycle Died 🚨💱 SOL Why the Crash? Old whales selling? 🏛️ Institutions buying 📈 Treasuries up 50% YTD ☀️ China's solar dominanc. Bitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity is Bitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity isBitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity isBitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity is"
-  },
-  {
-    sentiment: "negative",
-    avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-    name: "Myles Snider",
-    handle: "@myles_snider",
-    timestamp: "2m",
-    followers: "2.1K",
-    tweetUrl: "https://twitter.com/myles_snider/status/2",
-    text: "As @_drewarmstrong_ likes to say, this is currently the most mispriced risk in the world. BTC-backed loans are over-collateralized with a pristine asset"
-  },
-  {
-    sentiment: "positive",
-    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
-    name: "MartyParty",
-    handle: "@martypartymusic",
-    timestamp: "2m",
-    followers: "5.2K",
-    tweetUrl: "https://twitter.com/martypartymusic/status/3",
-    text: "Bitcoin Basics: Learn the Wyckoff patterns and the 50% pullbacks in a bull market. The Wyckoff Spring was April 6th. Each push up as global liquidity is"
-  },
-  {
-    sentiment: "positive",
-    avatar: "https://randomuser.me/api/portraits/men/4.jpg",
-    name: "TFTC",
-    handle: "@TFTC21",
-    timestamp: "3m",
-    followers: "8.7K",
-    tweetUrl: "https://twitter.com/TFTC21/status/4",
-    text: "Strive CEO reveals plan to buy public companies trading below net cash. Then convert their treasuries into #Bitcoin. \"This is a multibillion-dollar\""
-  },
-  {
-    sentiment: "positive",
-    avatar: "https://randomuser.me/api/portraits/women/5.jpg",
-    name: "ilodi wow",
-    handle: "@ilodiwow",
-    timestamp: "4m",
-    followers: "1.1K",
-    tweetUrl: "https://twitter.com/ilodiwow/status/5",
-    text: "The $PTB TGE and Portal to Bitcoin mainnet is SOOO around the corner, I literally can't wait anymore AAAA!!! When @PortaltoBitcoin open staking aswel"
-  },
-  {
-    sentiment: "neutral",
-    avatar: "https://randomuser.me/api/portraits/men/6.jpg",
-    name: "Crypto Neutralist",
-    handle: "@neutral_crypto",
-    timestamp: "5m",
-    followers: "4.2K",
-    tweetUrl: "https://twitter.com/neutral_crypto/status/6",
-    text: "Market is moving sideways. No major news or price action at the moment. Let's see how things develop."
-  }
-];
 
 const sentimentIcon = (sentiment: string) => {
   let icon = null;
@@ -197,31 +136,46 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
-  const [addressDist] = useState<AddressDistribution>({
-    less_0001: 0.1,
-    "0001_001": 0.15,
-    "001_01": 0.2,
-    "01_1": 0.1,
-    "1_10": 0.1,
-    "10_100": 0.15,
-    "100_1k": 0.1,
-    "1k_10k": 0.05,
-    "10k_100k": 0.03,
-    above_100k: 0.02,
-  });
-  const [whaleDist] = useState<WhaleDistribution>({
-    "1k_10k": 0.05,
-    "10k_100k": 0.03,
-    above_100k: 0.02,
-  });
+  // const [addressDist] = useState<AddressDistribution>({
+  //   less_0001: 0.1,
+  //   "0001_001": 0.15,
+  //   "001_01": 0.2,
+  //   "01_1": 0.1,
+  //   "1_10": 0.1,
+  //   "10_100": 0.15,
+  //   "100_1k": 0.1,
+  //   "1k_10k": 0.05,
+  //   "10k_100k": 0.03,
+  //   above_100k: 0.02,
+  // });
+  // const [whaleDist] = useState<WhaleDistribution>({
+  //   "1k_10k": 0.05,
+  //   "10k_100k": 0.03,
+  //   above_100k: 0.02,
+  // });
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [tweetBuffer, setTweetBuffer] = useState<Tweet[]>([]);
   const [newTweetIndex, setNewTweetIndex] = useState<number | null>(null);
   const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
+  const [isCurated, setIsCurated] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.filter-dropdown')) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
@@ -486,16 +440,16 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     }
   }, [expandedIndex, tweetBuffer]);
 
-  // Helper for address bands
-  const getBand = (band: keyof AddressDistribution) => {
-    if (!addressDist) return 0;
-    return (addressDist[band] ?? 0) * 100;
-  };
-  // Helper for whale bands
-  const getWhale = (band: keyof WhaleDistribution) => {
-    if (!whaleDist) return 0;
-    return (whaleDist[band] ?? 0) * 100;
-  };
+  // // Helper for address bands
+  // const getBand = (band: keyof AddressDistribution) => {
+  //   if (!addressDist) return 0;
+  //   return (addressDist[band] ?? 0) * 100;
+  // };
+  // // Helper for whale bands
+  // const getWhale = (band: keyof WhaleDistribution) => {
+  //   if (!whaleDist) return 0;
+  //   return (whaleDist[band] ?? 0) * 100;
+  // };
 
   // Use selected asset data if available, otherwise show loading state
   const displayName = selectedAsset ? selectedAsset.name : "Loading...";
@@ -563,7 +517,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           </div>
       </div>
       {/* Holdings */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-4">
+      {/* <div className="flex flex-col lg:flex-row gap-4 mb-4">
         <div className="flex-1 bg-[#23262F] rounded-xl p-3 w-full">
           <div className="text-xs text-[#A3A3A3] mb-1">Addresses by Holdings</div>
           <div className="flex items-center gap-2 text-xs mb-1">
@@ -597,10 +551,39 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             <span>{(100 - (getWhale("1k_10k") + getWhale("10k_100k") + getWhale("above_100k"))).toFixed(2)}%</span>
           </div>
         </div>
-      </div>
+      </div> */}
       {/* Social Sentiment */}
       <div className="mt-2">
-        <div className="text-[#A259FF] font-semibold mb-2">Social Sentiment</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[#A259FF] font-semibold">Social Sentiment</div>
+          <div className="flex items-center gap-2">
+            {/* Live indicator */}
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+            {/* Filter dropdown */}
+            <div className="relative filter-dropdown">
+              <button 
+                className="cursor-pointer text-[#A3A3A3] hover:text-white transition-colors"
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              >
+                <IoFilter className="w-4 h-4" />
+              </button>
+              {/* Dropdown menu */}
+              <div className={`absolute right-0 top-full mt-1 bg-black shadow-lg z-10 transition-all duration-200 ${showFilterDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                <div className="p-2">
+                  <label className="flex items-center gap-2 text-xs text-[#A3A3A3] cursor-pointer hover:text-white transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={isCurated} 
+                      onChange={(e) => setIsCurated(e.target.checked)}
+                      className="w-3 h-3 text-[#A259FF] bg-[#333] border-[#555] rounded focus:ring-[#A259FF] focus:ring-1"
+                    />
+                    Curated
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {tweets.length === 0 ? (
           <div className="flex items-center justify-center h-32">
             <span className="text-gray-500 text-sm">No tweets available for this asset</span>

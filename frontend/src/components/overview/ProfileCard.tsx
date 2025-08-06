@@ -73,14 +73,14 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           />
         </div>
         {/* Info Block */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 w-full">
           {/* Name and username (single line, truncate) */}
-          <div className="flex items-center min-w-0">
-            <span className="text-sm sm:text-base font-semibold text-white truncate whitespace-nowrap max-w-[60%]">{user?.name}</span>
-            {user.username && <span className="text-gray-400 text-xs sm:text-sm truncate whitespace-nowrap ml-1 max-w-[40%]">@{user.username}</span>}
+          <div className="flex items-center min-w-0 w-full">
+            <span className="text-base sm:text-lg font-semibold text-white truncate whitespace-nowrap max-w-[65%] sm:max-w-[70%]">{user?.name}</span>
+            {user.username && <span className="text-gray-400 text-sm sm:text-base truncate whitespace-nowrap ml-1 max-w-[35%] sm:max-w-[30%]">@{user.username}</span>}
           </div>
           {/* Follows metrics */}
-          <div className="flex gap-4 mt-1 text-xs sm:text-sm text-[#A3A3A3]">
+          <div className="flex gap-4 mt-1 text-sm sm:text-base text-[#A3A3A3] w-full">
             {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
             {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
             {!user.username && 
@@ -91,20 +91,32 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
               </span>}
           </div>
           {/* Net Worth and Price Change or Add Wallet Message*/}
-          <div className="flex gap-3 items-center mt-2">
-            <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-semibold text-xs sm:text-sm mr-1`}>Net Worth</span>
+          <div className="flex items-center gap-2 mt-2 w-full">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 animate-pulse"></div>
+              <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-bold text-sm sm:text-base`}>Net Worth</span>
+            </div>
             {connectedWallets === 0 ? (
-              <span className="text-xs text-gray-500 italic">$0.00</span>
+              <span className="text-sm text-gray-500 italic">$0.00</span>
             ) : (
               <>
-                <span className={`transition-opacity duration-500 text-white font-medium ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`absolute left-0 top-0 flex items-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                  <span className="text-purple-400 animate-pulse">.....</span>
-                </span>
-                <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
-                  title="Total 24h Price Change">
-                  {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
-                </span>
+                <div className="relative">
+                  <span className={`transition-all duration-500 text-white font-bold text-base sm:text-lg ${loadingNetWorth ? 'opacity-0' : 'opacity-100'}`}>
+                    ${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  {loadingNetWorth && (
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                        <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                                                  <span className={`text-[8px] font-medium px-1 py-0.5 rounded-full ${totalPriceChange >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                   {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}%
+                 </span>
               </>
             )}
           </div>
@@ -143,23 +155,37 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
       </div>
       {/* Desktop Net Worth */}
       <div className="hidden md:flex md:text-right flex-col items-end">
-        <div className="flex items-center gap-2">
-          <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-semibold text-sm`}>Net Worth</span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 animate-pulse"></div>
+                             <span className={`${connectedWallets === 0 ? 'text-gray-400' : 'text-white'} font-bold text-sm`}>Net Worth</span>
+            </div>
+          </div>
           {connectedWallets === 0 ? (
-            <span className="text-sm text-gray-500 italic">$0.00</span>
+                         <span className="text-sm text-gray-500 italic">$0.00</span>
           ) : (
-            <>
+            <div className="flex items-center gap-3 justify-end">
               <div className="relative">
-                <div className={`transition-opacity duration-500 ${loadingNetWorth ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${loadingNetWorth ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                  <span className="text-purple-400 animate-pulse">.....</span>
-                </div>
+                <span className={`transition-all duration-500 text-white font-bold text-lg ${loadingNetWorth ? 'opacity-0' : 'opacity-100'}`}>
+                  ${netWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                {loadingNetWorth && (
+                  <div className="absolute inset-0 flex items-center justify-end">
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <span className={`text-xs font-bold ${totalPriceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}
-                title="Total 24h Price Change">
-                {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}
-              </span>
-            </>
+              <div className="flex items-center gap-1">
+                                                                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${totalPriceChange >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                     {totalPriceChange >= 0 ? '+' : ''}{totalPriceChange.toFixed(2)}%
+                   </span>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client"
 import React from "react";
 import Button from "./Button";
-import { FiPower, FiSearch } from "react-icons/fi";
+import { FiPower, FiSearch, FiMenu } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -14,6 +14,7 @@ interface NavbarProps {
   showSearch?: boolean;
   onOpenWalletModal?: () => void;
   connectedWallets?: number;
+  onToggleMobileMenu?: () => void;
 }
 
 // Inline SearchBar component
@@ -30,24 +31,37 @@ const SearchBar: React.FC = () => (
   </form>
 );
 
-const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal, connectedWallets = 0 }) => {
+const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal, connectedWallets = 0, onToggleMobileMenu }) => {
 const { data: session, status } = useSession();
 
   return (
     <header className={`sticky top-0 z-50 p-1 bg-[rgba(17,20,22,0.4)] backdrop-blur-xl border-b border-[#23272b] transition-all duration-300 ${
-      collapsed ? 'left-0 right-0' : 'left-60'
+      collapsed ? 'left-0 right-0' : 'left-0 md:left-56'
     }`}>
       <div className="flex items-center justify-between px-6 py-1 min-h-[48px]">
-        {/* Logo */}
-        <a href="/" className={`flex items-center transition-all duration-300 ${
-          collapsed ? 'transform -translate-x-5' : 'transform translate-x--3'
-        }`}>
-          <span className="text-violet-400 font-black text-xl tracking-widest uppercase">
-            {/* Show sidebar logo on md and below, original logo on lg+ */}
-            <img src="/icons/image.svg" alt="Infercircle" className="block md:hidden" />
-            <img src="/icons/logo.svg" alt="Infercircle" className="hidden md:block" />
-          </span>
-        </a>
+        {/* Left side: Hamburger menu (mobile only) and Logo */}
+        <div className="flex items-center space-x-3">
+          {/* Hamburger menu button - only show on mobile and when onToggleMobileMenu is provided */}
+          {onToggleMobileMenu && (
+                      <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-2 rounded-md hover:bg-[rgba(42,46,53,0.35)] transition-colors cursor-pointer"
+          >
+              <FiMenu className="w-5 h-5 text-white" />
+            </button>
+          )}
+          
+          {/* Logo */}
+          <a href="/" className={`flex items-center transition-all duration-300 ${
+            collapsed ? 'ml-3' : 'ml-0'
+          }`}>
+            <span className="text-violet-400 font-black text-xl tracking-widest uppercase">
+              {/* Show sidebar logo on md and below, original logo on lg+ */}
+              <img src="/icons/image.svg" alt="Infercircle" className="block md:hidden w-12 h-12" />
+              <img src="/icons/logo.svg" alt="Infercircle" className="hidden md:block" />
+            </span>
+          </a>
+        </div>
 
         {/* Right side: Watchlist, SearchBar, Wallets, Auth/Wallet buttons */}
         <div className="flex items-center space-x-3">

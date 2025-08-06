@@ -67,8 +67,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out ${
-        collapsed ? 'w-16 bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl' : 'w-[240px] bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl'
+      className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out hidden md:flex ${
+        collapsed ? 'w-14 bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl' : 'w-56 bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl'
       }`}
     >
       {/* Logo & Collapse Button */}
@@ -195,7 +195,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
           <div className="p-2">
             {collapsed ? (
               <Tippy content={session.user?.name} placement="right">
-                <Link href="/dashboard/account">
+                <Link href="#">
                   <div
                     className={`flex items-center justify-center py-2 px-4 rounded transition-all duration-200 ${
                       pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
