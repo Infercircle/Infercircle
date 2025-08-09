@@ -199,7 +199,7 @@ router.post('/spaces/summarize', asyncHandler(async (req: Request, res: Response
     const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'HTTP-Referer': 'https://www.sitename.com',
         'X-Title': 'SiteName',
         'Content-Type': 'application/json',

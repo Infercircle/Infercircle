@@ -2,14 +2,19 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import Tippy from '@tippyjs/react';
 import { IoFilter } from "react-icons/io5";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full"><span className="text-purple-400 animate-pulse text-5xl">.....</span></div>
+  loading: () => <div className="flex items-center justify-center h-full">
+    <div className="flex space-x-1">
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+    </div>
+  </div>
 }) as any;
 
 interface SelectedAsset {
@@ -475,7 +480,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     return (
       <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
-          <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+          <div className="flex space-x-1">
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
       </div>
     );
@@ -488,7 +497,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
         <div className="flex items-center gap-3">
             {displayLogo ? (
-              <Image src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
+              <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
           ) : (
               <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
           )}
@@ -597,7 +606,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                 style={{ minHeight: 80, maxHeight: 80, overflow: "hidden" }}
                 onClick={() => setExpandedIndex(idx)}
               >
-                <Image src={tweet.avatar} alt={tweet.name} width={40} height={40} className="rounded-full object-cover mt-1" />
+                <img src={tweet.avatar} alt={tweet.name} width={40} height={40} className="rounded-full object-cover mt-1" />
                 <div className="flex-1 flex flex-col min-w-0">
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -632,7 +641,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             onClick={() => setExpandedIndex(null)}
           >
             <div className="flex items-center gap-3 mb-2 w-full">
-              <Image src={tweets[expandedIndex].avatar} alt={tweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
+              <img src={tweets[expandedIndex].avatar} alt={tweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
               <div className="flex flex-col flex-1 min-w-0">
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -671,7 +680,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
         <div className="h-full flex flex-col overflow-hidden">
           {loadingChart ? (
             <div className="flex items-center justify-center h-full">
-              <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+              <div className="flex space-x-1">
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              </div>
             </div>
           ) : chartError ? (
             <div className="flex items-center justify-center h-full">

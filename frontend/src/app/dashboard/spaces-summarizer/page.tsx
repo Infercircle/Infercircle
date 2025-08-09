@@ -292,7 +292,11 @@ export default function SpacesSummarizerPage() {
                 >
                   {isLoading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-white rounded-full animate-bounce"></div>
+                        <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
                       Processing...
                     </>
                   ) : (

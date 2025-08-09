@@ -102,7 +102,11 @@ export default function InviteCodePage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-[#0c0e12] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="flex space-x-1">
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+        </div>
       </div>
     );
   }

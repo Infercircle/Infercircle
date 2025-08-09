@@ -123,7 +123,11 @@ const IcoIdo = () => {
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
       {/* Preloader overlay */}
       <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+        <div className="flex space-x-1">
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+        </div>
       </div>
       <div className="flex items-center justify-between mb-2">
         <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">

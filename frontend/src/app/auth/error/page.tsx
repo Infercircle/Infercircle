@@ -1,7 +1,6 @@
 "use client"
 import React, { Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FaExclamationTriangle, FaShieldAlt, FaArrowLeft, FaRedo } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
