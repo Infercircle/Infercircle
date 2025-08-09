@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ProfileCard from "./ProfileCard";
 import OnChainActivities from "./OnChainActivities";
 import Display from "./Display";
@@ -71,6 +71,19 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
   const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
   const [chartType, setChartType] = useState<'price' | 'balance'>('price');
   const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
+  const [allElites, setAllElites] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    async function fetchEliteUsers() {
+      const res = await fetch('/api/elite');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        const eliteSet = new Set(data.map((user: any) => user.username));
+        setAllElites(eliteSet);
+      }
+    }
+    fetchEliteUsers();
+  }, []);
 
   if(!session || status !== "authenticated") {
     return (
@@ -122,7 +135,12 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
           <div className="grid grid-cols-12 gap-4 h-full w-full pb-4">
       {/* Top Row: Profile Card (full width) */}
       <div className="col-span-12">
-        <ProfileCard netWorth={netWorth} totalPriceChange={totalPriceChange} loadingNetWorth={loadingNetWorth} connectedWallets={connectedWallets} />
+        <ProfileCard 
+          netWorth={netWorth} 
+          totalPriceChange={totalPriceChange} 
+          loadingNetWorth={loadingNetWorth} 
+          connectedWallets={connectedWallets} 
+          allElites={allElites} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
     {/* <div className="col-span-12">

@@ -196,4 +196,44 @@ router.post("/sentiment-batch", asyncHandler(async (req: Request, res: Response)
   });
 }));
 
+router.get("/followers", asyncHandler(async (req: Request, res: Response) => {
+  const { username, followers } = req.query;
+  if (!username || typeof username !== "string") {
+    return res.status(400).json({ error: "Invalid or missing username" });
+  }
+
+  try {
+    let allFollowers = [];
+
+      let url = `${process.env.HELPER_APIS_URL}/twitter/followers/${username}?limit=${followers || 100}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        return res.status(response.status).json({ 
+          error: "Failed to fetch followers",
+          message: `API returned status ${response.status}`
+        });
+      }
+
+      const data = await response.json();
+      
+      // Add current batch of followers to our collection
+      if (data.followers && Array.isArray(data.followers)) {
+        allFollowers.push(...data.followers);
+      }
+
+    // Return all collected followers with metadata
+    return res.status(200).json({
+      followers: allFollowers,
+      status: "success",
+      message: `Successfully fetched ${allFollowers.length} followers`,
+      totalFetched: allFollowers.length
+    });
+  } catch (error) {
+    console.error("Error fetching followers:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}));
+
 export default router;

@@ -9,9 +9,10 @@ interface ProfileCardProps {
   totalPriceChange?: number;
   loadingNetWorth?: boolean;
   connectedWallets?: number;
+  allElites: Set<string>;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
+const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false, connectedWallets = 0, allElites }) => {
     const { data: session, status } = useSession();
     const [eliteFollowers, setEliteFollowers] = useState<number | null>(null);
     const [eliteLoading, setEliteLoading] = useState(false);
@@ -19,6 +20,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
   
     useEffect(() => {
       const fetchEliteFollowers = async () => {
+        if(allElites.size === 0) return; // No elites to check against
         if (!session || status !== "authenticated") return;
         const user = session.user as User;
         if (!user || !user.twitterId) {
@@ -27,19 +29,15 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         setEliteLoading(true);
         setEliteError(null);
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
-        const url = `${API_BASE}/elite-curators/elite-followers/${user.twitterId}`;
+        const url = `${API_BASE}/twitter/followers?username=${user.twitterId}&followers=${user.followersCount}`;
         try {
           const res = await fetch(url);
           let data: any = {};
           try {
             data = await res.json();
           } catch {}
-          if (res.ok && typeof data.eliteFollowers === 'number') {
-            setEliteFollowers(data.eliteFollowers);
-          } else {
-            setEliteFollowers(null);
-            setEliteError(data.error || 'No data');
-          }
+            const eliteCount = data.followers?.filter((follower: any) => allElites.has(follower.username)).length || 0;
+            setEliteFollowers(eliteCount);
         } catch (e: any) {
           setEliteFollowers(null);
           setEliteError(e.message || 'Error fetching');
@@ -48,7 +46,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         }
       };
       fetchEliteFollowers();
-    }, []);
+    }, [allElites]);
 
     if(!session || status !== "authenticated") {
       return (
