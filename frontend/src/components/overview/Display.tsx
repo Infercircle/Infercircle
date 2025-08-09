@@ -165,22 +165,8 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
   const [isCurated, setIsCurated] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.filter-dropdown')) {
-        setShowFilterDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
@@ -568,28 +554,33 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           <div className="flex items-center gap-2">
             {/* Live indicator */}
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            {/* Filter dropdown */}
-            <div className="relative filter-dropdown">
+            {/* Curated toggle with realistic switch */}
+            <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+              <span className={`text-xs font-medium transition-all duration-300 ${
+                isCurated 
+                  ? 'text-white' 
+                  : 'text-[#666]'
+              }`}>Curated</span>
               <button 
-                className="cursor-pointer text-[#A3A3A3] hover:text-white transition-colors"
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none ${
+                  isCurated 
+                    ? 'bg-[#A259FF] shadow-md shadow-[#A259FF]/30' 
+                    : 'bg-[#444] hover:bg-[#555]'
+                }`}
+                onClick={() => setIsCurated(!isCurated)}
               >
-                <IoFilter className="w-4 h-4" />
+                <span 
+                  className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
+                    isCurated 
+                      ? 'translate-x-4.5 shadow-sm' 
+                      : 'translate-x-0.5 shadow-sm'
+                  }`}
+                />
+                {/* Glow effect when active */}
+                {isCurated && (
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#A259FF]/25 to-[#A259FF]/15 animate-pulse" />
+                )}
               </button>
-              {/* Dropdown menu */}
-              <div className={`absolute right-0 top-full mt-1 bg-black shadow-lg z-10 transition-all duration-200 ${showFilterDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                <div className="p-2">
-                  <label className="flex items-center gap-2 text-xs text-[#A3A3A3] cursor-pointer hover:text-white transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={isCurated} 
-                      onChange={(e) => setIsCurated(e.target.checked)}
-                      className="w-3 h-3 text-[#A259FF] bg-[#333] border-[#555] rounded focus:ring-[#A259FF] focus:ring-1"
-                    />
-                    Curated
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </div>
