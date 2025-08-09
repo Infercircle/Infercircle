@@ -67,3 +67,7 @@ export async function getAllInviteCodes() {
     }
   });
 }
+
+export async function getEliteUsers() {
+  return db.eliteCurator.findMany();
+}
