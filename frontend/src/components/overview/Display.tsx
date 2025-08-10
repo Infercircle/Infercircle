@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Tippy from '@tippyjs/react';
@@ -110,6 +110,7 @@ interface DisplayProps {
   chartType?: 'price' | 'balance';
   connectedWallets?: number;
   sharedLogoCache?: Record<string, string>;
+  curatedTweets?: any[];
 }
 
 const CHART_FILTERS = [
@@ -127,7 +128,7 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
-const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const, connectedWallets = 0, sharedLogoCache = {} }) => {
+const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceChart = false, chartAsset, chartType = 'price' as const, connectedWallets = 0, sharedLogoCache = {}, curatedTweets = [] }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [rankRetryCount, setRankRetryCount] = useState(0);
@@ -459,6 +460,24 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displayLogo = selectedAsset?.icon || sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
+  // Memoized tweets to display based on curated filter
+  const displayTweets = useMemo(() => {
+    if (isCurated && curatedTweets && curatedTweets.length > 0) {
+      // Transform curatedTweets to match Tweet interface if needed
+      return curatedTweets.map((tweet: any) => ({
+        sentiment: tweet.sentiment || 'neutral',
+        avatar: tweet.raw_data.user.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
+        name: tweet.raw_data.user.displayname || 'Unknown',
+        handle: tweet.raw_data.user.username || '@unknown',
+        timestamp: tweet.date || 'now',
+        followers: tweet.raw_data.user.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
+        tweetUrl: tweet.url || 'https://twitter.com',
+        text: tweet.content || ''
+      })).slice(0, 20); // Limit to 20 tweets
+    }
+    return tweets;
+  }, [isCurated, curatedTweets, tweets]);
+
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
     return (
@@ -584,13 +603,13 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             </div>
           </div>
         </div>
-        {tweets.length === 0 ? (
+        {displayTweets.length === 0 ? (
           <div className="flex items-center justify-center h-32">
             <span className="text-gray-500 text-sm">No tweets available for this asset</span>
           </div>
         ) : expandedIndex === null ? (
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-            {tweets.map((tweet, idx) => (
+            {displayTweets.map((tweet, idx) => (
               <div
                 key={idx}
                 className={`flex items-start gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 border border-transparent bg-[rgba(36,37,42,0.25)] hover:bg-[rgba(50,52,60,0.95)]${expandedIndex === idx ? " shadow-lg" : ""} ${idx === newTweetIndex ? "animate-slideInFromTop" : ""}`}
@@ -632,18 +651,18 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
             onClick={() => setExpandedIndex(null)}
           >
             <div className="flex items-center gap-3 mb-2 w-full">
-              <Image src={tweets[expandedIndex].avatar} alt={tweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
+              <Image src={displayTweets[expandedIndex].avatar} alt={displayTweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
               <div className="flex flex-col flex-1 min-w-0">
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {sentimentIcon(tweets[expandedIndex].sentiment)}
-                    <span className="font-semibold text-sm text-[#A259FF] truncate">{tweets[expandedIndex].name}</span>
-                    <span className="text-[#A3A3A3] text-sm truncate">{tweets[expandedIndex].handle}</span>
+                    {sentimentIcon(displayTweets[expandedIndex].sentiment)}
+                    <span className="font-semibold text-sm text-[#A259FF] truncate">{displayTweets[expandedIndex].name}</span>
+                    <span className="text-[#A3A3A3] text-sm truncate">{displayTweets[expandedIndex].handle}</span>
                   </div>
                   <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-[#A3A3A3] text-sm">{tweets[expandedIndex].timestamp}</span>
+                    <span className="text-[#A3A3A3] text-sm">{displayTweets[expandedIndex].timestamp}</span>
                     <a
-                      href={tweets[expandedIndex].tweetUrl}
+                      href={displayTweets[expandedIndex].tweetUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#A259FF] flex items-center"
@@ -654,11 +673,11 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                     </a>
                   </div>
                 </div>
-                <span className="text-[#A3A3A3] text-sm mt-0.5">{tweets[expandedIndex].followers} followers</span>
+                <span className="text-[#A3A3A3] text-sm mt-0.5">{displayTweets[expandedIndex].followers} followers</span>
               </div>
             </div>
             <div className="text-sm text-white mt-2 whitespace-pre-line break-words" style={{ lineHeight: "1.6" }}>
-              {tweets[expandedIndex].text}
+              {displayTweets[expandedIndex].text}
             </div>
           </div>
         )}
@@ -835,6 +854,6 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
       </div>
     </div>
   );
-};
+});
 
 export default Display;
