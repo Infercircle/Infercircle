@@ -473,7 +473,7 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
         followers: tweet.raw_data.user.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
         tweetUrl: tweet.url || 'https://twitter.com',
         text: tweet.content || ''
-      })).slice(0, 20); // Limit to 20 tweets
+      })); // Limit to 20 tweets
     }
     return tweets;
   }, [isCurated, curatedTweets, tweets]);
