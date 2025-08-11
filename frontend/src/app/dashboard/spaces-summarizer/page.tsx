@@ -10,10 +10,10 @@ interface SpaceResult {
   broadcast_id?: string;
   summary: string;
   transcript: string;
-  metadata: {
-    confidence: number;
-    speakers: number;
-    chapters: number;
+  metadata?: {
+    confidence?: number;
+    speakers?: number;
+    chapters?: number;
   };
   download?: {
     file_path: string;
@@ -86,13 +86,18 @@ export default function SpacesSummarizerPage() {
     setIsLoading(true);
     
     try {
+      console.log('Content type:', contentType);
       const endpoint = contentType === 'space' 
         ? '/api/twitterspaces/spaces/summarize'
         : '/api/twitterspaces/broadcasts/summarize';
       
+      console.log('Using endpoint:', endpoint);
+      
       const body = contentType === 'space' 
         ? { space_url: url.trim(), is_ended: false }
         : { broadcast_url: url.trim() };
+      
+      console.log('Request body:', body);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -108,6 +113,7 @@ export default function SpacesSummarizerPage() {
       }
 
       const data = await response.json();
+      console.log('Frontend received data:', data);
       setResult(data);
     } catch (err) {
       console.error('Error processing space:', err);
@@ -119,6 +125,7 @@ export default function SpacesSummarizerPage() {
 
   // When a new result is set, update persistedSummary
   useEffect(() => {
+    console.log('Result changed:', result);
     if (result && result.summary) {
       setPersistedSummary("");
       // Use a timeout to allow the typewriter to animate, then persist the summary
@@ -141,17 +148,53 @@ export default function SpacesSummarizerPage() {
       return;
     }
     const mentions: { paragraph: number; match: number; }[] = [];
-    result.transcript.split('\n\n').forEach((paragraph, pIdx) => {
-      const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      let match;
-      let matchIdx = 0;
-      while ((match = regex.exec(paragraph)) !== null) {
-        mentions.push({ paragraph: pIdx, match: matchIdx });
-        matchIdx++;
-        // Prevent infinite loop for zero-width matches
-        if (regex.lastIndex === match.index) regex.lastIndex++;
+    
+    // Use the same parsing logic as the display
+    const unescapedTranscript = result.transcript
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"');
+    
+    const segments = unescapedTranscript.split('\n\n')
+      .filter(segment => segment.trim())
+      .filter(segment => {
+        const trimmed = segment.trim();
+        // Filter out lines that look like JSON metadata
+        return !trimmed.startsWith('{"success":') && 
+               !trimmed.startsWith('{"space_id":') && 
+               !trimmed.startsWith('{"download":') &&
+               !trimmed.startsWith('Space Transcript:') &&
+               !trimmed.includes('"formatted_transcript"') &&
+               !trimmed.includes('"metadata":{') &&
+               !trimmed.includes('"language":"en"') &&
+               !trimmed.includes('"segments":') &&
+               !trimmed.includes('"confidence":null') &&
+               !trimmed.includes('"speakers":null') &&
+               !trimmed.includes('"chapters":null');
+      });
+    
+    segments.forEach((segment, pIdx) => {
+      // Clean the content the same way as display
+      const cleanContent = segment
+        .replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '')
+        .replace(/Speaker:\s*/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+      
+      if (cleanContent) {
+        const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        let match;
+        let matchIdx = 0;
+        while ((match = regex.exec(cleanContent)) !== null) {
+          mentions.push({ paragraph: pIdx, match: matchIdx });
+          matchIdx++;
+          // Prevent infinite loop for zero-width matches
+          if (regex.lastIndex === match.index) regex.lastIndex++;
+        }
       }
     });
+    
     setTranscriptMentions(mentions);
     setCurrentMention(mentions.length > 0 ? 0 : -1);
   }, [transcriptSearch, result]);
@@ -292,12 +335,8 @@ export default function SpacesSummarizerPage() {
                 >
                   {isLoading ? (
                     <>
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-white rounded-full animate-bounce"></div>
-                        <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                      </div>
-                      Processing...
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Processing
                     </>
                   ) : (
                     <>
@@ -319,13 +358,10 @@ export default function SpacesSummarizerPage() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-0">
                 <div className="flex-1">
                   <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">
-                    {contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} {result.space_id || result.broadcast_id}
+                    {contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'}
                   </h2>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <FaSquareXTwitter className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{contentType === 'space' ? 'Space' : 'Broadcast'} ID: {result.space_id || result.broadcast_id}</span>
-                    </div>
+
                     {result.download && (
                       <>
                         <div className="flex items-center gap-1">
@@ -338,14 +374,18 @@ export default function SpacesSummarizerPage() {
                         </div>
                       </>
                     )}
-                    <div className="flex items-center gap-1">
-                      <FiUsers className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{result.metadata.speakers} speakers</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FiMessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{result.metadata.chapters} chapters</span>
-                    </div>
+                    {result.metadata?.speakers && (
+                      <div className="flex items-center gap-1">
+                        <FiUsers className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span>{result.metadata.speakers} speakers</span>
+                      </div>
+                    )}
+                    {result.metadata?.chapters && (
+                      <div className="flex items-center gap-1">
+                        <FiMessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span>{result.metadata.chapters} chapters</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -406,26 +446,34 @@ export default function SpacesSummarizerPage() {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Confidence</h4>
-                      <p className="text-sm sm:text-base text-gray-400">
-                        {(result.metadata.confidence * 100).toFixed(1)}%
-                      </p>
+                  {result.metadata && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {result.metadata.confidence && (
+                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
+                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Confidence</h4>
+                          <p className="text-sm sm:text-base text-gray-400">
+                            {(result.metadata.confidence * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      )}
+                      {result.metadata.speakers && (
+                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
+                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Speakers</h4>
+                          <p className="text-sm sm:text-base text-gray-400">
+                            {result.metadata.speakers} speakers detected
+                          </p>
+                        </div>
+                      )}
+                      {result.metadata.chapters && (
+                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
+                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Chapters</h4>
+                          <p className="text-sm sm:text-base text-gray-400">
+                            {result.metadata.chapters} chapters identified
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Speakers</h4>
-                      <p className="text-sm sm:text-base text-gray-400">
-                        {result.metadata.speakers} speakers detected
-                      </p>
-                    </div>
-                    <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                      <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Chapters</h4>
-                      <p className="text-sm sm:text-base text-gray-400">
-                        {result.metadata.chapters} chapters identified
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -452,43 +500,103 @@ export default function SpacesSummarizerPage() {
                       )}
                     </div>
                     <div className="space-y-3 text-sm sm:text-base text-gray-300 leading-relaxed">
-                      {result.transcript.split('\n\n').map((paragraph, pIdx) => {
-                        let highlighted = paragraph;
-                        if (transcriptSearch) {
-                          // Highlight all matches and add a unique class for the current mention
-                          const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-                          let matchIdx = 0;
-                          highlighted = paragraph.replace(regex, (match) => {
-                            // Find the global mention index for this match
-                            const globalIdx = transcriptMentions.findIndex(m => m.paragraph === pIdx && m.match === matchIdx);
-                            const isCurrent = globalIdx === currentMention;
-                            matchIdx++;
-                            return `<mark class=\"bg-[#A259FF] text-white rounded${isCurrent ? ' outline outline-2 outline-[#A259FF]' : ''}\">${match}</mark>`;
+                      {(() => {
+                        // First, unescape the transcript
+                        const unescapedTranscript = result.transcript
+                          .replace(/\\n/g, '\n')
+                          .replace(/\\r/g, '\r')
+                          .replace(/\\t/g, '\t')
+                          .replace(/\\"/g, '"');
+                        
+                        // Parse the transcript into segments and filter out empty ones
+                        // Also filter out metadata lines that start with JSON-like content
+                        const segments = unescapedTranscript.split('\n\n')
+                          .filter(segment => segment.trim())
+                          .filter(segment => {
+                            const trimmed = segment.trim();
+                            // Filter out lines that look like JSON metadata
+                            return !trimmed.startsWith('{"success":') && 
+                                   !trimmed.startsWith('{"space_id":') && 
+                                   !trimmed.startsWith('{"download":') &&
+                                   !trimmed.startsWith('Space Transcript:') &&
+                                   !trimmed.includes('"formatted_transcript"') &&
+                                   !trimmed.includes('"metadata":{') &&
+                                   !trimmed.includes('"language":"en"') &&
+                                   !trimmed.includes('"segments":') &&
+                                   !trimmed.includes('"confidence":null') &&
+                                   !trimmed.includes('"speakers":null') &&
+                                   !trimmed.includes('"chapters":null');
                           });
-                        }
-                        return (
-                          <div
-                            key={pIdx}
-                            ref={el => { transcriptRefs.current[pIdx] = el; }}
-                            className={`p-3 sm:p-4 bg-[rgba(24,26,32,0.3)] rounded border border-[#2a2e35] relative group transition-shadow`}
-                          >
-                            <div className="pr-12">
-                              <span dangerouslySetInnerHTML={{ __html: highlighted }} />
-                            </div>
-                            <button
-                              onClick={() => handleCopyParagraph(paragraph, pIdx)}
-                              className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                              title="Copy paragraph"
-                            >
-                              {copiedParagraphIndex === pIdx ? (
-                                <FiCheckCircle className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <FiCopy className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
+                        
+                        return segments.map((segment, pIdx) => {
+                          // Parse timestamp and speaker info
+                          const timestampMatch = segment.match(/\[(\d{2}:\d{2}:\d{2})\]/);
+                          const speakerMatch = segment.match(/Speaker:\s*(.+?)(?=\n|$)/);
+                          
+                          // Clean the content - remove timestamps and speaker labels
+                          let cleanContent = segment
+                            .replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '') // Remove all timestamps
+                            .replace(/Speaker:\s*/g, '') // Remove all "Speaker:" labels
+                            .replace(/\n+/g, ' ') // Replace multiple newlines with single space
+                            .trim();
+                          
+                          // Skip if content is empty after cleaning
+                          if (!cleanContent) return null;
+                          
+                          let highlighted = cleanContent;
+                          if (transcriptSearch) {
+                            // Highlight all matches and add a unique class for the current mention
+                            const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                            let matchIdx = 0;
+                            highlighted = cleanContent.replace(regex, (match) => {
+                              // Find the global mention index for this match
+                              const globalIdx = transcriptMentions.findIndex(m => m.paragraph === pIdx && m.match === matchIdx);
+                              const isCurrent = globalIdx === currentMention;
+                              matchIdx++;
+                              return `<mark class=\"bg-[#A259FF] text-white rounded${isCurrent ? ' outline outline-2 outline-[#A259FF]' : ''}\">${match}</mark>`;
+                            });
+                          }
+                          
+                                                      return (
+                              <div
+                                key={pIdx}
+                                ref={el => { transcriptRefs.current[pIdx] = el; }}
+                                className={`p-3 sm:p-4 bg-[rgba(24,26,32,0.3)] rounded border border-[#2a2e35] relative group transition-shadow`}
+                              >
+                                <div className="pr-12">
+                                  {(speakerMatch || timestampMatch) && (
+                                    <div className="flex items-center gap-2 mb-2 text-xs">
+                                      {speakerMatch && (
+                                        <span className="text-gray-400 font-medium">
+                                          Speaker
+                                        </span>
+                                      )}
+                                      {timestampMatch && (
+                                        <span className="text-gray-500 font-mono bg-gray-800 px-2 py-1 rounded">
+                                          {timestampMatch[1]}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="text-gray-300">
+                                    <span dangerouslySetInnerHTML={{ __html: highlighted }} />
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleCopyParagraph(cleanContent, pIdx)}
+                                  className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Copy paragraph"
+                                >
+                                  {copiedParagraphIndex === pIdx ? (
+                                    <FiCheckCircle className="w-4 h-4 text-green-400" />
+                                  ) : (
+                                    <FiCopy className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </div>
+                            );
+                          }).filter(Boolean);
+                      })()}
                     </div>
                   </div>
                 </div>

@@ -554,7 +554,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           <div className="flex items-center gap-2">
             {/* Live indicator */}
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            {/* Curated toggle with realistic switch */}
+            {/* Curated toggle switch */}
             <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
               <span className={`text-xs font-medium transition-all duration-300 ${
                 isCurated 
@@ -562,7 +562,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                   : 'text-[#666]'
               }`}>Curated</span>
               <button 
-                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none ${
+                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none cursor-pointer ${
                   isCurated 
                     ? 'bg-[#A259FF] shadow-md shadow-[#A259FF]/30' 
                     : 'bg-[#444] hover:bg-[#555]'

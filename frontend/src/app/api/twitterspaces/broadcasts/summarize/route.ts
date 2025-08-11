@@ -14,10 +14,15 @@ async function axiosWithNoTimeout(url: string, options: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Broadcast API route called');
     const body = await request.json();
+    console.log('Broadcast request body:', body);
+    
+    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8080'}/twitterspaces/broadcasts/summarize`;
+    console.log('Calling backend URL:', backendUrl);
     
     // Forward the request to the backend with no timeout
-    const backendResponse = await axiosWithNoTimeout(`${process.env.BACKEND_URL || 'http://localhost:8080'}/twitterspaces/broadcasts/summarize`, {
+    const backendResponse = await axiosWithNoTimeout(backendUrl, {
       headers: {
         'Content-Type': 'application/json',
         'Connection': 'keep-alive',
