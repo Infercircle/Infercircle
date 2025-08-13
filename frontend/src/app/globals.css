@@ -100,6 +100,65 @@ min-height: 2px;
   100% { transform: translateX(0); }
 }
 
+/* ApexCharts Toolbar Styling for Dark Theme */
+.apexcharts-toolbar {
+  background: rgba(35, 38, 47, 0.9) !important;
+  border: 1px solid #23262F !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools {
+  display: flex !important;
+  gap: 4px !important;
+  padding: 4px !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button {
+  background: rgba(162, 89, 255, 0.1) !important;
+  border: 1px solid rgba(162, 89, 255, 0.3) !important;
+  color: #A259FF !important;
+  border-radius: 4px !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+  transition: all 0.2s ease !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button:hover {
+  background: rgba(162, 89, 255, 0.2) !important;
+  border-color: rgba(162, 89, 255, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button.active {
+  background: #A259FF !important;
+  color: white !important;
+  border-color: #A259FF !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Chart Selection Area Styling */
+.apexcharts-selection-rect {
+  fill: rgba(162, 89, 255, 0.1) !important;
+  stroke: #A259FF !important;
+  stroke-width: 1px !important;
+}
+
+.apexcharts-zoom-rect {
+  fill: rgba(162, 89, 255, 0.15) !important;
+  stroke: #A259FF !important;
+  stroke-width: 1px !important;
+}
+
 .toast-shake {
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }

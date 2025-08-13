@@ -34,8 +34,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const contentMarginClass = collapsed ? "ml-14 md:ml-14" : "ml-0 md:ml-56";
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
-  const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/spaces-summarizer" && pathname !== "/dashboard/pre-tge" && pathname !== "/dashboard/post-tge-projects" && pathname !== "/dashboard/token-sales";
-  const showWallet = !isInferAI && pathname !== "/dashboard/spaces-summarizer";
+  const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/content-summarizer" && pathname !== "/dashboard/pre-tge" && pathname !== "/dashboard/post-tge-projects" && pathname !== "/dashboard/token-sales";
+  const showWallet = !isInferAI && pathname !== "/dashboard/content-summarizer";
   const showMobileMenu = pathname.startsWith("/dashboard");
   const { data: session, status } = useSession();
   const router = useRouter();

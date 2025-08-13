@@ -782,13 +782,51 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                         type: 'area',
                         background: 'transparent',
                         toolbar: {
-                          show: false
+                          show: true,
+                          tools: {
+                            download: false,
+                            selection: true,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: true,
+                            reset: true
+                          },
+                          autoSelected: 'zoom',
+                          export: {
+                            csv: {
+                              filename: `${chartAsset?.symbol || 'chart'}_data`,
+                              columnDelimiter: ',',
+                              headerCategory: 'Date',
+                              headerValue: 'Price'
+                            }
+                          }
+                        },
+                        zoom: {
+                          enabled: true,
+                          type: 'x',
+                          autoScaleYaxis: true
+                        },
+                        pan: {
+                          enabled: true,
+                          type: 'x'
                         },
                         animations: {
                           enabled: true,
                           speed: 800
                         },
-                        height: '100%'
+                        height: '100%',
+                        events: {
+                          zoomed: function(chartContext: any, { xaxis }: any) {
+                            // Chart zoomed event
+                          },
+                          selection: function(chartContext: any, { xaxis }: any) {
+                            // Chart selection event
+                          },
+                          resetZoom: function() {
+                            // Chart reset event
+                          }
+                        }
                       },
                       series: [
                         {
@@ -805,6 +843,12 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                           style: {
                             colors: '#A3A3A3',
                             fontSize: '10px'
+                          },
+                          datetimeFormatter: {
+                            year: 'yyyy',
+                            month: 'MMM \'yy',
+                            day: 'dd MMM',
+                            hour: 'HH:mm'
                           }
                         },
                         axisBorder: {
@@ -812,7 +856,10 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                         },
                         axisTicks: {
                           color: '#23262F'
-                        }
+                        },
+                        range: undefined,
+                        min: undefined,
+                        max: undefined
                       },
                       yaxis: [
                         {
@@ -878,6 +925,18 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
                       },
                       dataLabels: {
                         enabled: false
+                      },
+                      selection: {
+                        enabled: true,
+                        type: 'x',
+                        xaxis: {
+                          min: undefined,
+                          max: undefined
+                        }
+                      },
+                      brush: {
+                        enabled: true,
+                        target: 'chart'
                       }
                     }}
                     series={[

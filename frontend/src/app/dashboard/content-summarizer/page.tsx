@@ -58,7 +58,7 @@ function Typewriter({ text, speed = 25, className = "" }: { text: string; speed?
   );
 }
 
-export default function SpacesSummarizerPage() {
+export default function ContentSummarizerPage() {
   const [url, setUrl] = useState('');
   const [contentType, setContentType] = useState<'space' | 'broadcast'>('space');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +75,12 @@ export default function SpacesSummarizerPage() {
   const [transcriptMentions, setTranscriptMentions] = useState<{ paragraph: number; match: number; }[]>([]);
   const [currentMention, setCurrentMention] = useState(0);
   const transcriptRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Countdown timer state
+  const [countdownActive, setCountdownActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,42 +91,111 @@ export default function SpacesSummarizerPage() {
     setError(null); // Clear previous errors
     setIsLoading(true);
     
-    try {
-      console.log('Content type:', contentType);
-      const endpoint = contentType === 'space' 
-        ? '/api/twitterspaces/spaces/summarize'
-        : '/api/twitterspaces/broadcasts/summarize';
-      
-      console.log('Using endpoint:', endpoint);
-      
-      const body = contentType === 'space' 
-        ? { space_url: url.trim(), is_ended: false }
-        : { broadcast_url: url.trim() };
-      
-      console.log('Request body:', body);
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
+    // Start countdown timer
+    const totalTime = 2 * 60; // 2 minutes in seconds
+    setTimeLeft(totalTime);
+    setProgress(0);
+    setCountdownActive(true);
+    
+    // Simulate API delay (2 minutes for testing)
+    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000));
+    
+    // Mock data for development
+    const mockData: SpaceResult = {
+      space_id: 'mock-space-123',
+      summary: `# 🚀 Crypto Market Analysis & Future Trends
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process space');
+## Introduction
+This Twitter Space featured **@crypto_analyst** and **@defi_builder** discussing the current state of the crypto market, emerging trends, and what to expect in the coming months. The session was highly informative with deep insights into DeFi protocols and market dynamics.
+
+## 🧠 Key Insights
+
+- **Market Sentiment**: The overall sentiment remains cautiously optimistic despite recent volatility
+- **Institutional Adoption**: Major institutions are quietly accumulating Bitcoin and Ethereum
+- **DeFi Innovation**: New protocols are emerging that solve real-world problems
+- **Regulatory Landscape**: Clearer regulations are expected in Q2 2024
+
+## 📚 Terminology Explained
+
+- **MEV (Maximal Extractable Value)**: The maximum value that can be extracted from block production in excess of the standard block reward and gas fees
+- **Layer 2 Scaling**: Solutions built on top of existing blockchains to improve transaction throughput
+- **Yield Farming**: The practice of lending or staking crypto assets to earn rewards
+
+## ⚠️ Problems Identified
+
+- **High Gas Fees**: Ethereum network congestion continues to be a major concern
+- **Centralization Risks**: Some DeFi protocols are becoming increasingly centralized
+- **Security Vulnerabilities**: Smart contract exploits remain a significant threat
+- **User Experience**: Complex interfaces are still a barrier to mainstream adoption
+
+## 💡 Proposed Solutions
+
+- **Layer 2 Adoption**: Encouraging users to migrate to L2 solutions for lower fees
+- **Cross-Chain Bridges**: Improving interoperability between different blockchains
+- **Better UX Design**: Simplifying DeFi interfaces for non-technical users
+- **Enhanced Security**: Implementing more robust security measures and audits
+
+## 🔮 What's Coming Next
+
+- **Ethereum 2.0**: Full transition to proof-of-stake expected by end of 2024
+- **CBDCs**: Central Bank Digital Currencies will likely impact the crypto landscape
+- **Web3 Gaming**: Gaming tokens and NFTs are expected to see significant growth
+- **DeFi 2.0**: Next generation of DeFi protocols with improved efficiency
+
+## 🎯 Final Takeaways
+
+1. **Long-term Perspective**: Focus on fundamentals rather than short-term price movements
+2. **Diversification**: Spread investments across different sectors and protocols
+3. **Education**: Continuous learning is crucial in this rapidly evolving space
+4. **Risk Management**: Never invest more than you can afford to lose
+
+The session concluded with a Q&A where participants discussed specific investment strategies and upcoming projects to watch.`,
+      transcript: `[00:00:00] Speaker: Welcome everyone to today's crypto market analysis session. I'm @crypto_analyst and I'm joined by @defi_builder. We'll be discussing the current state of the market and what we can expect in the coming months.
+
+[00:00:15] Speaker: Thanks for having me. The market has been quite volatile lately, but I think we're seeing some interesting patterns emerge.
+
+[00:00:30] Speaker: Absolutely. Let's start with the overall sentiment. Despite the recent price fluctuations, institutional adoption is quietly accelerating behind the scenes.
+
+[00:00:45] Speaker: That's a great point. We're seeing major players like BlackRock and Fidelity entering the space, which is a strong signal for long-term growth.
+
+[00:01:00] Speaker: The DeFi space is particularly interesting right now. New protocols are emerging that actually solve real problems, not just copy existing solutions.
+
+[00:01:15] Speaker: I agree. The innovation in DeFi is incredible. We're seeing protocols that address issues like MEV, cross-chain interoperability, and user experience.
+
+[00:01:30] Speaker: Let's talk about some of the challenges we're facing. Gas fees on Ethereum are still a major concern for users.
+
+[00:01:45] Speaker: Yes, that's why Layer 2 solutions are so important. We need to encourage more users to migrate to L2s for their daily transactions.
+
+[00:02:00] Speaker: Security is another critical issue. Smart contract exploits are still happening too frequently.
+
+[00:02:15] Speaker: That's why proper auditing and security measures are essential. Users should always DYOR and understand the risks.
+
+[00:02:30] Speaker: Looking ahead, what are your thoughts on Ethereum 2.0 and the transition to proof-of-stake?
+
+[00:02:45] Speaker: The transition is going well so far. We should see the full implementation by the end of 2024, which will significantly reduce energy consumption.
+
+[00:03:00] Speaker: And what about regulatory developments? How do you see that affecting the market?
+
+[00:03:15] Speaker: Regulation is inevitable and actually necessary for mainstream adoption. We need clear guidelines to protect users while fostering innovation.
+
+[00:03:30] Speaker: Great insights everyone. Let's open it up for questions from the audience.
+
+[00:03:45] Speaker: Thanks for the comprehensive overview. This has been very informative for our community.`,
+      metadata: {
+        confidence: 0.95,
+        speakers: 2,
+        chapters: 6
+      },
+      download: {
+        file_path: '/tmp/mock_audio.mp3',
+        file_size: 15728640, // 15MB
+        duration: 225 // 3 minutes 45 seconds
       }
-
-      const data = await response.json();
-      console.log('Frontend received data:', data);
-      setResult(data);
-    } catch (err) {
-      console.error('Error processing space:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process space');
-    } finally {
+    };
+    
+    setResult(mockData);
       setIsLoading(false);
-    }
+    setCountdownActive(false); // Stop countdown when done
   };
 
   // When a new result is set, update persistedSummary
@@ -206,6 +281,28 @@ export default function SpacesSummarizerPage() {
     }
   }, [currentMention, transcriptMentions]);
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (!countdownActive || timeLeft <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setCountdownActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+      
+          // Update progress
+    const totalTime = 2 * 60; // 2 minutes in seconds
+    const newProgress = ((totalTime - timeLeft + 1) / totalTime) * 100;
+      setProgress(newProgress);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [countdownActive, timeLeft, contentType]);
+
   const handleNextMention = () => {
     if (transcriptMentions.length === 0) return;
     setCurrentMention((prev) => (prev + 1) % transcriptMentions.length);
@@ -233,8 +330,8 @@ export default function SpacesSummarizerPage() {
     if (!result) return;
     
     const contentToCopy = activeTab === 'summary' 
-      ? `Space Summary\n\n${result.summary}`
-      : `Space Transcript\n\n${result.transcript}`;
+      ? `Content Summary\n\n${result.summary}`
+      : `Content Transcript\n\n${result.transcript}`;
     
     try {
       await navigator.clipboard.writeText(contentToCopy);
@@ -269,6 +366,54 @@ export default function SpacesSummarizerPage() {
           </p>
         </div>
 
+        {/* Development Banner */}
+        <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🐒</span>
+            <div className="flex-1">
+              <p className="text-yellow-300 font-medium text-sm sm:text-base">
+                This feature is still under development. The tech monkeys are working hard to fix it! Feel free to test with any URL to see the mock data and preview what to expect.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Countdown Timer */}
+        {countdownActive && (
+          <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
+                  <span className="text-white font-medium">
+                    <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
+                  </span>
+                </div>
+                <div className="relative">
+                  <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
+                    <div 
+                      className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div 
+                    className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-1000 ease-out"
+                    style={{ left: `calc(${progress}% - 4px)` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-400 ml-4">
+                <div className="p-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span>{notificationsEnabled ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error Display */}
         {error && (
           <div className="bg-red-900/20 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
@@ -288,22 +433,28 @@ export default function SpacesSummarizerPage() {
               <div className="flex bg-[#181A20] rounded-lg p-1">
                 <button
                   type="button"
-                  onClick={() => setContentType('space')}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  onClick={() => !isLoading && setContentType('space')}
+                  disabled={isLoading}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors cursor-pointer ${
                     contentType === 'space'
                       ? 'bg-[#A259FF] text-white'
-                      : 'text-gray-400 hover:text-gray-300'
+                      : isLoading 
+                        ? 'text-gray-500 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Spaces
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContentType('broadcast')}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  onClick={() => !isLoading && setContentType('broadcast')}
+                  disabled={isLoading}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors cursor-pointer ${
                     contentType === 'broadcast'
                       ? 'bg-[#A259FF] text-white'
-                      : 'text-gray-400 hover:text-gray-300'
+                      : isLoading 
+                        ? 'text-gray-500 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Broadcasts
@@ -358,7 +509,7 @@ export default function SpacesSummarizerPage() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-0">
                 <div className="flex-1">
                   <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">
-                    {contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'}
+                    {contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} Summary
                   </h2>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400">
 
