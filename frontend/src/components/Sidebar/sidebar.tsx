@@ -83,6 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               <div>
                 <BsLayoutSidebarInsetReverse
                   className="w-4 h-4 text-[#ffffff99] hover:text-white transition-colors cursor-pointer"
+                  style={{ cursor: 'e-resize' }}
                   onClick={() => setCollapsed(false)}
                 />
               </div>

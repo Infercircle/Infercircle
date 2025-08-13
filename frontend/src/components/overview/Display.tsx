@@ -141,6 +141,8 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
+  const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
+  const [loadingLogo, setLoadingLogo] = useState(false);
   // const [addressDist] = useState<AddressDistribution>({
   //   less_0001: 0.1,
   //   "0001_001": 0.15,
@@ -164,7 +166,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
-  const [isCurated, setIsCurated] = useState(false);
+  const [isElite, setIsElite] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -172,6 +174,69 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   useEffect(() => {
     setCurrentChartType(chartType as 'price' | 'balance');
   }, [chartType]);
+
+  // Fetch logo for selected asset if it doesn't have one
+  useEffect(() => {
+    if (!selectedAsset?.symbol || selectedAsset.icon || loadingLogo) {
+      return;
+    }
+
+    const fetchLogo = async () => {
+      setLoadingLogo(true);
+      try {
+        // First try sentiment API
+        const sentimentResponse = await fetch("/api/sentiments");
+        if (sentimentResponse.ok) {
+          const data = await sentimentResponse.json();
+          const assetSentiMentScoreList = data.arrayMap;
+          
+          if (assetSentiMentScoreList && assetSentiMentScoreList[selectedAsset.symbol.toLowerCase()]) {
+            const allAssets = assetSentiMentScoreList[selectedAsset.symbol.toLowerCase()];
+            
+            for (const asset of allAssets) {
+              if (asset.name.toLowerCase() === selectedAsset.name.toLowerCase()) {
+                if (asset.image) {
+                  setLocalLogoCache(prev => ({ ...prev, [selectedAsset.symbol.toLowerCase()]: asset.image }));
+                  return;
+                }
+              }
+            }
+          }
+        }
+
+        // Fallback to mindshare API
+        const notFoundArr = [{
+          id: selectedAsset.symbol,
+          name: selectedAsset.name,
+          symbol: selectedAsset.symbol,
+          image: '',
+          blockchain: selectedAsset.chain.toLowerCase(),
+          address: '',
+        }];
+        
+        const missingDataResponse = await fetch(`${API_BASE}/mindshare/addAsset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assets: notFoundArr }),
+        });
+        
+        if (missingDataResponse.ok) {
+          const missingData = await missingDataResponse.json();
+          missingData.results.forEach((res: any) => {
+            if (res.symbol.toLowerCase() === selectedAsset.symbol.toLowerCase() && res.image) {
+              setLocalLogoCache(prev => ({ ...prev, [selectedAsset.symbol.toLowerCase()]: res.image }));
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching logo:', error);
+      } finally {
+        setLoadingLogo(false);
+      }
+    };
+
+    fetchLogo();
+  }, [selectedAsset?.symbol, selectedAsset?.name, selectedAsset?.icon, selectedAsset?.chain, API_BASE, loadingLogo]);
 
   // Helper function to get the correct symbol for API calls
   const getApiSymbol = useCallback((symbol: string): string => {
@@ -447,7 +512,10 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
   const displaySymbol = selectedAsset ? selectedAsset.symbol : "";
   const displayPrice = selectedAsset ? selectedAsset.price : null;
   const displayChange = selectedAsset ? selectedAsset.priceChange : null;
-  const displayLogo = selectedAsset?.icon || sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || null;
+  const displayLogo = selectedAsset?.icon || 
+                     localLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || 
+                     sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || 
+                     null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
   // Show message if no wallets are connected
@@ -484,6 +552,14 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
         <div className="flex items-center gap-3">
             {displayLogo ? (
               <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
+          ) : loadingLogo ? (
+              <div className="w-8 h-8 rounded-full bg-[#23262F] flex items-center justify-center">
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
           ) : (
               <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
           )}
@@ -554,30 +630,30 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
           <div className="flex items-center gap-2">
             {/* Live indicator */}
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            {/* Curated toggle switch */}
+            {/* Elite Feed toggle switch */}
             <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
               <span className={`text-xs font-medium transition-all duration-300 ${
-                isCurated 
+                isElite 
                   ? 'text-white' 
                   : 'text-[#666]'
-              }`}>Curated</span>
+              }`}>Elite Feed</span>
               <button 
                 className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none cursor-pointer ${
-                  isCurated 
+                  isElite 
                     ? 'bg-[#A259FF] shadow-md shadow-[#A259FF]/30' 
                     : 'bg-[#444] hover:bg-[#555]'
                 }`}
-                onClick={() => setIsCurated(!isCurated)}
+                onClick={() => setIsElite(!isElite)}
               >
                 <span 
                   className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
-                    isCurated 
+                    isElite 
                       ? 'translate-x-4.5 shadow-sm' 
                       : 'translate-x-0.5 shadow-sm'
                   }`}
                 />
                 {/* Glow effect when active */}
-                {isCurated && (
+                {isElite && (
                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#A259FF]/25 to-[#A259FF]/15 animate-pulse" />
                 )}
               </button>
