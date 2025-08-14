@@ -236,7 +236,7 @@ const Display: React.FC<DisplayProps> = ({ selectedAsset, showPriceChart = false
     };
 
     fetchLogo();
-  }, [selectedAsset?.symbol, selectedAsset?.name, selectedAsset?.icon, selectedAsset?.chain, API_BASE, loadingLogo]);
+  }, [selectedAsset?.symbol, selectedAsset?.name, selectedAsset?.icon, selectedAsset?.chain, API_BASE]);
 
   // Helper function to get the correct symbol for API calls
   const getApiSymbol = useCallback((symbol: string): string => {
