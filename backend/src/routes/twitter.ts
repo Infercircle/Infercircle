@@ -151,6 +151,9 @@ router.post("/sentiment-batch", asyncHandler(async (req: Request, res: Response)
 
       let totalSentiment = 0;
       let validTweets = 0;
+      let posTweets = 0;
+      let negTweets = 0;
+      let neutralTweets = 0;
       
       tweets.forEach((tweet: any) => {
         const text = tweet.content || tweet.raw_data?.rawContent || 
@@ -158,6 +161,9 @@ router.post("/sentiment-batch", asyncHandler(async (req: Request, res: Response)
         if (text && text.trim().length > 0) {
           const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
           totalSentiment += sentiment.compound;
+          if(sentiment.compound > 0) posTweets++;
+          else if(sentiment.compound < 0) negTweets++;
+          else neutralTweets++;
           validTweets++;
         }
       });
@@ -167,11 +173,13 @@ router.post("/sentiment-batch", asyncHandler(async (req: Request, res: Response)
         name,
         symbol,
         sentiment: totalSentiment,
+        positiveTweets: posTweets,
+        negativeTweets: negTweets,
+        neutralTweets: neutralTweets,
         count: validTweets,
         image,
         error: null
       };
-
     } catch (error) {
       console.error(`Error processing sentiment for ${symbol}:`, error);
       return { symbol, sentiment: 0, count: 0, image, error: error instanceof Error ? error.message : 'Unknown error' };
