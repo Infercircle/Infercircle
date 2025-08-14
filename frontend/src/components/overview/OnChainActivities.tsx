@@ -17,6 +17,32 @@ function formatBalance(balance: number, symbol: string) {
   return `0 ${symbol}`;
 }
 
+// Helper to get color based on mindShare value (0-100)
+function getMindShareColor(mindShare: number): string {
+  if (mindShare >= 70) {
+    // From 70 to 100: yellow to pure green (30% range for green dominance)
+    const ratio = (mindShare - 70) / 30; // 0 to 1
+    const red = Math.round(255 * (1 - ratio >= 0.2? ratio: ratio+0.2)); // Fade out red component
+    const green = 255;
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  } else if (mindShare >= 50) {
+    // From 30 to 70: red to yellow (40% range for yellow transition)
+    const ratio = (mindShare - 50) / 20; // 0 to 1
+    const red = 255;
+    const green = Math.round(128 + (127 * ratio)); // Start from darker yellow and go to bright yellow
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  } else {
+    // From 0 to 30: pure red to red-orange (30% range for red dominance)
+    const ratio = mindShare / 30; // 0 to 1
+    const red = 255;
+    const green = Math.round(64 * ratio); // Very little green component
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  }
+}
+
 interface Asset {
   name: string;
   symbol: string;
@@ -587,7 +613,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           cx="20"
                           cy="20"
                           r="18"
-                          stroke={asset.mindShare !== undefined && asset.mindShare >= 50 ? '#22c55e' : '#ef4444'}
+                          stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
                           strokeWidth="4"
                           fill="none"
                           strokeDasharray={113}
