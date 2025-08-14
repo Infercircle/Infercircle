@@ -193,7 +193,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         }
         
         const data = await sentimentResponse.json();
-        const assetSentiMentScoreList = data.arrayMap;
+        const assetSentiMentScoreList = data.arrayMap as AssetSentimentArrayMap;
         const totalScore = data.totalScore;
         
         setTotalScore(totalScore);
@@ -207,9 +207,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             
             for(const asset of allAssets) {
               if(asset.name.toLowerCase() == token.name.toLowerCase()){
+                const SentimentIndex = (asset.positiveTweets - asset.negativeTweets) / (asset.positiveTweets + asset.neutralTweets + asset.negativeTweets);
                 updatedToken.icon = asset.image || "";
                 updatedToken.sentiment = parseFloat(asset.sentiment);
-                updatedToken.mindShare = parseFloat(((parseFloat(asset.sentiment) / totalScore) * 100).toFixed(2));
+                updatedToken.mindShare = parseFloat(((SentimentIndex*50) + 50).toFixed(2));
                 break;
               }
             }
@@ -261,17 +262,18 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         });
         
         if (missingDataResponse.ok) {
-          const missingData = await missingDataResponse.json() as { results: { symbol: string, sentiment: string, image: string }[] };
+          const missingData = await missingDataResponse.json() as { results: {symbol: string, sentiment: string, image: string, positiveTweets: number, negativeTweets: number, neutralTweets: number }[] };
           
           missingData.results.forEach((res) => {
             if (res.symbol.toLowerCase() === token.symbol.toLowerCase()) {
               setAssets(prevAssets => prevAssets.map(asset => {
                 if (asset.symbol === token.symbol && asset.name === token.name) {
+                  let SentimentIndex = (res.positiveTweets - res.negativeTweets) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
                   return {
                     ...asset,
                     icon: res.image || "",
                     sentiment: parseFloat(res.sentiment),
-                    mindShare: parseFloat(((parseFloat(res.sentiment) / totalScore) * 100).toFixed(2))
+                    mindShare: parseFloat(((SentimentIndex*50) + 50).toFixed(2))
                   };
                 }
                 return asset;
@@ -390,7 +392,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
                   <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
                   <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-                  <th className="py-2 px-2 font-medium text-center w-[80px]">Mindshare</th>
+                  <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment Score</th>
               </tr>
             </thead>
             <tbody>
@@ -485,7 +487,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center w-[80px]">Mindshare</th>
+              <th className="py-2 px-2 font-medium text-center w-[130px]">Sentiment Score</th>
             </tr>
           </thead>
           <tbody>
@@ -589,11 +591,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           strokeWidth="4"
                           fill="none"
                           strokeDasharray={113}
-                          strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare / totalScore) * 113 : 113}
+                          strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare/100) * 113 : 113}
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare}%` : '--'}</span>
+                      <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
                     </div>
                   </td>
                 </tr>

@@ -26,8 +26,3 @@ export async function GET(req: NextRequest) {
     totalScore: total 
   });
 }
-
-export async function POST(req: NextRequest) {
-  const { token } = await req.json();
-  
-}

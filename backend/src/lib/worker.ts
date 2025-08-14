@@ -39,7 +39,9 @@ export async function startMindShareCalculation() {
     }
 }
 
-export async function getSentiment(data: { id: string, symbol: string, name: string, image?: string }[]): Promise<{symbol: string, sentiment: string}[]> {
+interface resultType {symbol: string, sentiment: string, image: string, positiveTweets: number, negativeTweets: number, neutralTweets: number }
+
+export async function getSentiment(data: { id: string, symbol: string, name: string, image?: string }[]): Promise<resultType[]> {
     console.log("getting sentiment for ",data.length);
     const result = await axios.post(`${process.env.BASE_URL}/twitter/sentiment-batch`, {
         assets: data.map(asset => ({ id: asset.id, symbol: asset.symbol, name: asset.name, image: asset.image }))
@@ -47,7 +49,7 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
     const Fresult = Object.values((result.data as any).results as {id: string, name: string, image: string, symbol: string, sentiment: string, positiveTweets: number, negativeTweets: number, neutralTweets: number}[]).flat();
     console.log("Got Fresult.....");
 
-    let resultArray: {symbol: string, sentiment: string, image: string, positiveTweets: number, negativeTweets: number, neutralTweets: number }[] = [];
+    let resultArray: resultType[] = [];
 
     await Promise.all(Fresult.map(async(res)=>{
         try {
