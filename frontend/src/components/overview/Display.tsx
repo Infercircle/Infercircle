@@ -996,4 +996,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
   );
 });
 
+Display.displayName = "Display";
+
 export default Display;
