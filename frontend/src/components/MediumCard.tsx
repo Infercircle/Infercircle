@@ -60,7 +60,15 @@ export default function MediumCard() {
   }, []);
 
   if (loading)
-    return <div className="text-center py-8">Loading Medium articles...</div>;
+    return (
+      <div className="text-center py-8">
+        <div className="flex items-center justify-center space-x-1">
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+        </div>
+      </div>
+    );
 
   return (
     <div className="max-w-2xl my-8 p-4 ">

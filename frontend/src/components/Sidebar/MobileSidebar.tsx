@@ -130,49 +130,45 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
         {session && status === "authenticated" ? (
           <div className="p-2">
             <div className="px-2">
-              <Link href="#" onClick={handleLinkClick}>
-                <div className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all duration-200 ${
-                  pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
-                }`}>
-                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                    {session.user?.image && (
-                      <img
-                        src={session.user.image}
-                        alt="Profile Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-white truncate">
-                      {session.user?.name}
-                    </div>
-                  </div>
-                  <FiLogOut 
-                    className="w-3 h-3 text-[#A3A3A3] hover:text-white transition-colors cursor-pointer" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      signOut({ callbackUrl: '/' });
-                    }}
-                  />
+              <div className={`flex items-center gap-3 p-2 rounded transition-all duration-200 ${
+                pathname === "/dashboard/account" ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "text-[#ffffff99]"
+              }`}>
+                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                  {session.user?.image && (
+                    <img
+                      src={session.user.image}
+                      alt="Profile Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
-              </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-white truncate">
+                    {session.user?.name}
+                  </div>
+                </div>
+                <FiLogOut 
+                  className="w-3 h-3 text-[#A3A3A3] hover:text-white transition-colors cursor-pointer" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    signOut({ callbackUrl: '/' });
+                  }}
+                />
+              </div>
             </div>
           </div>
         ) : (
           accountItem && accountItem.href && (
             <div className="p-2">
-              <Link href={accountItem.href} onClick={handleLinkClick}>
-                <div
-                  className={`flex items-center gap-2 px-2 py-2 mx-2 rounded cursor-pointer text-sm font-semibold transition-all duration-200 ${
-                    pathname === accountItem.href ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99]"
-                  }`}
-                >
-                  {React.createElement(accountItem.icon, { className: "w-4 h-4" })}
-                  {accountItem.label}
-                </div>
-              </Link>
+              <div
+                className={`flex items-center gap-2 px-2 py-2 mx-2 rounded text-sm font-semibold transition-all duration-200 ${
+                  pathname === accountItem.href ? "bg-[rgba(71,79,92,0.35)] backdrop-blur-md text-white" : "text-[#ffffff99]"
+                }`}
+              >
+                {React.createElement(accountItem.icon, { className: "w-4 h-4" })}
+                {accountItem.label}
+              </div>
             </div>
           )
         )}

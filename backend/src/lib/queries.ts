@@ -7,7 +7,7 @@ export async function getUserById(id: string) {
 }
 
 export async function createAssetMindShare(
-  params: { id: string, name: string, image?: string, symbol: string, sentiment: string }
+  params: { id: string, name: string, image?: string, symbol: string, sentiment: string, positiveTweets?: number, negativeTweets?: number, neutralTweets?: number }
 ) {
   await db.assetSentiMentScore.upsert({
     where: { id: params.id },
@@ -16,6 +16,9 @@ export async function createAssetMindShare(
       image: params.image,
       symbol: params.symbol,
       sentiment: params.sentiment,
+      positiveTweets: params.positiveTweets || 0,
+      negativeTweets: params.negativeTweets || 0,
+      neutralTweets: params.neutralTweets || 0,
     },
     create: {
       id: params.id,
@@ -23,6 +26,9 @@ export async function createAssetMindShare(
       image: params.image,
       symbol: params.symbol,
       sentiment: params.sentiment,
+      positiveTweets: params.positiveTweets || 0,
+      negativeTweets: params.negativeTweets || 0,
+      neutralTweets: params.neutralTweets || 0,
     },
   });
 }

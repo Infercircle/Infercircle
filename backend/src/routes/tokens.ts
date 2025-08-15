@@ -17,29 +17,50 @@ router.get("/search", asyncHandler(async (req: Request, res: Response) => {
 
   try {
     let coinData;
+    
+    // Setup headers for CoinGecko API calls
+    const coinGeckoHeaders: Record<string, string> = {
+      'Accept': 'application/json'
+    };
+    
+    if (process.env.COINGECKO_PRO_API_KEY) {
+      coinGeckoHeaders['x-cg-pro-api-key'] = process.env.COINGECKO_PRO_API_KEY;
+      console.log(`Using Pro API key for search: ${process.env.COINGECKO_PRO_API_KEY.substring(0, 10)}...`);
+    } else {
+      console.log(`No Pro API key found, using free tier for search`);
+    }
+    
     if (symbol) {
       // 1. Get all coins, find by symbol
-      const listRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      const listRes = await fetch("https://pro-api.coingecko.com/api/v3/coins/list", {
+        headers: coinGeckoHeaders
+      });
       const coins = await listRes.json();
       const match = coins.find((c: any) => c.symbol.toLowerCase() === String(symbol).toLowerCase());
       if (!match) {
         return res.status(404).json({ error: `No coin found with symbol '${symbol}'` });
       }
       // 2. Fetch details by id
-      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/${match.id}`);
+      const detailsRes = await fetch(`https://pro-api.coingecko.com/api/v3/coins/${match.id}`, {
+        headers: coinGeckoHeaders
+      });
       if (!detailsRes.ok) {
         return res.status(404).json({ error: `No details found for symbol '${symbol}'` });
       }
       coinData = await detailsRes.json();
     } else if (id) {
-      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
+      const detailsRes = await fetch(`https://pro-api.coingecko.com/api/v3/coins/${id}`, {
+        headers: coinGeckoHeaders
+      });
       if (!detailsRes.ok) {
         return res.status(404).json({ error: `No details found for id '${id}'` });
       }
       coinData = await detailsRes.json();
     } else if (address) {
       // Only Ethereum supported here
-      const detailsRes = await fetch(`https://api.coingecko.com/api/v3/coins/ethereum/contract/${address}`);
+      const detailsRes = await fetch(`https://pro-api.coingecko.com/api/v3/coins/ethereum/contract/${address}`, {
+        headers: coinGeckoHeaders
+      });
       if (!detailsRes.ok) {
         return res.status(404).json({ error: `No details found for address '${address}'` });
       }
@@ -76,7 +97,18 @@ router.get("/assets", async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const per_page = Number(req.query.per_page) || 100;
   try {
-    const response = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json'
+    };
+    
+    if (process.env.COINGECKO_PRO_API_KEY) {
+      headers['x-cg-pro-api-key'] = process.env.COINGECKO_PRO_API_KEY;
+      console.log(`Using Pro API key for assets: ${process.env.COINGECKO_PRO_API_KEY.substring(0, 10)}...`);
+    } else {
+      console.log(`No Pro API key found, using free tier for assets`);
+    }
+    
+    const response = await axios.get("https://pro-api.coingecko.com/api/v3/coins/markets", {
       params: {
         vs_currency: "usd",
         order: "market_cap_desc",
@@ -85,10 +117,7 @@ router.get("/assets", async (req: Request, res: Response) => {
         sparkline: true,
         price_change_percentage: "1h,24h,7d"
       },
-      headers: {
-        // If you have a CoinGecko API key, uncomment below and set COINGECKO_API_KEY in your env
-        // 'x-cg-pro-api-key': process.env.COINGECKO_API_KEY || ''
-      }
+      headers
     });
     res.json(response.data);
   } catch (error) {
@@ -150,24 +179,69 @@ router.get('/chart', asyncHandler(async (req: Request, res: Response) => {
   try {
     let coinId = id as string;
     
+    // Setup headers for CoinGecko API calls
+    const headers: Record<string, string> = {
+      'Accept': 'application/json'
+    };
+    
+    if (process.env.COINGECKO_PRO_API_KEY) {
+      headers['x-cg-pro-api-key'] = process.env.COINGECKO_PRO_API_KEY;
+      console.log(`Using Pro API key for ${symbol || id}: ${process.env.COINGECKO_PRO_API_KEY.substring(0, 10)}...`);
+    } else {
+      console.log(`No Pro API key found, using free tier for ${symbol || id}`);
+    }
+    
     // If symbol is provided, we need to find the coin ID first
     if (symbol && !id) {
-      const listRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      console.log(`Looking up coin ID for symbol: ${symbol}`);
+      const listRes = await fetch("https://pro-api.coingecko.com/api/v3/coins/list", {
+        headers
+      });
+      
+      if (!listRes.ok) {
+        const errorText = await listRes.text();
+        console.error(`Coin list API Error:`, errorText);
+        return res.status(listRes.status).json({ 
+          error: `Failed to fetch coin list`, 
+          status: listRes.status,
+          details: errorText 
+        });
+      }
+      
       const coins = await listRes.json();
       const match = coins.find((c: any) => c.symbol.toLowerCase() === String(symbol).toLowerCase());
       if (!match) {
+        console.log(`No coin found for symbol: ${symbol}`);
         return res.status(404).json({ error: `No coin found with symbol '${symbol}'` });
       }
       coinId = match.id;
+      console.log(`Found coin ID: ${coinId} for symbol: ${symbol}`);
     }
 
-    // Fetch market chart data
-    const chartRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=${vs_currency}&days=${days}`);
+    // Fetch market chart data with Pro API key
+    
+    const chartRes = await fetch(`https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=${vs_currency}&days=${days}`, {
+      headers
+    });
+    
+    console.log(`Chart API Response Status: ${chartRes.status} for ${coinId}`);
+    
     if (!chartRes.ok) {
-      return res.status(404).json({ error: `No chart data found for '${coinId}'` });
+      const errorText = await chartRes.text();
+      console.error(`Chart API Error for ${coinId}:`, errorText);
+      return res.status(chartRes.status).json({ 
+        error: `No chart data found for '${coinId}'`, 
+        status: chartRes.status,
+        details: errorText 
+      });
     }
 
     const chartData = await chartRes.json();
+    console.log(`Chart data received for ${coinId}:`, {
+      prices: chartData.prices?.length || 0,
+      market_caps: chartData.market_caps?.length || 0,
+      total_volumes: chartData.total_volumes?.length || 0
+    });
     
     // Transform the data to a more usable format
     const transformedData = {

@@ -57,10 +57,14 @@ model top_elite_curators {
   processed  Boolean? @default(false)
 }
 
+
 model AssetSentiMentScore {
-  id        String  @id
-  name      String  @unique
-  symbol    String
-  image     String?  
-  sentiment String @default("0") 
+  id              String  @id
+  name            String  @unique
+  symbol          String
+  image           String?  
+  sentiment       String @default("0") 
+  positiveTweets  Int    @default(0) 
+  negativeTweets  Int    @default(0)
+  neutralTweets   Int    @default(0)
 }

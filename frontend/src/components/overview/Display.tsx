@@ -2,14 +2,19 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import Tippy from '@tippyjs/react';
 import { IoFilter } from "react-icons/io5";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full"><span className="text-purple-400 animate-pulse text-5xl">.....</span></div>
+  loading: () => <div className="flex items-center justify-center h-full">
+    <div className="flex space-x-1">
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+      <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+    </div>
+  </div>
 }) as any;
 
 interface SelectedAsset {
@@ -137,6 +142,8 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
+  const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
+  const [loadingLogo, setLoadingLogo] = useState(false);
   // const [addressDist] = useState<AddressDistribution>({
   //   less_0001: 0.1,
   //   "0001_001": 0.15,
@@ -160,28 +167,77 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
   const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]); // Default to 1Y
-  const [isCurated, setIsCurated] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [isElite, setIsElite] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.filter-dropdown')) {
-        setShowFilterDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
     setCurrentChartType(chartType as 'price' | 'balance');
   }, [chartType]);
+
+  // Fetch logo for selected asset if it doesn't have one
+  useEffect(() => {
+    if (!selectedAsset?.symbol || selectedAsset.icon || loadingLogo) {
+      return;
+    }
+
+    const fetchLogo = async () => {
+      setLoadingLogo(true);
+      try {
+        // First try sentiment API
+        const sentimentResponse = await fetch("/api/sentiments");
+        if (sentimentResponse.ok) {
+          const data = await sentimentResponse.json();
+          const assetSentiMentScoreList = data.arrayMap;
+          
+          if (assetSentiMentScoreList && assetSentiMentScoreList[selectedAsset.symbol.toLowerCase()]) {
+            const allAssets = assetSentiMentScoreList[selectedAsset.symbol.toLowerCase()];
+            
+            for (const asset of allAssets) {
+              if (asset.name.toLowerCase() === selectedAsset.name.toLowerCase()) {
+                if (asset.image) {
+                  setLocalLogoCache(prev => ({ ...prev, [selectedAsset.symbol.toLowerCase()]: asset.image }));
+                  return;
+                }
+              }
+            }
+          }
+        }
+
+        // Fallback to mindshare API
+        const notFoundArr = [{
+          id: selectedAsset.symbol,
+          name: selectedAsset.name,
+          symbol: selectedAsset.symbol,
+          image: '',
+          blockchain: selectedAsset.chain.toLowerCase(),
+          address: '',
+        }];
+        
+        const missingDataResponse = await fetch(`${API_BASE}/mindshare/addAsset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assets: notFoundArr }),
+        });
+        
+        if (missingDataResponse.ok) {
+          const missingData = await missingDataResponse.json();
+          missingData.results.forEach((res: any) => {
+            if (res.symbol.toLowerCase() === selectedAsset.symbol.toLowerCase() && res.image) {
+              setLocalLogoCache(prev => ({ ...prev, [selectedAsset.symbol.toLowerCase()]: res.image }));
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching logo:', error);
+      } finally {
+        setLoadingLogo(false);
+      }
+    };
+
+    fetchLogo();
+  }, [selectedAsset?.symbol, selectedAsset?.name, selectedAsset?.icon, selectedAsset?.chain, API_BASE]);
 
   // Helper function to get the correct symbol for API calls
   const getApiSymbol = useCallback((symbol: string): string => {
@@ -457,7 +513,10 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
   const displaySymbol = selectedAsset ? selectedAsset.symbol : "";
   const displayPrice = selectedAsset ? selectedAsset.price : null;
   const displayChange = selectedAsset ? selectedAsset.priceChange : null;
-  const displayLogo = selectedAsset?.icon || sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || null;
+  const displayLogo = selectedAsset?.icon || 
+                     localLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || 
+                     sharedLogoCache[selectedAsset?.symbol?.toLowerCase() || ''] || 
+                     null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
   // Memoized tweets to display based on curated filter
@@ -494,7 +553,11 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
     return (
       <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
-          <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+          <div className="flex space-x-1">
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
       </div>
     );
@@ -507,7 +570,15 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
         <div className="flex items-center gap-3">
             {displayLogo ? (
-              <Image src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
+              <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
+          ) : loadingLogo ? (
+              <div className="w-8 h-8 rounded-full bg-[#23262F] flex items-center justify-center">
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
           ) : (
               <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
           )}
@@ -578,28 +649,33 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
           <div className="flex items-center gap-2">
             {/* Live indicator */}
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            {/* Filter dropdown */}
-            <div className="relative filter-dropdown">
+            {/* Elite Feed toggle switch */}
+            <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+              <span className={`text-xs font-medium transition-all duration-300 ${
+                isElite 
+                  ? 'text-white' 
+                  : 'text-[#666]'
+              }`}>Elite Feed</span>
               <button 
-                className="cursor-pointer text-[#A3A3A3] hover:text-white transition-colors"
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none cursor-pointer ${
+                  isElite 
+                    ? 'bg-[#A259FF] shadow-md shadow-[#A259FF]/30' 
+                    : 'bg-[#444] hover:bg-[#555]'
+                }`}
+                onClick={() => setIsElite(!isElite)}
               >
-                <IoFilter className="w-4 h-4" />
+                <span 
+                  className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
+                    isElite 
+                      ? 'translate-x-4.5 shadow-sm' 
+                      : 'translate-x-0.5 shadow-sm'
+                  }`}
+                />
+                {/* Glow effect when active */}
+                {isElite && (
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#A259FF]/25 to-[#A259FF]/15 animate-pulse" />
+                )}
               </button>
-              {/* Dropdown menu */}
-              <div className={`absolute right-0 top-full mt-1 bg-black shadow-lg z-10 transition-all duration-200 ${showFilterDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                <div className="p-2">
-                  <label className="flex items-center gap-2 text-xs text-[#A3A3A3] cursor-pointer hover:text-white transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={isCurated} 
-                      onChange={(e) => setIsCurated(e.target.checked)}
-                      className="w-3 h-3 text-[#A259FF] bg-[#333] border-[#555] rounded focus:ring-[#A259FF] focus:ring-1"
-                    />
-                    Curated
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -616,7 +692,7 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
                 style={{ minHeight: 80, maxHeight: 80, overflow: "hidden" }}
                 onClick={() => setExpandedIndex(idx)}
               >
-                <Image src={tweet.avatar} alt={tweet.name} width={40} height={40} className="rounded-full object-cover mt-1" />
+                <img src={tweet.avatar} alt={tweet.name} width={40} height={40} className="rounded-full object-cover mt-1" />
                 <div className="flex-1 flex flex-col min-w-0">
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -651,7 +727,7 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
             onClick={() => setExpandedIndex(null)}
           >
             <div className="flex items-center gap-3 mb-2 w-full">
-              <Image src={displayTweets[expandedIndex].avatar} alt={displayTweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
+              <img src={displayTweets[expandedIndex].avatar} alt={displayTweets[expandedIndex].name} width={48} height={48} className="rounded-full object-cover" />
               <div className="flex flex-col flex-1 min-w-0">
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -690,7 +766,11 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
         <div className="h-full flex flex-col overflow-hidden">
           {loadingChart ? (
             <div className="flex items-center justify-center h-full">
-              <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+              <div className="flex space-x-1">
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              </div>
             </div>
           ) : chartError ? (
             <div className="flex items-center justify-center h-full">
@@ -721,13 +801,51 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
                         type: 'area',
                         background: 'transparent',
                         toolbar: {
-                          show: false
+                          show: true,
+                          tools: {
+                            download: false,
+                            selection: true,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: true,
+                            reset: true
+                          },
+                          autoSelected: 'zoom',
+                          export: {
+                            csv: {
+                              filename: `${chartAsset?.symbol || 'chart'}_data`,
+                              columnDelimiter: ',',
+                              headerCategory: 'Date',
+                              headerValue: 'Price'
+                            }
+                          }
+                        },
+                        zoom: {
+                          enabled: true,
+                          type: 'x',
+                          autoScaleYaxis: true
+                        },
+                        pan: {
+                          enabled: true,
+                          type: 'x'
                         },
                         animations: {
                           enabled: true,
                           speed: 800
                         },
-                        height: '100%'
+                        height: '100%',
+                        events: {
+                          zoomed: function(chartContext: any, { xaxis }: any) {
+                            // Chart zoomed event
+                          },
+                          selection: function(chartContext: any, { xaxis }: any) {
+                            // Chart selection event
+                          },
+                          resetZoom: function() {
+                            // Chart reset event
+                          }
+                        }
                       },
                       series: [
                         {
@@ -744,6 +862,12 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
                           style: {
                             colors: '#A3A3A3',
                             fontSize: '10px'
+                          },
+                          datetimeFormatter: {
+                            year: 'yyyy',
+                            month: 'MMM \'yy',
+                            day: 'dd MMM',
+                            hour: 'HH:mm'
                           }
                         },
                         axisBorder: {
@@ -751,7 +875,10 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
                         },
                         axisTicks: {
                           color: '#23262F'
-                        }
+                        },
+                        range: undefined,
+                        min: undefined,
+                        max: undefined
                       },
                       yaxis: [
                         {
@@ -817,6 +944,18 @@ const Display: React.FC<DisplayProps> = React.memo(({ selectedAsset, showPriceCh
                       },
                       dataLabels: {
                         enabled: false
+                      },
+                      selection: {
+                        enabled: true,
+                        type: 'x',
+                        xaxis: {
+                          min: undefined,
+                          max: undefined
+                        }
+                      },
+                      brush: {
+                        enabled: true,
+                        target: 'chart'
                       }
                     }}
                     series={[

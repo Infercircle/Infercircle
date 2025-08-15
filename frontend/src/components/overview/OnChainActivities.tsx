@@ -3,6 +3,9 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { User, AssetSentiMentScore } from "@prisma/client";
 import { getAllAssetSentimentScores } from "@/actions/queries";
+import { IoInformationCircle } from "react-icons/io5";
+import Tippy from "@tippyjs/react";
+import "tippy.js/dist/tippy.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -12,6 +15,32 @@ function formatBalance(balance: number, symbol: string) {
   if (balance >= 1) return `${balance.toFixed(3)} ${symbol}`;
   if (balance > 0) return `${balance.toPrecision(3)} ${symbol}`;
   return `0 ${symbol}`;
+}
+
+// Helper to get color based on mindShare value (0-100)
+function getMindShareColor(mindShare: number): string {
+  if (mindShare >= 70) {
+    // From 70 to 100: yellow to pure green (30% range for green dominance)
+    const ratio = (mindShare - 70) / 30; // 0 to 1
+    const red = Math.round(255 * (1 - ratio >= 0.2? ratio: ratio+0.2)); // Fade out red component
+    const green = 255;
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  } else if (mindShare >= 50) {
+    // From 30 to 70: red to yellow (40% range for yellow transition)
+    const ratio = (mindShare - 50) / 20; // 0 to 1
+    const red = 255;
+    const green = Math.round(128 + (127 * ratio)); // Start from darker yellow and go to bright yellow
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  } else {
+    // From 0 to 30: pure red to red-orange (30% range for red dominance)
+    const ratio = mindShare / 30; // 0 to 1
+    const red = 255;
+    const green = Math.round(64 * ratio); // Very little green component
+    const blue = 0;
+    return `rgb(${red}, ${green}, ${blue})`;
+  }
 }
 
 interface Asset {
@@ -65,6 +94,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [sentimentCache, setSentimentCache] = useState<Record<string, number>>({});
   const [totalScore, setTotalScore] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [loadingLogos, setLoadingLogos] = useState<Set<string>>(new Set());
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
@@ -157,6 +187,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         // Display balances immediately
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
         setAssets(allTokens);
+        
+        // Add all assets to loading state for logos
+        const loadingSymbols = new Set(allTokens.map(token => token.symbol.toLowerCase()));
+        setLoadingLogos(loadingSymbols);
+        
         setLoading(false);
         
         // Notify parent about first asset immediately
@@ -184,7 +219,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         }
         
         const data = await sentimentResponse.json();
-        const assetSentiMentScoreList = data.arrayMap;
+        const assetSentiMentScoreList = data.arrayMap as AssetSentimentArrayMap;
         const totalScore = data.totalScore;
         
         setTotalScore(totalScore);
@@ -198,9 +233,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             
             for(const asset of allAssets) {
               if(asset.name.toLowerCase() == token.name.toLowerCase()){
+                const SentimentIndex = (asset.positiveTweets - asset.negativeTweets) / (asset.positiveTweets + asset.neutralTweets + asset.negativeTweets);
                 updatedToken.icon = asset.image || "";
                 updatedToken.sentiment = parseFloat(asset.sentiment);
-                updatedToken.mindShare = parseFloat(((parseFloat(asset.sentiment) / totalScore) * 100).toFixed(2));
+                updatedToken.mindShare = parseFloat(((SentimentIndex*50) + 50).toFixed(2));
                 break;
               }
             }
@@ -209,6 +245,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           // If still no sentiment data, try to fetch it
           if(updatedToken.icon == '' || updatedToken.sentiment === undefined) {
             fetchMissingSentimentData(updatedToken, totalScore);
+          } else {
+            // Remove from loading state if we got a logo
+            setLoadingLogos(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(token.symbol.toLowerCase());
+              return newSet;
+            });
           }
           
           return updatedToken;
@@ -223,6 +266,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
     // Fetch missing sentiment data for individual tokens
     const fetchMissingSentimentData = async (token: Asset, totalScore: number) => {
+      // Add to loading set
+      setLoadingLogos(prev => new Set(prev).add(token.symbol.toLowerCase()));
+      
       try {
         const notFoundArr = [{
           id: token.symbol,
@@ -242,17 +288,18 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         });
         
         if (missingDataResponse.ok) {
-          const missingData = await missingDataResponse.json() as { results: { symbol: string, sentiment: string, image: string }[] };
+          const missingData = await missingDataResponse.json() as { results: {symbol: string, sentiment: string, image: string, positiveTweets: number, negativeTweets: number, neutralTweets: number }[] };
           
           missingData.results.forEach((res) => {
             if (res.symbol.toLowerCase() === token.symbol.toLowerCase()) {
               setAssets(prevAssets => prevAssets.map(asset => {
                 if (asset.symbol === token.symbol && asset.name === token.name) {
+                  let SentimentIndex = (res.positiveTweets - res.negativeTweets) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
                   return {
                     ...asset,
                     icon: res.image || "",
                     sentiment: parseFloat(res.sentiment),
-                    mindShare: parseFloat(((parseFloat(res.sentiment) / totalScore) * 100).toFixed(2))
+                    mindShare: parseFloat(((SentimentIndex*50) + 50).toFixed(2))
                   };
                 }
                 return asset;
@@ -262,6 +309,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         }
       } catch (error) {
         // Continue without sentiment data if API fails
+      } finally {
+        // Remove from loading set
+        setLoadingLogos(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(token.symbol.toLowerCase());
+          return newSet;
+        });
       }
     };
 
@@ -321,16 +375,50 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         </button>
       </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
-          <table className="min-w-full text-sm text-left align-middle">
+          <table className="w-full text-sm text-left align-middle table-fixed">
             <thead>
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-                <th className="py-2 px-2 font-medium text-left">Asset</th>
-                <th className="py-2 px-2 font-medium text-left">Price</th>
-                <th className="py-2 px-2 font-medium text-left">Balance</th>
-                <th className="py-2 px-2 font-medium text-left">Value</th>
-                <th className="py-2 px-2 font-medium text-center">Price</th>
-                <th className="py-2 px-2 font-medium text-center">Sentiment</th>
-                <th className="py-2 px-2 font-medium text-center">Mindshare</th>
+                  <th className="py-2 px-2 font-medium text-left w-[200px]">Asset</th>
+                  <th className="py-2 px-2 font-medium text-left w-[100px]">
+                    <div className="flex items-center gap-1">
+                      Price
+                      <Tippy
+                        content={
+                          <div className="text-xs">
+                            <div>Current token price in USD</div>
+                            <div className="text-[#A259FF]">Click to view price chart</div>
+                          </div>
+                        }
+                        placement="top"
+                        arrow={true}
+                        theme="custom"
+                      >
+                        <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                      </Tippy>
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 font-medium text-left w-[100px]">
+                    <div className="flex items-center gap-1">
+                      Balance
+                      <Tippy
+                        content={
+                          <div className="text-xs">
+                            <div>Quantity of tokens you own</div>
+                            <div className="text-[#A259FF]">Click to view balance chart</div>
+                          </div>
+                        }
+                        placement="top"
+                        arrow={true}
+                        theme="custom"
+                      >
+                        <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                      </Tippy>
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
+                  <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
+                  <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
+                  <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment Score</th>
               </tr>
             </thead>
             <tbody>
@@ -348,7 +436,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
       {/* Preloader overlay */}
       <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <span className="text-purple-400 animate-pulse text-5xl">.....</span>
+        <div className="flex space-x-1">
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+        </div>
       </div>
       
       {/* Error overlay */}
@@ -378,16 +470,50 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         </button>
       </div>
       <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
-        <table className="min-w-full text-sm text-left align-middle">
+        <table className="w-full text-sm text-left align-middle table-fixed">
           <thead>
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium text-left">Asset</th>
-              <th className="py-2 px-2 font-medium text-left">Price</th>
-              <th className="py-2 px-2 font-medium text-left">Balance</th>
-              <th className="py-2 px-2 font-medium text-left">Value</th>
-              <th className="py-2 px-2 font-medium text-center">Price</th>
-              <th className="py-2 px-2 font-medium text-center">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center">Mindshare</th>
+              <th className="py-2 px-2 font-medium text-left w-[180px]">Asset</th>
+              <th className="py-2 px-2 font-medium text-left w-[110px]">
+                <div className="flex items-center gap-1">
+                  Price
+                  <Tippy
+                    content={
+                      <div className="text-xs">
+                        <div>Current token price in USD</div>
+                        <div className="text-[#A259FF]">Click to view price chart</div>
+                      </div>
+                    }
+                    placement="top"
+                    arrow={true}
+                    theme="custom"
+                  >
+                    <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                  </Tippy>
+                </div>
+              </th>
+              <th className="py-2 px-2 font-medium text-left w-[150px]">
+                <div className="flex items-center gap-1">
+                  Balance
+                  <Tippy
+                    content={
+                      <div className="text-xs">
+                        <div>Quantity of tokens you own</div>
+                        <div className="text-[#A259FF]">Click to view balance chart</div>
+                      </div>
+                    }
+                    placement="top"
+                    arrow={true}
+                    theme="custom"
+                  >
+                    <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                  </Tippy>
+                </div>
+              </th>
+              <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
+              <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
+              <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
+              <th className="py-2 px-2 font-medium text-center w-[130px]">Sentiment Score</th>
             </tr>
           </thead>
           <tbody>
@@ -404,43 +530,81 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition cursor-pointer ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]/60' : ''}`}
                   onClick={() => handleAssetClick(asset)}
                 >
-                  <td className="py-2 px-2 flex items-center gap-2 justify-start">
-                    {asset.icon && asset.icon.includes("https") ? (
-                      <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain" />
-                    ) : (
-                      <span className="text-2xl">{asset.symbol ? asset.symbol[0] : '?'}</span>
-                    )}
-                    <div>
-                      <div className="text-white font-medium">{asset.name}</div>
-                      <div className="text-xs text-[#A3A3A3]">{asset.symbol} <span className="text-[#666]">({asset.chain})</span></div>
+                  <td className="py-2 px-2 w-[200px]">
+                    <div className="flex items-center gap-2 justify-start min-w-0">
+                    {loadingLogos.has(asset.symbol.toLowerCase()) ? (
+                      <div className="w-6 h-6 rounded-full bg-[#23262F] flex items-center justify-center flex-shrink-0">
+                        <div className="flex space-x-0.5">
+                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
+                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                      </div>
+                    ) : asset.icon && asset.icon.includes("https") ? (
+                        <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain flex-shrink-0" />
+                      ) : (
+                        <span className="text-2xl flex-shrink-0">{asset.symbol ? asset.symbol[0] : '?'}</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="text-white font-medium">{asset.name}</div>
+                        <div className="text-xs text-[#A3A3A3]">{asset.symbol} <span className="text-[#666]">({asset.chain})</span></div>
+                      </div>
                     </div>
                   </td>
                   <td 
-                    className={`py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    className={`py-2 px-2 w-[100px] text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                       activeChartType === 'price' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'text-[#A259FF]' 
                         : ''
                     }`}
                     onClick={(e) => handlePriceClick(asset, e)}
-                    title="Click to view price chart"
                   >
+                    <Tippy
+                      content="Click to view price chart"
+                      placement="top"
+                      arrow={true}
+                      theme="custom"
+                    >
+                      <div>
                     {asset.price !== undefined ? `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}` : '--'}
+                      </div>
+                    </Tippy>
                   </td>
                   <td 
-                    className={`py-2 px-2 text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    className={`py-2 px-2 w-[100px] text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                       activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'text-[#A259FF]' 
                         : ''
                     }`}
                     onClick={(e) => handleBalanceClick(asset, e)}
-                    title="Click to view balance chart"
                   >
+                    <Tippy
+                      content="Click to view balance chart"
+                      placement="top"
+                      arrow={true}
+                      theme="custom"
+                    >
+                      <div>
                     {asset.balance !== undefined && asset.symbol ? formatBalance(Number(asset.balance), asset.symbol) : '--'}
+                      </div>
+                    </Tippy>
                   </td>
-                  <td className="py-2 px-2 text-white text-left align-middle">{asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}</td>
-                  <td className={`py-2 px-2 font-semibold text-center align-middle ${asset.priceChange !== undefined && asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{asset.priceChange !== undefined ? `${asset.priceChange >= 0 ? '+' : ''}${Number(asset.priceChange).toFixed(2)}%` : '--'}</td>
-                  <td className={`py-2 px-2 font-semibold text-center align-middle ${asset.sentiment !== undefined && asset.sentiment > 0 ? 'text-green-400' : asset.sentiment !== undefined && asset.sentiment < 0 ? 'text-red-400' : ''}`}>{asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}</td>
-                  <td className="py-2 px-2 text-center align-middle">
+                  <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
+                                          <div>
+                        {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
+                      </div>
+                  </td>
+                  <td className={`py-2 px-2 w-[80px] font-semibold text-center align-middle ${asset.priceChange !== undefined && asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <div>
+                      {asset.priceChange !== undefined ? `${asset.priceChange >= 0 ? '+' : ''}${Number(asset.priceChange).toFixed(2)}%` : '--'}
+                    </div>
+                  </td>
+                  <td className={`py-2 px-2 w-[80px] font-semibold text-center align-middle ${asset.sentiment !== undefined && asset.sentiment > 0 ? 'text-green-400' : asset.sentiment !== undefined && asset.sentiment < 0 ? 'text-red-400' : ''}`}>
+                    <div>
+                      {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
+                    </div>
+                  </td>
+                  <td className="py-2 px-2 w-[80px] text-center align-middle">
                     {/* Placeholder for circular progress */}
                     <div className="relative w-10 h-10 flex items-center justify-center m-auto">
                       <svg className="absolute top-0 left-0" width="40" height="40">
@@ -449,15 +613,15 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           cx="20"
                           cy="20"
                           r="18"
-                          stroke={asset.mindShare !== undefined && asset.mindShare >= 50 ? '#22c55e' : '#ef4444'}
+                          stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
                           strokeWidth="4"
                           fill="none"
                           strokeDasharray={113}
-                          strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare / totalScore) * 113 : 113}
+                          strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare/100) * 113 : 113}
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare}%` : '--'}</span>
+                      <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
                     </div>
                   </td>
                 </tr>
