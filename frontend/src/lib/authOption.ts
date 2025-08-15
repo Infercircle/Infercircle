@@ -1,8 +1,57 @@
 import { db } from "./db";
 import { getServerSession, NextAuthOptions } from "next-auth";
-import Twitter from "next-auth/providers/twitter";
+import { TwitterLegacy, TwitterProfile } from "next-auth/providers/twitter";
 import Google from "next-auth/providers/google";
 import { User } from "@prisma/client";
+import { OAuthConfig, OAuthUserConfig } from "next-auth/providers/oauth";
+
+export default function Twitter<
+  P extends Record<string, any> =  TwitterProfile
+>(options: OAuthUserConfig<P>): OAuthConfig<P> {
+  if (options.version === "2.0") {
+    return {
+      id: "twitter",
+      name: "Twitter",
+      version: "2.0",
+      type: "oauth",
+      authorization: {
+        url: "https://x.com/i/oauth2/authorize",
+        params: { scope: "users.read tweet.read offline.access" },
+      },
+      token: {
+        url: "https://api.x.com/2/oauth2/token",
+        // TODO: Remove this
+        async request({ client, params, checks, provider }) {
+          const response = await client.oauthCallback(
+            provider.callbackUrl,
+            params,
+            checks,
+            { exchangeBody: { client_id: options.clientId } }
+          )
+          return { tokens: response }
+        },
+      },
+      userinfo: {
+        url: "https://api.x.com/2/users/me",
+        params: { "user.fields": "profile_image_url" },
+      },
+      profile({ data }) {
+        return {
+          id: data.id,
+          name: data.name,
+          // NOTE: E-mail is currently unsupported by OAuth 2 Twitter.
+          email: null,
+          image: data.profile_image_url,
+        }
+      },
+      checks: ["pkce", "state"],
+      style: { logo: "/twitter.svg", bg: "#1da1f2", text: "#fff" },
+      options,
+    }
+  }
+
+  return TwitterLegacy(options)
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
