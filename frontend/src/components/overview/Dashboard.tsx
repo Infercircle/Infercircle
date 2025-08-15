@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ username, limit: 5 }),
+              body: JSON.stringify({ username, limit: 10 }),
             });
             const data = await res.json();
             return data.tweets || [];
