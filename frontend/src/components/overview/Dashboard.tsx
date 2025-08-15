@@ -72,6 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
   const [chartType, setChartType] = useState<'price' | 'balance'>('price');
   const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
   const [allElites, setAllElites] = useState<Set<string>>(new Set());
+  const [curatedTweets, setCuratedTweets] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchEliteUsers() {
@@ -84,6 +85,46 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     }
     fetchEliteUsers();
   }, []);
+
+  useEffect(()=> {
+    const  BATCH_SIZE = 10;
+    async function processInBatches(usernames: string[]) {
+      const results = [];
+
+      for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
+        const batch = usernames.slice(i, i + BATCH_SIZE);
+
+        // Process each batch concurrently
+        const batchResults = await Promise.all(
+          batch.map(async (username) => {
+            // Your async logic here
+            const res  = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user/tweets`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ username, limit: 10 }),
+            });
+            const data = await res.json();
+            return data.tweets || [];
+          })
+        );
+
+        setTimeout(() => {}, 1000); // Small delay to avoid rate limiting
+
+        console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(usernames.length / BATCH_SIZE)}`);
+        console.log(batchResults);
+        results.push(...(batchResults.flat()));
+        console.log(results.flat()[0]);
+        setCuratedTweets(results.flat());
+        console.log(curatedTweets);
+      }
+    }
+    if(allElites.size > 0) {
+      const usernames = Array.from(allElites);
+      processInBatches(usernames);
+    }
+  }, [allElites]);
 
   if(!session || status !== "authenticated") {
     return (
@@ -163,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">
-      <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} connectedWallets={connectedWallets} sharedLogoCache={sharedLogoCache} />
+      <Display selectedAsset={selectedAsset} showPriceChart={showPriceChart} chartAsset={chartAsset} onCloseChart={() => setShowPriceChart(false)} chartType={chartType} connectedWallets={connectedWallets} sharedLogoCache={sharedLogoCache} curatedTweets={curatedTweets} />
     </div>
     {/* Bottom Row: Watchlist, ICO/IDO */}
     {/* <div className="col-span-12 md:col-span-6">
