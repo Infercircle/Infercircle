@@ -34,6 +34,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const contentMarginClass = collapsed ? "ml-14 md:ml-14" : "ml-0 md:ml-56";
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
+  const isOverviewPage = pathname === "/dashboard";
   const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/content-summarizer" && pathname !== "/dashboard/pre-tge" && pathname !== "/dashboard/post-tge-projects" && pathname !== "/dashboard/token-sales";
   const showWallet = !isInferAI && pathname !== "/dashboard/content-summarizer";
   const showMobileMenu = pathname.startsWith("/dashboard");
@@ -90,6 +91,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     wallets.btc.length +
     wallets.tron.length +
     wallets.ton.length;
+  const shouldShowFocusEffect = isOverviewPage && connectedWallets === 0;
   // Net worth state
   const [netWorth, setNetWorth] = useState(0);
   // Total price change state
@@ -250,8 +252,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 onOpenWalletModal={openWalletModal}
                 connectedWallets={connectedWallets}
                 onToggleMobileMenu={showMobileMenu ? toggleMobileMenu : undefined}
+                shouldShowFocusEffect={shouldShowFocusEffect}
               />
-              <main className="pt-4 px-4">
+              <main className={`pt-4 px-4 transition-all duration-300 ${shouldShowFocusEffect ? 'opacity-30' : 'opacity-100'}`}>
                 {children}
               </main>
             </div>
