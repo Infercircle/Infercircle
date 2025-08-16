@@ -18,6 +18,7 @@ model EliteCurator {
   subscribedAt   DateTime? @map("subscribed_at") @db.Timestamp(6)
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   followersCount Int?      @map("followers_count")
+  User           User[]
 
   @@map("elite_curators")
 }
@@ -32,17 +33,18 @@ model TopEliteCurators {
 }
 
 model User {
-  id             String       @id @default(cuid())
+  id             String         @id @default(cuid())
   name           String?
-  email          String?      @unique
+  email          String?        @unique
   image          String?
-  username       String?      @unique
+  username       String?        @unique
   followersCount Int?
-  inviteAccepted Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @default(now())
-  twitterId      String?      @unique
-  wallets        UserWallet[] @relation("UserWallets")
+  inviteAccepted Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now())
+  twitterId      String?        @unique
+  elite_curators EliteCurator[]
+  wallets        UserWallet[]   @relation("UserWallets")
 }
 
 model UserWallet {
@@ -60,14 +62,13 @@ model InviteCode {
   used       Boolean @default(false)
 }
 
-
 model AssetSentiMentScore {
-  id              String  @id
-  name            String  @unique
-  symbol          String
-  image           String?  
-  sentiment       String @default("0") 
-  positiveTweets  Int    @default(0) 
-  negativeTweets  Int    @default(0)
-  neutralTweets   Int    @default(0)
+  id             String  @id
+  name           String  @unique
+  symbol         String
+  image          String?
+  sentiment      String  @default("0")
+  negativeTweets Int     @default(0)
+  neutralTweets  Int     @default(0)
+  positiveTweets Int     @default(0)
 }
