@@ -588,13 +588,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   </td>
                   <td className="py-2 px-2 w-[120px] text-center align-middle">
                     {/* Placeholder for circular progress */}
-                    <div className="relative w-16 h-16 flex items-center justify-center m-auto">
-                      <svg className="absolute top-0 left-0" width="52" height="52">
-                        <circle cx="26" cy="26" r="23" stroke="#23262F" strokeWidth="4" fill="none" />
+                    <div className="relative w-10 h-10 flex items-center justify-center m-auto">
+                      <svg className="absolute top-0 left-0" width="40" height="40">
+                        <circle cx="20" cy="20" r="18" stroke="#23262F" strokeWidth="4" fill="none" />
                         <circle
-                          cx="26"
-                          cy="26"
-                          r="23"
+                          cx="20"
+                          cy="20"
+                          r="18"
                           stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
                           strokeWidth="4"
                           fill="none"
@@ -603,7 +603,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="absolute right-4/13 bottom-5/11 text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
+                      <span className="text-white text-[10px] font-bold z-0">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
                     </div>
                   </td>
                 </tr>

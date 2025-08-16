@@ -729,7 +729,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 <span className="text-gray-500 text-sm">
                   {isCurated 
                     ? `No curated tweets found for ${selectedAsset?.name || 'this asset'}` 
-                    : "No tweets available for this asset"
+                    : "No tweets available for this asset yet"
                   }
                 </span>
                 {isCurated && filteredCuratedTweets.length === 0 && curatedTweets && curatedTweets.length > 0 && (
