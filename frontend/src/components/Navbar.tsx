@@ -3,6 +3,7 @@ import React from "react";
 import Button from "./Button";
 import { FiPower, FiSearch, FiMenu } from "react-icons/fi";
 import { FaWallet } from "react-icons/fa6";
+import { FaRegHandPointer } from "react-icons/fa";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { User } from "@prisma/client";
@@ -15,6 +16,7 @@ interface NavbarProps {
   onOpenWalletModal?: () => void;
   connectedWallets?: number;
   onToggleMobileMenu?: () => void;
+  shouldShowFocusEffect?: boolean;
 }
 
 // Inline SearchBar component
@@ -31,7 +33,7 @@ const SearchBar: React.FC = () => (
   </form>
 );
 
-const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal, connectedWallets = 0, onToggleMobileMenu }) => {
+const Navbar: React.FC<NavbarProps> = ({ collapsed = false, showConnectWallet = false, showAuthButtons = false, showSearch = false, onOpenWalletModal, connectedWallets = 0, onToggleMobileMenu, shouldShowFocusEffect = false }) => {
 const { data: session, status } = useSession();
 
   return (
@@ -40,7 +42,7 @@ const { data: session, status } = useSession();
     }`}>
       <div className="flex items-center justify-between px-6 py-1 min-h-[48px]">
         {/* Left side: Hamburger menu (mobile only) and Logo */}
-        <div className="flex items-center space-x-3">
+        <div className={`flex items-center space-x-3 transition-all duration-300 ${shouldShowFocusEffect ? 'opacity-30' : 'opacity-100'}`}>
           {/* Hamburger menu button - only show on mobile and when onToggleMobileMenu is provided */}
           {onToggleMobileMenu && (
                       <button
@@ -66,12 +68,25 @@ const { data: session, status } = useSession();
         {/* Right side: Watchlist, SearchBar, Wallets, Auth/Wallet buttons */}
         <div className="flex items-center space-x-3">
           {/* Watchlist button with react-icon */}
-          {showSearch && <SearchBar />}
+          <div className={`transition-all duration-300 ${shouldShowFocusEffect ? 'opacity-30' : 'opacity-100'}`}>
+            {showSearch && <SearchBar />}
+          </div>
           {showConnectWallet && (
-            <Button variant="filled" onClick={onOpenWalletModal}>
-              <FaWallet className="mr-2" size={18} /> Wallets
-              <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
-            </Button>
+            <div className="relative">
+              <Button 
+                variant="filled" 
+                onClick={onOpenWalletModal}
+                className={connectedWallets === 0 ? "animate-pulse bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25" : ""}
+              >
+                <FaWallet className="mr-2" size={18} /> Wallets
+                <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
+              </Button>
+              {connectedWallets === 0 && (
+                <div className="absolute bottom--2 left-0 text-white animate-ping">
+                  <FaRegHandPointer size={16} />
+                </div>
+              )}
+            </div>
           )}
 
           {showAuthButtons && (

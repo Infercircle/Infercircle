@@ -363,7 +363,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
               <div className="flex items-center justify-between mb-2">
         <div className="text-base font-semibold text-white">Portfolio Overview</div>
         <button 
@@ -374,9 +374,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
         </button>
       </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
           <table className="w-full text-sm text-left align-middle table-fixed">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-[rgba(24,26,32,1)]">
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
                   <th className="py-2 px-2 font-medium text-left w-[200px]">Asset</th>
                   <th className="py-2 px-2 font-medium text-left w-[100px]">
@@ -433,7 +433,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
       {/* Preloader overlay */}
       <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
@@ -469,9 +469,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{assets.length}</span>
         </button>
       </div>
-      <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
+      <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
         <table className="w-full text-sm text-left align-middle table-fixed">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-[rgba(24,26,32,1)]">
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
               <th className="py-2 px-2 font-medium text-left w-[180px]">Asset</th>
               <th className="py-2 px-2 font-medium text-left w-[110px]">
@@ -552,42 +552,24 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                     </div>
                   </td>
                   <td 
-                    className={`py-2 px-2 w-[100px] text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                       activeChartType === 'price' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'text-[#A259FF]' 
-                        : ''
+                        : 'text-white'
                     }`}
                     onClick={(e) => handlePriceClick(asset, e)}
                   >
-                    <Tippy
-                      content="Click to view price chart"
-                      placement="top"
-                      arrow={true}
-                      theme="custom"
-                    >
-                      <div>
                     {asset.price !== undefined ? `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}` : '--'}
-                      </div>
-                    </Tippy>
                   </td>
                   <td 
-                    className={`py-2 px-2 w-[100px] text-white text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                       activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'text-[#A259FF]' 
-                        : ''
+                        : 'text-white'
                     }`}
                     onClick={(e) => handleBalanceClick(asset, e)}
                   >
-                    <Tippy
-                      content="Click to view balance chart"
-                      placement="top"
-                      arrow={true}
-                      theme="custom"
-                    >
-                      <div>
                     {asset.balance !== undefined && asset.symbol ? formatBalance(Number(asset.balance), asset.symbol) : '--'}
-                      </div>
-                    </Tippy>
                   </td>
                   <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
                                           <div>

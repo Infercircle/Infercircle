@@ -37,7 +37,7 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
   return (
     <div className="flex flex-col h-full text-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-4 border-b border-[#2a2e35] bg-[rgba(17,20,22,0.4)] backdrop-blur-sm">
+      <div className="flex items-center justify-between px-2 py-4 border-b border-[#2a2e35] bg-[rgba(24,26,32,1)] backdrop-blur-sm">
         <Link href="/" onClick={handleLinkClick}>
           <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
         </Link>

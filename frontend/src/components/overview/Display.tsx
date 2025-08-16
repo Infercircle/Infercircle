@@ -143,76 +143,122 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.filter-dropdown')) {
-        setShowFilterDropdown(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
     setCurrentChartType(chartType as 'price' | 'balance');
   }, [chartType]);
 
-  // Helper function to check if tweet content matches the selected asset
-  const isAssetRelated = useCallback((tweetContent: string, assetName: string, assetSymbol: string) => {
+  // Helper function to generate chain-specific search queries
+  const generateChainSpecificQueries = useCallback((assetName: string, chain?: string) => {
+    const queries = [assetName]; // Always include the base asset name
+    
+    if (!chain) return queries;
+    
+    const chainLower = chain.toLowerCase();
+    
+    // Chain-specific query variations
+    const chainQueries: Record<string, string[]> = {
+      'ethereum': [`${assetName} ETH`, `${assetName} Ethereum`, `${assetName} on Ethereum`],
+      'base': [`${assetName} Base`, `${assetName} on Base`, `${assetName} L2`],
+      'polygon': [`${assetName} Polygon`, `${assetName} on Polygon`, `${assetName} MATIC`],
+      'arbitrum': [`${assetName} Arbitrum`, `${assetName} on Arbitrum`, `${assetName} ARB`],
+      'optimism': [`${assetName} Optimism`, `${assetName} on Optimism`, `${assetName} OP`],
+      'bsc': [`${assetName} BSC`, `${assetName} on BSC`, `${assetName} Binance`],
+      'avalanche': [`${assetName} Avalanche`, `${assetName} on Avalanche`, `${assetName} AVAX`],
+      'solana': [`${assetName} Solana`, `${assetName} on Solana`, `${assetName} SOL`],
+      'cardano': [`${assetName} Cardano`, `${assetName} on Cardano`, `${assetName} ADA`],
+      'polkadot': [`${assetName} Polkadot`, `${assetName} on Polkadot`, `${assetName} DOT`]
+    };
+    
+    // Add chain-specific queries if available
+    if (chainQueries[chainLower]) {
+      queries.push(...chainQueries[chainLower]);
+    }
+    
+    return queries;
+  }, []);
+
+  // Enhanced asset filtering with chain awareness
+  const isAssetRelated = useCallback((tweetContent: string, assetName: string, assetSymbol: string, chain?: string) => {
     if (!tweetContent || !assetName || !assetSymbol) return false;
     
     const content = tweetContent.toLowerCase();
     const name = assetName.toLowerCase();
     const symbol = assetSymbol.toLowerCase();
+    const chainLower = chain?.toLowerCase();
     
-    // Check for exact matches and common variations
+    // Primary: Check for exact name matches (most precise)
     const nameMatches = content.includes(name);
-    const symbolMatches = content.includes(symbol) || content.includes(`$${symbol}`);
     
-    // Handle special cases for common token names
+    // Secondary: Check for symbol matches with $ prefix (common crypto format)
+    const symbolMatches = content.includes(`$${symbol}`);
+    
+    // Chain-specific matching
+    let chainMatches = false;
+    if (chainLower) {
+      const chainKeywords: Record<string, string[]> = {
+        'ethereum': ['ethereum', 'eth', 'mainnet'],
+        'base': ['base', 'coinbase', 'l2'],
+        'polygon': ['polygon', 'matic'],
+        'arbitrum': ['arbitrum', 'arb'],
+        'optimism': ['optimism', 'op'],
+        'bsc': ['bsc', 'binance', 'bnb'],
+        'avalanche': ['avalanche', 'avax'],
+        'solana': ['solana', 'sol'],
+        'cardano': ['cardano', 'ada'],
+        'polkadot': ['polkadot', 'dot']
+      };
+      
+      if (chainKeywords[chainLower]) {
+        chainMatches = chainKeywords[chainLower].some(keyword => 
+          content.includes(keyword)
+        );
+      }
+    }
+    
+    // Handle special cases for common token names and their variations
     const specialCases = {
-      'bitcoin': ['btc', 'bitcoin'],
-      'ethereum': ['eth', 'ethereum'],
-      'solana': ['sol', 'solana'],
-      'cardano': ['ada', 'cardano'],
-      'polygon': ['matic', 'pol', 'polygon'],
-      'chainlink': ['link', 'chainlink'],
-      'uniswap': ['uni', 'uniswap'],
-      'avalanche': ['avax', 'avalanche'],
-      'polkadot': ['dot', 'polkadot'],
-      'litecoin': ['ltc', 'litecoin'],
-      'binance coin': ['bnb', 'binance'],
-      'xrp': ['xrp', 'ripple'],
-      'dogecoin': ['doge', 'dogecoin'],
-      'shiba inu': ['shib', 'shiba'],
+      'bitcoin': ['bitcoin', 'btc', '$btc'],
+      'ethereum': ['ethereum', 'eth', '$eth'],
+      'solana': ['solana', 'sol', '$sol'],
+      'cardano': ['cardano', 'ada', '$ada'],
+      'polygon': ['polygon', 'matic', '$matic', '$pol'],
+      'chainlink': ['chainlink', 'link', '$link'],
+      'uniswap': ['uniswap', 'uni', '$uni'],
+      'avalanche': ['avalanche', 'avax', '$avax'],
+      'polkadot': ['polkadot', 'dot', '$dot'],
+      'litecoin': ['litecoin', 'ltc', '$ltc'],
+      'binance coin': ['binance coin', 'bnb', '$bnb', 'binance'],
+      'xrp': ['xrp', 'ripple', '$xrp'],
+      'dogecoin': ['dogecoin', 'doge', '$doge'],
+      'shiba inu': ['shiba inu', 'shib', '$shib', 'shiba'],
       'pepe': ['pepe', '$pepe']
     };
     
-    // Check special cases
+    // Check special cases - only if the asset name matches one of our known cases
     let specialMatch = false;
     for (const [key, variations] of Object.entries(specialCases)) {
       if (name.includes(key) || symbol.includes(key)) {
         specialMatch = variations.some(variation => 
-          content.includes(variation) || content.includes(`$${variation}`)
+          content.includes(variation)
         );
         if (specialMatch) break;
       }
     }
     
-    return nameMatches || symbolMatches || specialMatch;
+    // Prioritize name matches, then chain-specific matches, then symbol matches
+    return nameMatches || (chainMatches && (specialMatch || symbolMatches)) || specialMatch || symbolMatches;
   }, []);
 
-  // Filter curated tweets based on selected asset
+  // Filter curated tweets based on selected asset (updated to include chain)
   const filteredCuratedTweets = useMemo(() => {
     if (!curatedTweets || !selectedAsset) return [];
     
     return curatedTweets.filter(tweet => {
       const tweetContent = tweet.content || tweet.text || '';
-      return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol);
+      return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
     });
   }, [curatedTweets, selectedAsset, isAssetRelated]);
 
@@ -407,8 +453,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
 
   // Fetch tweets for selected asset with batch optimization
-  const fetchTweets = useCallback(async (symbol: string) => {
-    if (!symbol) return;
+  const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
+    if (!assetName) return;
     
     try {
       const batchSize = 5;
@@ -416,40 +462,45 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const batches = Math.ceil(totalLimit / batchSize);
       const allTweets: Tweet[] = [];
       
-      for (let i = 0; i < batches; i++) {
-        const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
-        
-        const response = await fetch(`${API_BASE}/twitter/stream`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            query: symbol, 
-            limit: currentLimit, 
-            product: 'Latest',
-            offset: i * batchSize 
-          })
-        });
+      // Create chain-specific search queries
+      const searchQueries = generateChainSpecificQueries(assetName, chain);
+      
+      for (const query of searchQueries) {
+        for (let i = 0; i < batches; i++) {
+          const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
+          
+          const response = await fetch(`${API_BASE}/twitter/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query: query, 
+              limit: currentLimit, 
+              product: 'Latest',
+              offset: i * batchSize 
+            })
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data && Array.isArray(data.data)) {
-            const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-              sentiment: tweet.sentiment || 'neutral',
-              avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-              name: tweet.name || 'Unknown',
-              handle: tweet.handle || '@unknown',
-              timestamp: tweet.timestamp || 'now',
-              followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-              tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-              text: tweet.text || ''
-            }));
-            
-            allTweets.push(...transformedTweets);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data && Array.isArray(data.data)) {
+              const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
+                sentiment: tweet.sentiment || 'neutral',
+                avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+                name: tweet.name || 'Unknown',
+                handle: tweet.handle || '@unknown',
+                timestamp: tweet.timestamp || 'now',
+                followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+                tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+                text: tweet.text || ''
+              }));
+              
+              allTweets.push(...transformedTweets);
+            }
           }
-        }
-        
-        if (i < batches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          if (i < batches - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
       }
       
@@ -481,28 +532,28 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Fetch tweets when selected asset changes
   useEffect(() => {
-    if (selectedAsset?.symbol) {
+    if (selectedAsset?.name) {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
-      setTimeout(() => fetchTweets(selectedAsset.symbol), 100);
+      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.chain), 100);
     } else {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
     }
-  }, [selectedAsset?.symbol, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.chain, fetchTweets]);
 
   // Poll for new tweets every 60 seconds when an asset is selected
   useEffect(() => {
-    if (!selectedAsset?.symbol) return;
+    if (!selectedAsset?.name) return;
 
     const interval = setInterval(() => {
-      fetchTweets(selectedAsset.symbol);
+      fetchTweets(selectedAsset.name, selectedAsset.chain);
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [selectedAsset?.symbol, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.chain, fetchTweets]);
 
   // Handle expanded state - buffer new tweets
   useEffect(() => {
@@ -536,9 +587,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
                      null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
-  // Memoized tweets to display based on curated filter with asset filtering
+  // Memoized tweets to display based on elite filter with asset filtering
   const displayTweets = useMemo(() => {
-    if (isCurated && filteredCuratedTweets && filteredCuratedTweets.length > 0) {
+    if (isElite && filteredCuratedTweets && filteredCuratedTweets.length > 0) {
       // Transform filteredCuratedTweets to match Tweet interface
       const transformedTweets = filteredCuratedTweets.map((tweet: any) => ({
         sentiment: tweet.sentiment || 'neutral',
@@ -561,12 +612,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
       return shuffledTweets;
     }
     return tweets;
-  }, [isCurated, filteredCuratedTweets, tweets]);
+  }, [isElite, filteredCuratedTweets, tweets]);
 
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
           <span className="text-gray-500 italic text-base">Add a wallet to view asset details</span>
         </div>
@@ -577,7 +628,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Show loading state if no asset is selected but wallets are connected
   if (!selectedAsset) {
     return (
-      <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
         <div className="flex items-center justify-center h-full">
           <div className="flex space-x-1">
             <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
@@ -590,7 +641,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-hidden relative">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-hidden relative">
       {/* Main Content */}
       <div className={`transition-opacity duration-500 overflow-y-auto ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
@@ -683,7 +734,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 </span>
                 {isCurated && filteredCuratedTweets.length === 0 && curatedTweets && curatedTweets.length > 0 && (
                   <div className="text-xs text-gray-400 mt-1">
-                    Try toggling off "Curated" to see live tweets
+                    Try toggling off "Elite Feed" to see live tweets
                   </div>
                 )}
               </div>
