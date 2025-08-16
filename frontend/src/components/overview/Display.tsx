@@ -589,7 +589,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Memoized tweets to display based on elite filter with asset filtering
   const displayTweets = useMemo(() => {
-    if (isElite && filteredCuratedTweets && filteredCuratedTweets.length > 0) {
+    if (isCurated && filteredCuratedTweets && filteredCuratedTweets.length > 0) {
       // Transform filteredCuratedTweets to match Tweet interface
       const transformedTweets = filteredCuratedTweets.map((tweet: any) => ({
         sentiment: tweet.sentiment || 'neutral',
@@ -612,7 +612,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
       return shuffledTweets;
     }
     return tweets;
-  }, [isElite, filteredCuratedTweets, tweets]);
+  }, [isCurated, filteredCuratedTweets, tweets]);
 
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
