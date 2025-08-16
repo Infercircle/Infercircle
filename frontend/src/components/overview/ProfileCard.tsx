@@ -3,6 +3,7 @@
 import { signIn, useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
 import { User } from "next-auth";
+import { updateUserFollowersCount } from "@/actions/server";
 
 interface ProfileCardProps {
   netWorth?: number;
@@ -17,6 +18,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
     const [eliteFollowers, setEliteFollowers] = useState<number | null>(null);
     const [eliteLoading, setEliteLoading] = useState(false);
     const [eliteError, setEliteError] = useState<string | null>(null);
+    const [followersCount, setFollowersCount] = useState<number | null>(session?.user.followersCount || null);
   
     useEffect(() => {
       const fetchEliteFollowers = async () => {
@@ -48,15 +50,34 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
       fetchEliteFollowers();
     }, [allElites]);
 
-    if(!session || status !== "authenticated") {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500">Please sign in to view your dashboard.</p>
-        </div>
-      );
-    }
 
-    const user = session.user as User;
+    const user = (session)?.user as User;
+
+    useEffect(() => {
+      if (user && user.followersCount) {
+        fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: user.username }),
+        }).then((res) => res.json())
+          .then((data) => {
+            if (data && data['followers_count'] && data['followers_count'] != user.followersCount) {
+              setFollowersCount(data['followers_count']);
+              updateUserFollowersCount(user.id as string, data['followers_count']).catch((error) => {
+                console.error("Error updating user followers count in database:", error);
+              });
+            } else {
+              setFollowersCount(user.followersCount || null);
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching followers count:", error);
+            setFollowersCount(user.followersCount || null);
+          });
+      }
+    }, [user]);
 
   return (
     <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center md:justify-between gap-3 md:gap-0 w-full min-h-[90px] md:min-h-[100px] shadow-lg">
@@ -79,7 +100,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           </div>
           {/* Follows metrics */}
           <div className="flex gap-4 mt-1 text-sm sm:text-base text-[#A3A3A3] w-full">
-            {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
+            {followersCount && <span><span className="text-[#A259FF] font-bold">{followersCount}</span> 𝕏 Followers</span>}
             {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
@@ -135,7 +156,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         <div>
           <div className="text-base font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-sm">@{user.username}</span>}</div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
-            {user.followersCount && <span><span className="text-[#A259FF] font-bold">{user.followersCount}</span> 𝕏 Followers</span>}
+            {followersCount && <span><span className="text-[#A259FF] font-bold">{followersCount}</span> 𝕏 Followers</span>}
             {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
