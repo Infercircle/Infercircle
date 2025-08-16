@@ -120,7 +120,7 @@ const IcoIdo = () => {
     fetchIcoIdoData();
   }, [selectedFilter])
   return (
-    <div className="bg-[rgba(24,26,32,0.9)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
       {/* Preloader overlay */}
       <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">

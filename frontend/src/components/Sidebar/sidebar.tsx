@@ -68,11 +68,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   return (
     <aside
       className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out hidden md:flex ${
-        collapsed ? 'w-14 bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl' : 'w-56 bg-[rgba(24,26,32,0.9)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl'
+        collapsed ? 'w-14 bg-[rgba(24,26,32,1)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl' : 'w-56 bg-[rgba(24,26,32,1)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl'
       }`}
     >
       {/* Logo & Collapse Button */}
-      <div className="flex items-center justify-between px-2 py-3 transition-all duration-300 border-b border-[#2a2e35] bg-[rgba(17,20,22,0.4)] backdrop-blur-sm">
+      <div className="flex items-center justify-between px-2 py-3 transition-all duration-300 border-b border-[#2a2e35] bg-[rgba(24,26,32,1)] backdrop-blur-sm">
         {!collapsed ? (
           <Link href="/">
           <img className="cursor-pointer" alt="Infercircle" src="/icons/image.svg" />
