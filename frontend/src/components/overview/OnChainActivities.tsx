@@ -418,7 +418,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
                   <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
                   <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-                  <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment Score</th>
+                  <th className="py-2 px-2 font-medium text-center w-[150px]">Sentiment Score</th>
               </tr>
             </thead>
             <tbody>
@@ -513,7 +513,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center w-[130px]">Sentiment Score</th>
+              <th className="py-2 px-2 font-medium text-center w-[135px]">Sentiment Score</th>
             </tr>
           </thead>
           <tbody>
@@ -604,15 +604,15 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
                     </div>
                   </td>
-                  <td className="py-2 px-2 w-[80px] text-center align-middle">
+                  <td className="py-2 px-2 w-[120px] text-center align-middle">
                     {/* Placeholder for circular progress */}
-                    <div className="relative w-10 h-10 flex items-center justify-center m-auto">
-                      <svg className="absolute top-0 left-0" width="40" height="40">
-                        <circle cx="20" cy="20" r="18" stroke="#23262F" strokeWidth="4" fill="none" />
+                    <div className="relative w-16 h-16 flex items-center justify-center m-auto">
+                      <svg className="absolute top-0 left-0" width="52" height="52">
+                        <circle cx="26" cy="26" r="23" stroke="#23262F" strokeWidth="4" fill="none" />
                         <circle
-                          cx="20"
-                          cy="20"
-                          r="18"
+                          cx="26"
+                          cy="26"
+                          r="23"
                           stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
                           strokeWidth="4"
                           fill="none"
@@ -621,7 +621,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
+                      <span className="absolute right-4/13 bottom-5/11 text-white text-xs font-bold z-10">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
                     </div>
                   </td>
                 </tr>
