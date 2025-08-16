@@ -113,6 +113,42 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
+// Function to format timestamp to relative time (5s, 3min, 2h, 1d, etc.)
+const formatRelativeTime = (timestamp: string | number | Date): string => {
+  try {
+    const now = new Date();
+    const tweetTime = new Date(timestamp);
+    
+    // Check if the date is valid
+    if (isNaN(tweetTime.getTime())) {
+      return 'now';
+    }
+    
+    const diffInSeconds = Math.floor((now.getTime() - tweetTime.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds}s`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes}min`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours}h`;
+    } else if (diffInSeconds < 2592000) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days}d`;
+    } else if (diffInSeconds < 31536000) {
+      const months = Math.floor(diffInSeconds / 2592000);
+      return `${months}mo`;
+    } else {
+      const years = Math.floor(diffInSeconds / 31536000);
+      return `${years}y`;
+    }
+  } catch (error) {
+    return 'now';
+  }
+};
+
 const Display: React.FC<DisplayProps> = React.memo(({ 
   selectedAsset, 
   showPriceChart = false, 
@@ -488,7 +524,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
                 name: tweet.name || 'Unknown',
                 handle: tweet.handle || '@unknown',
-                timestamp: tweet.timestamp || 'now',
+                timestamp: formatRelativeTime(tweet.timestamp || new Date()),
                 followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
                 tweetUrl: tweet.tweetUrl || 'https://twitter.com',
                 text: tweet.text || ''
@@ -596,7 +632,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
         name: tweet.raw_data?.user?.displayname || 'Unknown',
         handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
-        timestamp: tweet.date || 'now',
+        timestamp: formatRelativeTime(tweet.timestamp || tweet.date || new Date()),
         followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
         tweetUrl: tweet.url || 'https://twitter.com',
         text: tweet.content || tweet.text || ''
