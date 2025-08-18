@@ -247,7 +247,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
 
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center md:justify-between gap-3 md:gap-0 w-full min-h-[90px] md:min-h-[100px] shadow-lg">
-      {/* Mobile Layout */}
+                {/* Mobile Layout */}
       <div className="flex items-start gap-3 w-full md:hidden">
         {/* Avatar */}
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
@@ -267,7 +267,33 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           {/* Follows metrics */}
           <div className="flex gap-4 mt-1 text-sm sm:text-base text-[#A3A3A3] w-full">
             {followersCount && <span><span className="text-[#A259FF] font-bold">{followersCount}</span> 𝕏 Followers</span>}
-            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
+            {user.username && (
+              <span className="flex items-center gap-1">
+                <span className="text-[#A259FF] font-bold">
+                  {eliteLoading ? '...' : 
+                   eliteError ? 'N/A' :
+                   eliteFollowers !== null ? eliteFollowers : '...'}
+                </span>
+                <span>Elite Curators</span>
+                <Tippy
+                  content={hasBeenProcessed === false ? "Processing in background..." : "Update elite curators"}
+                  placement="top"
+                  arrow={true}
+                  theme="dark"
+                >
+                  <button
+                    onClick={handleRefreshEliteCurators}
+                    disabled={eliteRefreshing || hasBeenProcessed === false}
+                    className="p-1 rounded transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <FiRefreshCw 
+                      size={12} 
+                      className={`text-gray-400 ${eliteRefreshing ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                </Tippy>
+              </span>
+            )}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
                 signIn("twitter", { callbackUrl: "/dashboard" })
@@ -340,7 +366,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
                   <button
                     onClick={handleRefreshEliteCurators}
                     disabled={eliteRefreshing || hasBeenProcessed === false}
-                    className="p-1 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                    className="p-1 rounded transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <FiRefreshCw 
                       size={12} 

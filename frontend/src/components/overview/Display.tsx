@@ -169,7 +169,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [tweetQueue, isAnimating, expandedIndex]);
 
   // Fetch tweets for selected asset with batch optimization
-  const fetchTweets = useCallback(async (assetName: string, assetSymbol: string) => {
+  const fetchTweets = useCallback(async (assetName: string, assetSymbol: string, chain?: string) => {
     if (!assetName || !assetSymbol) return;
     
     try {
@@ -178,11 +178,19 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const batches = Math.ceil(totalLimit / batchSize);
       const allTweets: Tweet[] = [];
       
-      // Two-step search: asset name first, then symbol with $ prefix
-      const searchQueries = [
-        assetName,           // e.g., "Ethereum"
-        `$${assetSymbol}`    // e.g., "$ETH"
-      ];
+      // Three-step search strategy for more precise results
+      const searchQueries: string[] = [];
+      
+      // Step 1: Name + Chain (if chain is available)
+      if (chain && chain.toLowerCase() !== 'ethereum') { // Skip for mainnet Ethereum to avoid confusion
+        searchQueries.push(`${assetName} ${chain}`);
+      }
+      
+      // Step 2: Name + Symbol (with $ prefix)
+      searchQueries.push(`${assetName} $${assetSymbol}`);
+      
+      // Step 3: Symbol with $ prefix (fallback)
+      searchQueries.push(`$${assetSymbol}`);
       
       for (const query of searchQueries) {
         for (let i = 0; i < batches; i++) {
@@ -481,28 +489,28 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Fetch tweets when selected asset changes
   useEffect(() => {
-    if (selectedAsset?.name) {
+    if (selectedAsset?.name && selectedAsset?.symbol) {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
-      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.symbol), 100);
+      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain), 100);
     } else {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
     }
-  }, [selectedAsset?.name, selectedAsset?.symbol, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets]);
 
   // Poll for new tweets every 60 seconds when an asset is selected
   useEffect(() => {
-    if (!selectedAsset?.name) return;
+    if (!selectedAsset?.name || !selectedAsset?.symbol) return;
 
     const interval = setInterval(() => {
-      fetchTweets(selectedAsset.name, selectedAsset.symbol);
+      fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [selectedAsset?.name, selectedAsset?.symbol, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets]);
 
   // Handle expanded state - buffer new tweets
   useEffect(() => {

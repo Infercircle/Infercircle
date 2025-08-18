@@ -115,23 +115,23 @@ export default function Home() {
       {/* Split Screen Layout */}
       <div className="flex min-h-[calc(100vh-80px)]">
         {/* Left Side - Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-8 lg:px-16 xl:px-24 bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a]">
-          <div className="max-w-2xl">
+        <div className="hidden md:flex lg:w-1/2 flex-col justify-center px-4 md:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a]">
+          <div className="max-w-lg lg:max-w-xl xl:max-w-2xl">
             {/* Hero Content */}
-            <div className="space-y-6">
-              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight">
+            <div className="space-y-6 lg:space-y-8 xl:space-y-10">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
                 Your Personal
                 <span className="block bg-gradient-to-r from-violet-400 via-purple-400 to-violet-600 bg-clip-text text-transparent">
                   Analytic Tool
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-300 leading-relaxed max-w-lg">
+              <p className="text-base lg:text-lg xl:text-xl text-gray-300 leading-relaxed max-w-md lg:max-w-lg">
                 Curated analytics, real-time insights, and AI-powered sentiment analysis. All tailored for you.
               </p>
               
               {/* Feature Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 xl:gap-10">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0 w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center">
                     <FaChartLine className="text-violet-400 text-lg" />
@@ -164,10 +164,10 @@ export default function Home() {
               </div>
               
               {/* CTA Button */}
-              <div className="mt-8">
+              <div className="mt-8 lg:mt-10 xl:mt-12">
                 <Button 
                   size="lg"
-                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-violet-500/25 transition-all duration-300"
+                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-5 lg:px-6 xl:px-8 py-2.5 lg:py-3 xl:py-4 text-sm lg:text-base xl:text-lg font-semibold rounded-xl shadow-2xl hover:shadow-violet-500/25 transition-all duration-300"
                 >
                   <FaRocket className="mr-2" />
                   Get Early Access
@@ -178,10 +178,10 @@ export default function Home() {
         </div>
         
         {/* Right Side - Authentication */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center px-4 lg:px-8 xl:px-16 bg-gradient-to-br from-[#0a0a0a] via-[#0d0d0d] to-[#0a0a0a]">
+        <div className="w-full md:w-1/2 lg:w-1/2 flex items-center justify-center px-3 md:px-4 lg:px-6 xl:px-8 bg-gradient-to-br from-[#0a0a0a] via-[#0d0d0d] to-[#0a0a0a]">
           <div className="w-full max-w-md">
             {/* Mobile Hero (shown only on mobile) */}
-            <div className="lg:hidden text-center mb-8">
+            <div className="md:hidden text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">
                 Your Personal
                 <span className="block bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
