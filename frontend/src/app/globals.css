@@ -1,32 +1,284 @@
 @import "tailwindcss";
 
+@import "tailwindcss";
+
 body {
   overflow-x: hidden;
+  background-color: black;
+  color: white;
 } 
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* buttons tweak */
+.button-circle-fill {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.button-circle-fill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: 0;
+  top: 0;
+  transform: scale(0);
+  transform-origin: top left;
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: inherit;
+  transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  z-index: 1;
+  pointer-events: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.button-circle-fill:hover::before {
+  transform: scale(1.2);
+}
+
+.button-circle-fill .button-content {
+  position: relative;
+  z-index: 2;
+  transition: color 0.3s;
+}
+
+.button-circle-fill:hover .button-content {
+  color: #000; /* black text on hover */
+}
+
+
+/* ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 3px;
+  height: 2px!important;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent; 
+  border-radius: 10px;
+ transition: background-color 0.2s ease;
+min-height: 2px;
+
+}
+:hover::-webkit-scrollbar-thumb {
+  background-color: #A259FF66;
+} */
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-4px); }
+  90% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+/* ApexCharts Toolbar Styling for Dark Theme */
+.apexcharts-toolbar {
+  background: rgba(35, 38, 47, 0.9) !important;
+  border: 1px solid #23262F !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools {
+  display: flex !important;
+  gap: 4px !important;
+  padding: 4px !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button {
+  background: rgba(162, 89, 255, 0.1) !important;
+  border: 1px solid rgba(162, 89, 255, 0.3) !important;
+  color: #A259FF !important;
+  border-radius: 4px !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+  transition: all 0.2s ease !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button:hover {
+  background: rgba(162, 89, 255, 0.2) !important;
+  border-color: rgba(162, 89, 255, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button.active {
+  background: #A259FF !important;
+  color: white !important;
+  border-color: #A259FF !important;
+}
+
+.apexcharts-toolbar .apexcharts-toolbar-tools button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Chart Selection Area Styling */
+.apexcharts-selection-rect {
+  fill: rgba(162, 89, 255, 0.1) !important;
+  stroke: #A259FF !important;
+  stroke-width: 1px !important;
+}
+
+.apexcharts-zoom-rect {
+  fill: rgba(162, 89, 255, 0.15) !important;
+  stroke: #A259FF !important;
+  stroke-width: 1px !important;
+}
+
+.toast-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeInAnim 0.7s ease-in forwards;
+}
+@keyframes fadeInAnim {
+  to {
+    opacity: 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Markdown styling for better rendering */
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+  color: inherit !important;
+  font-weight: 600 !important;
+  margin-top: 1.5em !important;
+  margin-bottom: 0.5em !important;
+  text-decoration: none !important;
+}
+
+.prose-invert h1 {
+  font-size: 1.3em !important;
+}
+
+.prose-invert h2 {
+  font-size: 1.1em !important;
+}
+
+.prose-invert h3 {
+  font-size: 1em !important;
+}
+
+.prose-invert strong {
+  color: inherit !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+.prose-invert em {
+  font-style: italic !important;
+  text-decoration: none !important;
+}
+
+.prose-invert ul,
+.prose-invert ol {
+  margin-left: 1.5em !important;
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.prose-invert li {
+  margin-bottom: 0.25em !important;
+}
+
+.prose-invert blockquote {
+  border-left: 2px solid #666 !important;
+  padding-left: 1em !important;
+  margin: 1em 0 !important;
+  font-style: italic !important;
+  color: inherit !important;
+}
+
+.prose-invert code {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  padding: 0.125em 0.25em !important;
+  border-radius: 0.25em !important;
+  font-family: monospace !important;
+  color: inherit !important;
+}
+
+.prose-invert a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.prose-invert a:hover {
+  text-decoration: underline !important;
+}
+
+/* Fix for emoji and special characters */
+.prose-invert {
+  line-height: 1.6 !important;
+}
+
+.prose-invert p {
+  margin-bottom: 1em !important;
+  text-decoration: none !important;
+}
+
+/* Remove any underlines from all elements */
+.prose-invert * {
+  text-decoration: none !important;
+}
+
+/* Hide horizontal rules */
+.prose-invert hr {
+  display: none !important;
+}
+
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slideInFromTop {
+  animation: slideInFromTop 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Tippy.js custom styling - black background */
+.tippy-box {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.tippy-arrow {
+  display: none !important;
+}
+
+.tippy-content {
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
 }
 
 /* buttons tweak */
