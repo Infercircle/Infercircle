@@ -4,51 +4,217 @@ import { signIn, useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
 import { User } from "next-auth";
 import { updateUserFollowersCount } from "@/actions/server";
+import { FiRefreshCw } from "react-icons/fi";
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 
 interface ProfileCardProps {
   netWorth?: number;
   totalPriceChange?: number;
   loadingNetWorth?: boolean;
   connectedWallets?: number;
-  allElites: Set<string>;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false, connectedWallets = 0, allElites }) => {
+const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChange = 0, loadingNetWorth = false, connectedWallets = 0 }) => {
     const { data: session, status } = useSession();
     const [eliteFollowers, setEliteFollowers] = useState<number | null>(null);
     const [eliteLoading, setEliteLoading] = useState(false);
+    const [eliteRefreshing, setEliteRefreshing] = useState(false);
     const [eliteError, setEliteError] = useState<string | null>(null);
+    const [hasBeenProcessed, setHasBeenProcessed] = useState<boolean | null>(null);
     const [followersCount, setFollowersCount] = useState<number | null>(session?.user.followersCount || null);
   
+    // Fetch elite curators using original method for now
+         // Check if user has been processed and fetch elite curators
     useEffect(() => {
-      const fetchEliteFollowers = async () => {
-        if(allElites.size === 0) return; // No elites to check against
+       const checkStatusAndFetch = async () => {
         if (!session || status !== "authenticated") return;
         const user = session.user as User;
-        if (!user || !user.twitterId) {
+         if (!user || !user.id) {
+           return;
+         }
+         
+         // Skip fetching if user doesn't have Twitter account
+         if (!user.twitterId) {
+           console.log('User has no Twitter ID, skipping elite curators fetch');
           return;
         }
+         
+         // Check session storage first to avoid unnecessary API calls
+         const sessionKey = `elite_processed_${user.id}`;
+         const countKey = `elite_count_${user.id}`;
+         const refreshKey = `elite_refreshing_${user.id}`;
+         const sessionProcessed = sessionStorage.getItem(sessionKey);
+         const cachedCount = sessionStorage.getItem(countKey);
+         const isRefreshing = sessionStorage.getItem(refreshKey);
+         
+         // Set refresh state if it was stored
+         if (isRefreshing) {
+           setEliteRefreshing(true);
+         }
+         
         setEliteLoading(true);
         setEliteError(null);
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
-        const url = `${API_BASE}/twitter/followers?username=${user.twitterId}&followers=${user.followersCount}`;
-        try {
-          const res = await fetch(url);
-          let data: any = {};
-          try {
-            data = await res.json();
-          } catch {}
-            const eliteCount = data.followers?.filter((follower: any) => allElites.has(follower.username)).length || 0;
-            setEliteFollowers(eliteCount);
+         
+         try {
+           // If we know user is processed in this session, use cached count
+           if (sessionProcessed === 'true' && cachedCount !== null) {
+             setHasBeenProcessed(true);
+             setEliteFollowers(parseInt(cachedCount));
+             setEliteLoading(false);
+             return;
+           }
+           
+           // If we know user is processed but no cached count, fetch once
+           if (sessionProcessed === 'true') {
+             setHasBeenProcessed(true);
+             // Fetch elite curators once and cache
+             const res = await fetch(`/api/elite-curators?user_id=${user.id}`);
+             const data = await res.json();
+             if (res.ok) {
+               setEliteFollowers(data.count);
+               sessionStorage.setItem(countKey, data.count.toString());
+             } else {
+               setEliteError(data.error || 'Error fetching elite curators');
+             }
+           } else {
+             // Check if user has been processed
+             const statusRes = await fetch(`/api/elite-curators/status?user_id=${user.id}`);
+             const statusData = await statusRes.json();
+             
+             if (statusRes.ok) {
+               setHasBeenProcessed(statusData.hasBeenProcessed);
+               
+                                             // Always fetch elite curators count (will be 0 if not processed yet)
+             const res = await fetch(`/api/elite-curators?user_id=${user.id}`);
+             const data = await res.json();
+             if (res.ok) {
+               setEliteFollowers(data.count);
+               // Cache the count
+               sessionStorage.setItem(countKey, data.count.toString());
+             } else {
+               setEliteError(data.error || 'Error fetching elite curators');
+             }
+             
+             // Mark as processed in session storage if user has been processed
+             if (statusData.hasBeenProcessed) {
+               sessionStorage.setItem(sessionKey, 'true');
+             }
+             } else {
+               setEliteError(statusData.error || 'Error checking status');
+             }
+           }
         } catch (e: any) {
           setEliteFollowers(null);
-          setEliteError(e.message || 'Error fetching');
+           setEliteError(e.message || 'Error checking status');
         } finally {
           setEliteLoading(false);
         }
       };
-      fetchEliteFollowers();
-    }, [allElites]);
+       
+               checkStatusAndFetch();
+      }, [session, status]);
+
+      // Listen for refresh completion events and background processing completion
+      useEffect(() => {
+        if (!session || status !== "authenticated") return;
+        const user = session.user as User;
+        if (!user || !user.id) return;
+
+        const handleRefreshComplete = (event: CustomEvent) => {
+          if (event.detail.userId === user.id) {
+            console.log('Received refresh complete event, stopping spinner...');
+            setEliteRefreshing(false);
+            const refreshKey = `elite_refreshing_${user.id}`;
+            sessionStorage.removeItem(refreshKey);
+            
+            // Update the count after refresh
+            const countKey = `elite_count_${user.id}`;
+            sessionStorage.removeItem(countKey); // Clear cache to force refetch
+          }
+        };
+
+        const handleBackgroundComplete = (event: CustomEvent) => {
+          if (event.detail.userId === user.id) {
+            console.log('Received background processing complete event, updating count...');
+            // Update the count after background processing
+            const countKey = `elite_count_${user.id}`;
+            sessionStorage.removeItem(countKey); // Clear cache to force refetch
+            
+            // Refetch the count
+            fetch(`/api/elite-curators?user_id=${user.id}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.count !== undefined) {
+                  setEliteFollowers(data.count);
+                  sessionStorage.setItem(countKey, data.count.toString());
+                }
+              })
+              .catch(error => console.error('Error updating count after background processing:', error));
+          }
+        };
+
+        window.addEventListener('eliteRefreshComplete', handleRefreshComplete as EventListener);
+        window.addEventListener('eliteBackgroundComplete', handleBackgroundComplete as EventListener);
+
+        return () => {
+          window.removeEventListener('eliteRefreshComplete', handleRefreshComplete as EventListener);
+          window.removeEventListener('eliteBackgroundComplete', handleBackgroundComplete as EventListener);
+        };
+      }, [session, status]);
+
+
+
+    // Manual refresh function
+    const handleRefreshEliteCurators = async () => {
+      if (!session || status !== "authenticated") return;
+      const user = session.user as User;
+      if (!user || !user.id) {
+        return;
+      }
+      
+      setEliteRefreshing(true);
+      // Store refresh state in session storage
+      const refreshKey = `elite_refreshing_${user.id}`;
+      sessionStorage.setItem(refreshKey, 'true');
+      
+      try {
+        console.log('Starting elite curators refresh...');
+        const res = await fetch('/api/elite-curators/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id })
+        });
+        const data = await res.json();
+        console.log('Refresh response:', data);
+        
+        if (res.ok) {
+          setEliteFollowers(data.count);
+          // Update cached count
+          const countKey = `elite_count_${user.id}`;
+          sessionStorage.setItem(countKey, data.count.toString());
+          // Show success message if new curators found
+          if (data.newEliteCuratorsFound > 0) {
+            console.log(`Found ${data.newEliteCuratorsFound} new elite curators!`);
+          }
+        } else {
+          setEliteError(data.error || 'Error refreshing elite curators');
+        }
+      } catch (e: any) {
+        console.error('Refresh error:', e);
+        setEliteError(e.message || 'Error refreshing elite curators');
+      } finally {
+        console.log('Refresh completed, stopping spinner...');
+        setEliteRefreshing(false);
+        // Clear refresh state from session storage immediately
+        sessionStorage.removeItem(refreshKey);
+        
+        // Also dispatch a custom event to notify other components
+        window.dispatchEvent(new CustomEvent('eliteRefreshComplete', { 
+          detail: { userId: user.id } 
+        }));
+      }
+    };
 
 
     const user = (session)?.user as User;
@@ -157,7 +323,33 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
           <div className="text-base font-semibold text-white"> {user?.name} {user.username && <span className="text-gray-400 text-sm">@{user.username}</span>}</div>
           <div className="flex gap-4 mt-1 text-sm text-[#A3A3A3]">
             {followersCount && <span><span className="text-[#A259FF] font-bold">{followersCount}</span> 𝕏 Followers</span>}
-            {user.username && <span><span className="text-[#A259FF] font-bold">{eliteLoading ? '...' : eliteFollowers !== null ? eliteFollowers : 'N/A'}</span> Elite Curators</span>}
+            {user.username && (
+              <span className="flex items-center gap-1">
+                <span className="text-[#A259FF] font-bold">
+                  {eliteLoading ? '...' : 
+                   eliteError ? 'N/A' :
+                   eliteFollowers !== null ? eliteFollowers : '...'}
+                </span>
+                <span>Elite Curators</span>
+                <Tippy
+                  content={hasBeenProcessed === false ? "Processing in background..." : "Update elite curators"}
+                  placement="top"
+                  arrow={true}
+                  theme="dark"
+                >
+                  <button
+                    onClick={handleRefreshEliteCurators}
+                    disabled={eliteRefreshing || hasBeenProcessed === false}
+                    className="p-1 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                  >
+                    <FiRefreshCw 
+                      size={12} 
+                      className={`text-gray-400 ${eliteRefreshing ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                </Tippy>
+              </span>
+            )}
             {!user.username && 
               <span className="text-[#A259FF] font-bold cursor-pointer" onClick={() => {
                 signIn("twitter", { callbackUrl: "/dashboard" })

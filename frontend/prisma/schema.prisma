@@ -18,7 +18,7 @@ model EliteCurator {
   subscribedAt   DateTime? @map("subscribed_at") @db.Timestamp(6)
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   followersCount Int?      @map("followers_count")
-  User           User[]
+  User           User[]    @relation("UserToelite_curators")
 
   @@map("elite_curators")
 }
@@ -43,7 +43,7 @@ model User {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @default(now())
   twitterId      String?        @unique
-  elite_curators EliteCurator[]
+  elite_curators EliteCurator[] @relation("UserToelite_curators")
   wallets        UserWallet[]   @relation("UserWallets")
 }
 
