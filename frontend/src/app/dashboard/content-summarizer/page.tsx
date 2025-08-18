@@ -92,7 +92,7 @@ export default function ContentSummarizerPage() {
     setIsLoading(true);
     
     // Start countdown timer
-    const totalTime = 2 * 60; // 2 minutes in seconds
+    const totalTime = contentType === 'space' ? 15 * 60 : 30 * 60; // 15 or 30 minutes in seconds
     setTimeLeft(totalTime);
     setProgress(0);
     setCountdownActive(true);
@@ -295,7 +295,7 @@ The session concluded with a Q&A where participants discussed specific investmen
       });
       
           // Update progress
-    const totalTime = 2 * 60; // 2 minutes in seconds
+    const totalTime = contentType === 'space' ? 15 * 60 : 30 * 60;
     const newProgress = ((totalTime - timeLeft + 1) / totalTime) * 100;
       setProgress(newProgress);
     }, 1000);
@@ -366,43 +366,19 @@ The session concluded with a Q&A where participants discussed specific investmen
           </p>
         </div>
 
-        {/* Development Banner */}
-        <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🐒</span>
-            <div className="flex-1">
-              <p className="text-yellow-300 font-medium text-sm sm:text-base">
-                This feature is still under development. The tech monkeys are working hard to fix it! Feel free to test with any URL to see the mock data and preview what to expect.
-              </p>
-            </div>
-          </div>
-        </div>
+
 
         {/* Countdown Timer */}
         {countdownActive && (
           <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
-                  <span className="text-white font-medium">
-                    <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
-                    <div 
-                      className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                  <div 
-                    className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-1000 ease-out"
-                    style={{ left: `calc(${progress}% - 4px)` }}
-                  ></div>
-                </div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
+                <span className="text-white font-medium">
+                  <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-400 ml-4">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="p-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
@@ -410,6 +386,18 @@ The session concluded with a Q&A where participants discussed specific investmen
                 </div>
                 <span>{notificationsEnabled ? 'Enabled' : 'Disabled'}</span>
               </div>
+            </div>
+            <div className="relative">
+              <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
+                <div 
+                  className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-2000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <div 
+                className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-2000 ease-out"
+                style={{ left: `calc(${progress}% - 4px)` }}
+              ></div>
             </div>
           </div>
         )}

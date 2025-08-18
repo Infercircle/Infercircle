@@ -150,73 +150,100 @@ const Display: React.FC<DisplayProps> = React.memo(({
     setCurrentChartType(chartType as 'price' | 'balance');
   }, [chartType]);
 
-  // Helper function to generate chain-specific search queries
-  const generateChainSpecificQueries = useCallback((assetName: string, chain?: string) => {
-    const queries = [assetName]; // Always include the base asset name
-    
-    if (!chain) return queries;
-    
-    const chainLower = chain.toLowerCase();
-    
-    // Chain-specific query variations
-    const chainQueries: Record<string, string[]> = {
-      'ethereum': [`${assetName} ETH`, `${assetName} Ethereum`, `${assetName} on Ethereum`],
-      'base': [`${assetName} Base`, `${assetName} on Base`, `${assetName} L2`],
-      'polygon': [`${assetName} Polygon`, `${assetName} on Polygon`, `${assetName} MATIC`],
-      'arbitrum': [`${assetName} Arbitrum`, `${assetName} on Arbitrum`, `${assetName} ARB`],
-      'optimism': [`${assetName} Optimism`, `${assetName} on Optimism`, `${assetName} OP`],
-      'bsc': [`${assetName} BSC`, `${assetName} on BSC`, `${assetName} Binance`],
-      'avalanche': [`${assetName} Avalanche`, `${assetName} on Avalanche`, `${assetName} AVAX`],
-      'solana': [`${assetName} Solana`, `${assetName} on Solana`, `${assetName} SOL`],
-      'cardano': [`${assetName} Cardano`, `${assetName} on Cardano`, `${assetName} ADA`],
-      'polkadot': [`${assetName} Polkadot`, `${assetName} on Polkadot`, `${assetName} DOT`]
-    };
-    
-    // Add chain-specific queries if available
-    if (chainQueries[chainLower]) {
-      queries.push(...chainQueries[chainLower]);
+  // Animate tweets from queue to display
+  useEffect(() => {
+    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
+      setIsAnimating(true);
+      const newTweet = tweetQueue[0];
+      
+      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
+      setNewTweetIndex(0);
+      
+      setTweetQueue(prev => prev.slice(1));
+      
+      setTimeout(() => {
+        setNewTweetIndex(null);
+        setIsAnimating(false);
+      }, 5000);
     }
-    
-    return queries;
-  }, []);
+  }, [tweetQueue, isAnimating, expandedIndex]);
 
-  // Enhanced asset filtering with chain awareness
-  const isAssetRelated = useCallback((tweetContent: string, assetName: string, assetSymbol: string, chain?: string) => {
+  // Fetch tweets for selected asset with batch optimization
+  const fetchTweets = useCallback(async (assetName: string, assetSymbol: string) => {
+    if (!assetName || !assetSymbol) return;
+    
+    try {
+      const batchSize = 5;
+      const totalLimit = 10;
+      const batches = Math.ceil(totalLimit / batchSize);
+      const allTweets: Tweet[] = [];
+      
+      // Two-step search: asset name first, then symbol with $ prefix
+      const searchQueries = [
+        assetName,           // e.g., "Ethereum"
+        `$${assetSymbol}`    // e.g., "$ETH"
+      ];
+      
+      for (const query of searchQueries) {
+        for (let i = 0; i < batches; i++) {
+          const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
+          
+          const response = await fetch(`${API_BASE}/twitter/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query: query, 
+              limit: currentLimit, 
+              product: 'Latest',
+              offset: i * batchSize 
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data && Array.isArray(data.data)) {
+              const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
+                sentiment: tweet.sentiment || 'neutral',
+                avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+                name: tweet.name || 'Unknown',
+                handle: tweet.handle || '@unknown',
+                timestamp: tweet.timestamp || 'now',
+                followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+                tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+                text: tweet.text || ''
+              }));
+              
+              allTweets.push(...transformedTweets);
+            }
+          }
+          
+          if (i < batches - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      }
+      
+      if (allTweets.length > 0) {
+        setTweetQueue(prev => [...prev, ...allTweets]);
+      }
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+    }
+  }, [API_BASE]);
+
+  // Enhanced asset filtering with name and symbol priority
+  const isAssetRelated = useCallback((tweetContent: string, assetName: string, assetSymbol: string) => {
     if (!tweetContent || !assetName || !assetSymbol) return false;
     
     const content = tweetContent.toLowerCase();
     const name = assetName.toLowerCase();
     const symbol = assetSymbol.toLowerCase();
-    const chainLower = chain?.toLowerCase();
     
     // Primary: Check for exact name matches (most precise)
     const nameMatches = content.includes(name);
     
     // Secondary: Check for symbol matches with $ prefix (common crypto format)
     const symbolMatches = content.includes(`$${symbol}`);
-    
-    // Chain-specific matching
-    let chainMatches = false;
-    if (chainLower) {
-      const chainKeywords: Record<string, string[]> = {
-        'ethereum': ['ethereum', 'eth', 'mainnet'],
-        'base': ['base', 'coinbase', 'l2'],
-        'polygon': ['polygon', 'matic'],
-        'arbitrum': ['arbitrum', 'arb'],
-        'optimism': ['optimism', 'op'],
-        'bsc': ['bsc', 'binance', 'bnb'],
-        'avalanche': ['avalanche', 'avax'],
-        'solana': ['solana', 'sol'],
-        'cardano': ['cardano', 'ada'],
-        'polkadot': ['polkadot', 'dot']
-      };
-      
-      if (chainKeywords[chainLower]) {
-        chainMatches = chainKeywords[chainLower].some(keyword => 
-          content.includes(keyword)
-        );
-      }
-    }
     
     // Handle special cases for common token names and their variations
     const specialCases = {
@@ -248,17 +275,17 @@ const Display: React.FC<DisplayProps> = React.memo(({
       }
     }
     
-    // Prioritize name matches, then chain-specific matches, then symbol matches
-    return nameMatches || (chainMatches && (specialMatch || symbolMatches)) || specialMatch || symbolMatches;
+    // Prioritize name matches, then symbol matches
+    return nameMatches || symbolMatches || specialMatch;
   }, []);
 
-  // Filter curated tweets based on selected asset (updated to include chain)
+  // Filter curated tweets based on selected asset
   const filteredCuratedTweets = useMemo(() => {
     if (!curatedTweets || !selectedAsset) return [];
     
     return curatedTweets.filter(tweet => {
       const tweetContent = tweet.content || tweet.text || '';
-      return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
+      return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol);
     });
   }, [curatedTweets, selectedAsset, isAssetRelated]);
 
@@ -452,108 +479,30 @@ const Display: React.FC<DisplayProps> = React.memo(({
     }
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
 
-  // Fetch tweets for selected asset with batch optimization
-  const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
-    if (!assetName) return;
-    
-    try {
-      const batchSize = 5;
-      const totalLimit = 10;
-      const batches = Math.ceil(totalLimit / batchSize);
-      const allTweets: Tweet[] = [];
-      
-      // Create chain-specific search queries
-      const searchQueries = generateChainSpecificQueries(assetName, chain);
-      
-      for (const query of searchQueries) {
-        for (let i = 0; i < batches; i++) {
-          const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
-          
-          const response = await fetch(`${API_BASE}/twitter/stream`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              query: query, 
-              limit: currentLimit, 
-              product: 'Latest',
-              offset: i * batchSize 
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.data && Array.isArray(data.data)) {
-              const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-                sentiment: tweet.sentiment || 'neutral',
-                avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-                name: tweet.name || 'Unknown',
-                handle: tweet.handle || '@unknown',
-                timestamp: tweet.timestamp || 'now',
-                followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-                tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-                text: tweet.text || ''
-              }));
-              
-              allTweets.push(...transformedTweets);
-            }
-          }
-          
-          if (i < batches - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-      
-      if (allTweets.length > 0) {
-        setTweetQueue(prev => [...prev, ...allTweets]);
-      }
-    } catch (error) {
-      console.error('Error fetching tweets:', error);
-    }
-  }, [API_BASE]);
-
-  // Animate tweets from queue to display
-  useEffect(() => {
-    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
-      setIsAnimating(true);
-      const newTweet = tweetQueue[0];
-      
-      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
-      setNewTweetIndex(0);
-      
-      setTweetQueue(prev => prev.slice(1));
-      
-      setTimeout(() => {
-        setNewTweetIndex(null);
-        setIsAnimating(false);
-      }, 5000);
-    }
-  }, [tweetQueue, isAnimating, expandedIndex]);
-
   // Fetch tweets when selected asset changes
   useEffect(() => {
     if (selectedAsset?.name) {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
-      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.chain), 100);
+      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.symbol), 100);
     } else {
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
     }
-  }, [selectedAsset?.name, selectedAsset?.chain, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, fetchTweets]);
 
   // Poll for new tweets every 60 seconds when an asset is selected
   useEffect(() => {
     if (!selectedAsset?.name) return;
 
     const interval = setInterval(() => {
-      fetchTweets(selectedAsset.name, selectedAsset.chain);
+      fetchTweets(selectedAsset.name, selectedAsset.symbol);
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [selectedAsset?.name, selectedAsset?.chain, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, fetchTweets]);
 
   // Handle expanded state - buffer new tweets
   useEffect(() => {

@@ -84,6 +84,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     tron: string[];
     ton: string[];
   }>({ eth: [], sol: [], btc: [], tron: [], ton: [] });
+  const [walletsLoaded, setWalletsLoaded] = useState(false);
   // Compute connectedWallets directly from wallets
   const connectedWallets =
     wallets.eth.length +
@@ -91,7 +92,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     wallets.btc.length +
     wallets.tron.length +
     wallets.ton.length;
-  const shouldShowFocusEffect = isOverviewPage && connectedWallets === 0;
+  const shouldShowFocusEffect = isOverviewPage && walletsLoaded && connectedWallets === 0 && status === "authenticated";
   // Net worth state
   const [netWorth, setNetWorth] = useState(0);
   // Total price change state
@@ -172,6 +173,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     const userId = (user as any)?.id || '';
     
     if (!userId) {
+      setWalletsLoaded(true);
       return;
     }
     
@@ -195,15 +197,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       }
       
       setWallets(grouped);
+      setWalletsLoaded(true);
     } catch (e) {
       setWallets({ eth: [], sol: [], btc: [], tron: [], ton: [] });
+      setWalletsLoaded(true);
     }
   };
 
   React.useEffect(() => {
-    refreshWallets();
+    if (status === "authenticated" && user?.id) {
+      setWalletsLoaded(false); // Reset to false before fetching
+      refreshWallets();
+    } else if (status === "unauthenticated") {
+      setWalletsLoaded(true); // Set to true for unauthenticated users
+    }
     // eslint-disable-next-line
-  }, [twitterId]);
+  }, [twitterId, status, user?.id]);
 
   // Recalculate net worth and price change when wallets or refreshKey change
   React.useEffect(() => {

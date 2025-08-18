@@ -76,12 +76,12 @@ const { data: session, status } = useSession();
               <Button 
                 variant="filled" 
                 onClick={onOpenWalletModal}
-                className={connectedWallets === 0 ? "animate-pulse bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25" : ""}
+                className={shouldShowFocusEffect ? "animate-pulse bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25" : ""}
               >
                 <FaWallet className="mr-2" size={18} /> Wallets
                 <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{connectedWallets}</span>
               </Button>
-              {connectedWallets === 0 && (
+              {shouldShowFocusEffect && (
                 <div className="absolute bottom--2 left-0 text-white animate-ping">
                   <FaRegHandPointer size={16} />
                 </div>
