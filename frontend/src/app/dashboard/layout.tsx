@@ -48,6 +48,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  useEffect(() => {
+    if (session && session.user) {
+      const user = session.user as User;
+      if (user && !user.inviteAccepted) {
+        router.push("/");
+      }
+    } else if (status === "unauthenticated") {
+      router.push("/");
+    }
+  },[session]);
+
   // Disable page scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {

@@ -1,13 +1,9 @@
 import NextAuth, { DefaultSession } from "next-auth";
+import { User as prismaUser } from "@prisma/client";
 
 declare module "next-auth" {
   interface Session {
-    user: {
-      id?: string;
-      username?: string;
-      followersCount?: number;
-      twitterId?: string;
-    } & DefaultSession["user"];
+    user: prismaUser;
     accessToken?: string;
     refreshToken?: string;
   }
