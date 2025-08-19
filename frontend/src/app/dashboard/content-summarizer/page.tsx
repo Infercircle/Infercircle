@@ -23,7 +23,7 @@ interface SpaceResult {
 }
 
 // Typewriter component
-function Typewriter({ text, speed = 25, className = "" }: { text: string; speed?: number; className?: string }) {
+function Typewriter({ text, speed = 30, className = "" }: { text: string; speed?: number; className?: string }) {
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
     setDisplayed("");
@@ -65,9 +65,12 @@ export default function ContentSummarizerPage() {
   const [activeTab, setActiveTab] = useState<'transcript' | 'summary'>('summary');
   const [result, setResult] = useState<SpaceResult | null>(null);
   const [copied, setCopied] = useState(false);
-  const [persistedSummary, setPersistedSummary] = useState<string>("");
-  const [transcriptFadeKey, setTranscriptFadeKey] = useState(0);
+
+
   const [showInstructions, setShowInstructions] = useState(true);
+  const [isFirstTimeResult, setIsFirstTimeResult] = useState(true);
+  const [isFreshResult, setIsFreshResult] = useState(false);
+  const [typewriterShown, setTypewriterShown] = useState(false);
   const [copiedParagraphIndex, setCopiedParagraphIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Finder state for per-mention navigation
@@ -80,27 +83,260 @@ export default function ContentSummarizerPage() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const notificationsEnabledRef = useRef(false);
+  
+  // Background processing state
+  const [backgroundTasks, setBackgroundTasks] = useState<{
+    [key: string]: {
+      id: string;
+      url: string;
+      contentType: 'space' | 'broadcast';
+      startTime: number;
+      totalTime: number;
+      progress: number;
+      status: 'running' | 'completed' | 'error';
+      result?: SpaceResult;
+      error?: string;
+    }
+  }>({});
+  
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) return;
+  // Notification functions
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('This browser does not support notifications');
+      return false;
+    }
 
-    setResult(null); // Clear previous result immediately
-    setPersistedSummary(""); // Clear persisted summary
-    setError(null); // Clear previous errors
+    if (Notification.permission === 'granted') {
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      alert('Please enable notifications in your browser settings to receive alerts when summarization completes.');
+      return false;
+    }
+
+    // Permission is 'default' - request it
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  const toggleNotifications = async () => {
+          if (notificationsEnabledRef.current) {
+        // Disable notifications
+        setNotificationsEnabled(false);
+        notificationsEnabledRef.current = false;
+        localStorage.setItem('content_summarizer_notifications', 'false');
+      } else {
+        // Enable notifications
+        const hasPermission = await requestNotificationPermission();
+        
+        if (hasPermission) {
+          setNotificationsEnabled(true);
+          notificationsEnabledRef.current = true;
+          localStorage.setItem('content_summarizer_notifications', 'true');
+        }
+      }
+  };
+
+
+
+  const sendNotification = (title: string, body: string) => {
+    if (!notificationsEnabledRef.current) {
+      return;
+    }
+    
+    if (!('Notification' in window)) {
+      return;
+    }
+    
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+    
+    // Only send notification if tab is not active (user is in another tab)
+    if (!document.hidden) {
+      return;
+    }
+    
+    try {
+      const notification = new Notification(title, {
+        body: body,
+        icon: '/icons/image.svg'
+      });
+      
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+      
+    } catch (error) {
+      // Silent error handling
+    }
+  };
+
+  // Background processing functions
+  const generateTaskId = (url: string, contentType: 'space' | 'broadcast') => {
+    return `${contentType}_${btoa(url).replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
+  };
+
+  const saveTaskToStorage = (task: any) => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem('content_summarizer_tasks') || '{}');
+      tasks[task.id] = task;
+      localStorage.setItem('content_summarizer_tasks', JSON.stringify(tasks));
+    } catch (error) {
+      console.error('Error saving task to storage:', error);
+    }
+  };
+
+  const loadTasksFromStorage = () => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem('content_summarizer_tasks') || '{}');
+      setBackgroundTasks(tasks);
+      
+      let hasRunningTask = false;
+      
+      // Check for running tasks first
+      Object.values(tasks).forEach((task: any) => {
+        if (task.status === 'running') {
+          const elapsed = Date.now() - task.startTime;
+          const remaining = Math.max(0, task.totalTime - elapsed);
+          
+          if (remaining > 0) {
+            // Task is still running, restore it
+            hasRunningTask = true;
+            setCurrentTaskId(task.id);
+            setTimeLeft(Math.ceil(remaining / 1000));
+            setProgress(task.progress);
+            setCountdownActive(true);
     setIsLoading(true);
     
-    // Start countdown timer
-    const totalTime = contentType === 'space' ? 15 * 60 : 30 * 60; // 15 or 30 minutes in seconds
-    setTimeLeft(totalTime);
+            // Restart the background processing for this task
+            restartBackgroundTask(task);
+          } else {
+            // Task should be completed, mark it as such
+            task.status = 'completed';
+            saveTaskToStorage(task);
+          }
+        }
+      });
+      
+      // Only restore completed task result if there's no running task
+      if (!hasRunningTask) {
+        Object.values(tasks).forEach((task: any) => {
+          if (task.status === 'completed' && task.result) {
+            // Restore completed task result
+            console.log('Restoring completed task result from cache');
+            setResult(task.result);
+            setIsLoading(false);
+            setCountdownActive(false);
+            setCurrentTaskId(null);
+            setProgress(100);
+            setTimeLeft(0);
+            setIsFreshResult(false); // This is a restored result, not fresh
+            setTypewriterShown(true); // Typewriter has already been shown for this result
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading tasks from storage:', error);
+    }
+  };
+
+  const restartBackgroundTask = (task: any) => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / task.totalTime) * 100, 99);
+      
+      const updatedTask = {
+        ...task,
+        progress: newProgress
+      };
+      
+      setBackgroundTasks(prev => ({ ...prev, [task.id]: updatedTask }));
+      saveTaskToStorage(updatedTask);
+      
+      // Update UI state
+      setTimeLeft(Math.ceil((task.totalTime - elapsed) / 1000));
+      setProgress(newProgress);
+      
+      if (elapsed >= task.totalTime) {
+        clearInterval(interval);
+        completeBackgroundTask(task.id);
+      }
+    }, 1000);
+
+    // Store interval reference for cleanup
+    (window as any).backgroundTaskIntervals = (window as any).backgroundTaskIntervals || {};
+    (window as any).backgroundTaskIntervals[task.id] = interval;
+  };
+
+  const startBackgroundTask = async (url: string, contentType: 'space' | 'broadcast') => {
+    const taskId = generateTaskId(url, contentType);
+    const totalTime = 1 * 60 * 1000; // 1 minute for testing
+    
+    const task = {
+      id: taskId,
+      url,
+      contentType,
+      startTime: Date.now(),
+      totalTime,
+      progress: 0,
+      status: 'running' as const
+    };
+
+    setBackgroundTasks(prev => ({ ...prev, [taskId]: task }));
+    setCurrentTaskId(taskId);
+    saveTaskToStorage(task);
+
+    // Set loading states
+    setIsLoading(true);
+    setTimeLeft(Math.ceil(totalTime / 1000));
     setProgress(0);
     setCountdownActive(true);
     
-    // Simulate API delay (2 minutes for testing)
-    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000));
-    
-    // Mock data for development
+    // Start the background processing
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / totalTime) * 100, 99); // Cap at 99% until completion
+      
+      const updatedTask = {
+        ...task,
+        progress: newProgress
+      };
+      
+      setBackgroundTasks(prev => ({ ...prev, [taskId]: updatedTask }));
+      saveTaskToStorage(updatedTask);
+      
+      // Update UI state
+      setTimeLeft(Math.ceil((totalTime - elapsed) / 1000));
+      setProgress(newProgress);
+      
+      if (elapsed >= totalTime) {
+        clearInterval(interval);
+        completeBackgroundTask(taskId);
+      }
+    }, 1000);
+
+    // Store interval reference for cleanup
+    (window as any).backgroundTaskIntervals = (window as any).backgroundTaskIntervals || {};
+    (window as any).backgroundTaskIntervals[taskId] = interval;
+  };
+
+  const completeBackgroundTask = async (taskId: string) => {
+    try {
+      // Simulate API call completion
     const mockData: SpaceResult = {
       space_id: 'mock-space-123',
       summary: `# 🚀 Crypto Market Analysis & Future Trends
@@ -193,27 +429,117 @@ The session concluded with a Q&A where participants discussed specific investmen
       }
     };
     
-    setResult(mockData);
+      const completedTask = {
+        ...backgroundTasks[taskId],
+        status: 'completed' as const,
+        result: mockData,
+        progress: 100
+      };
+
+      setBackgroundTasks(prev => ({ ...prev, [taskId]: completedTask }));
+      saveTaskToStorage(completedTask);
+      
+      // Update UI state
+      console.log('Task completed, setting fresh result flag');
+      setIsFreshResult(true); // Mark as fresh result for typewriter effect
+      setResult(mockData);
       setIsLoading(false);
-    setCountdownActive(false); // Stop countdown when done
+      setCountdownActive(false);
+      setCurrentTaskId(null);
+      setProgress(100);
+      setTimeLeft(0);
+      
+      // Send notification
+      sendNotification(
+        'Content Summarization Complete! 🎉',
+        `Your ${contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} has been processed successfully.`
+      );
+      
+      // Clean up interval
+      if ((window as any).backgroundTaskIntervals?.[taskId]) {
+        clearInterval((window as any).backgroundTaskIntervals[taskId]);
+        delete (window as any).backgroundTaskIntervals[taskId];
+      }
+    } catch (error) {
+      const errorTask = {
+        ...backgroundTasks[taskId],
+        status: 'error' as const,
+        error: 'Failed to process content'
+      };
+      
+      setBackgroundTasks(prev => ({ ...prev, [taskId]: errorTask }));
+      saveTaskToStorage(errorTask);
+      
+      setError('Failed to process content');
+      setIsLoading(false);
+      setCountdownActive(false);
+      setCurrentTaskId(null);
+    }
   };
 
-  // When a new result is set, update persistedSummary
-  useEffect(() => {
-    console.log('Result changed:', result);
-    if (result && result.summary) {
-      setPersistedSummary("");
-      // Use a timeout to allow the typewriter to animate, then persist the summary
-      setTimeout(() => setPersistedSummary(result.summary), result.summary.length * 22 + 500);
-    }
-  }, [result]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim()) return;
 
-  // When switching to transcript tab, increment the fade key to re-trigger fade-in
-  useEffect(() => {
-    if (activeTab === 'transcript') {
-      setTranscriptFadeKey((k) => k + 1);
+    // Clear previous task and result
+    if (currentTaskId) {
+      // Stop any running background task
+      if ((window as any).backgroundTaskIntervals?.[currentTaskId]) {
+        clearInterval((window as any).backgroundTaskIntervals[currentTaskId]);
+        delete (window as any).backgroundTaskIntervals[currentTaskId];
+      }
+      
+      // Remove from background tasks
+      setBackgroundTasks(prev => {
+        const newTasks = { ...prev };
+        delete newTasks[currentTaskId];
+        return newTasks;
+      });
+      
+      // Clear from localStorage
+      try {
+        const tasks = JSON.parse(localStorage.getItem('content_summarizer_tasks') || '{}');
+        delete tasks[currentTaskId];
+        localStorage.setItem('content_summarizer_tasks', JSON.stringify(tasks));
+      } catch (error) {
+        console.error('Error clearing task from storage:', error);
+      }
     }
-  }, [activeTab]);
+
+    setResult(null); // Clear previous result immediately
+    setError(null); // Clear previous errors
+    setCurrentTaskId(null);
+    setIsFirstTimeResult(true); // Reset for new task
+    setIsFreshResult(false); // Reset fresh result flag
+    setTypewriterShown(false); // Reset typewriter shown flag
+    
+    // Cache the user input
+    localStorage.setItem('content_summarizer_input', JSON.stringify({
+      url: url.trim(),
+      contentType: contentType
+    }));
+    
+    // Start background processing
+    await startBackgroundTask(url.trim(), contentType);
+  };
+
+
+
+
+
+  // Auto-mark typewriter as shown after it completes
+  useEffect(() => {
+    if (isFreshResult && !typewriterShown && result && result.summary) {
+      const typewriterDuration = result.summary.length * 22 + 500; // Same calculation as before
+      const timer = setTimeout(() => {
+        setTypewriterShown(true);
+      }, typewriterDuration);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isFreshResult, typewriterShown, result]);
+
+
 
   // Update mentions when search or transcript changes
   useEffect(() => {
@@ -281,6 +607,44 @@ The session concluded with a Q&A where participants discussed specific investmen
     }
   }, [currentMention, transcriptMentions]);
 
+  // Load tasks and cached input from storage on component mount
+  useEffect(() => {
+    loadTasksFromStorage();
+    
+    // Load cached input
+    try {
+      const cachedInput = localStorage.getItem('content_summarizer_input');
+      if (cachedInput) {
+        const { url: cachedUrl, contentType: cachedContentType } = JSON.parse(cachedInput);
+        setUrl(cachedUrl || '');
+        setContentType(cachedContentType || 'space');
+      }
+    } catch (error) {
+      console.error('Error loading cached input:', error);
+    }
+    
+    // Ensure notification state is properly restored
+    try {
+      const notificationSetting = localStorage.getItem('content_summarizer_notifications');
+      const isEnabled = notificationSetting === 'true';
+      setNotificationsEnabled(isEnabled);
+      notificationsEnabledRef.current = isEnabled;
+    } catch (error) {
+      // Silent error handling
+    }
+  }, []);
+
+  // Cleanup intervals on component unmount
+  useEffect(() => {
+    return () => {
+      if ((window as any).backgroundTaskIntervals) {
+        Object.values((window as any).backgroundTaskIntervals).forEach((interval: any) => {
+          clearInterval(interval);
+        });
+      }
+    };
+  }, []);
+
   // Countdown timer effect
   useEffect(() => {
     if (!countdownActive || timeLeft <= 0) return;
@@ -294,9 +658,9 @@ The session concluded with a Q&A where participants discussed specific investmen
         return prev - 1;
       });
       
-          // Update progress
-    const totalTime = contentType === 'space' ? 15 * 60 : 30 * 60;
-    const newProgress = ((totalTime - timeLeft + 1) / totalTime) * 100;
+      // Update progress
+    const totalTime = 1 * 60; // 1 minute for testing
+      const newProgress = ((totalTime - timeLeft + 1) / totalTime) * 100;
       setProgress(newProgress);
     }, 1000);
 
@@ -373,34 +737,39 @@ The session concluded with a Q&A where participants discussed specific investmen
           <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
-                <span className="text-white font-medium">
-                  <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
-                </span>
+                  <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
+                  <span className="text-white font-medium">
+                    <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
+                  </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
+              <button 
+                onClick={toggleNotifications}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+              >
                 <div className="p-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 </div>
                 <span>{notificationsEnabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
-            </div>
-            <div className="relative">
+              </button>
+                </div>
+                <div className="relative">
               <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
-                <div 
+                    <div 
                   className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-2000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-              <div 
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div 
                 className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-2000 ease-out"
-                style={{ left: `calc(${progress}% - 4px)` }}
-              ></div>
+                    style={{ left: `calc(${progress}% - 4px)` }}
+                  ></div>
             </div>
           </div>
         )}
+
+
 
         {/* Error Display */}
         {error && (
@@ -428,7 +797,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                       ? 'bg-[#A259FF] text-white'
                       : isLoading 
                         ? 'text-gray-500 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-gray-300'
+                      : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Spaces
@@ -442,7 +811,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                       ? 'bg-[#A259FF] text-white'
                       : isLoading 
                         ? 'text-gray-500 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-gray-300'
+                      : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Broadcasts
@@ -569,19 +938,21 @@ The session concluded with a Q&A where participants discussed specific investmen
             <div className="p-4 sm:p-6">
               {activeTab === 'summary' ? (
                 <div className="space-y-4">
-                  <div className="fade-in bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
+                  <div className="bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-[#A259FF] mb-3 text-base sm:text-lg">AI Summary</h3>
                     <div className="text-gray-300 text-sm sm:text-base leading-relaxed prose prose-invert max-w-none">
-                      {result && !persistedSummary ? (
-                        <Typewriter 
-                          text={result.summary} 
-                          speed={22} 
-                          className="prose prose-invert max-w-none"
-                        />
-                      ) : (
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: marked.parse(persistedSummary) 
-                        }} />
+                      {result && result.summary && (
+                        isFreshResult && !typewriterShown ? (
+                          <Typewriter 
+                            text={result.summary} 
+                            speed={22} 
+                            className="prose prose-invert max-w-none"
+                          />
+                        ) : (
+                          <div dangerouslySetInnerHTML={{ 
+                            __html: marked.parse(result.summary) 
+                          }} />
+                        )
                       )}
                     </div>
                   </div>
@@ -616,7 +987,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div key={transcriptFadeKey} className="fade-in bg-[rgba(24,26,32,0.2)] rounded-lg p-4 sm:p-6">
+                  <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-white mb-4 text-base sm:text-lg">Full Transcript</h3>
                     {/* Finder UI */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
@@ -702,7 +1073,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                                 ref={el => { transcriptRefs.current[pIdx] = el; }}
                                 className={`p-3 sm:p-4 bg-[rgba(24,26,32,0.3)] rounded border border-[#2a2e35] relative group transition-shadow`}
                               >
-                                <div className="pr-12">
+                                <div className="pr-8">
                                   {(speakerMatch || timestampMatch) && (
                                     <div className="flex items-center gap-2 mb-2 text-xs">
                                       {speakerMatch && (
@@ -723,7 +1094,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                                 </div>
                                 <button
                                   onClick={() => handleCopyParagraph(cleanContent, pIdx)}
-                                  className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                  className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white transition-colors"
                                   title="Copy paragraph"
                                 >
                                   {copiedParagraphIndex === pIdx ? (

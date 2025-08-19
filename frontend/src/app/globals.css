@@ -2,32 +2,9 @@
 
 body {
   overflow-x: hidden;
+  background-color: black;
+  color: white;
 } 
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
 
 /* buttons tweak */
 .button-circle-fill {
@@ -163,15 +140,7 @@ min-height: 2px;
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-.fade-in {
-  opacity: 0;
-  animation: fadeInAnim 0.7s ease-in forwards;
-}
-@keyframes fadeInAnim {
-  to {
-    opacity: 1;
-  }
-}
+
 
 /* Markdown styling for better rendering */
 .prose-invert h1,
