@@ -66,7 +66,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleEthConfirm = async () => {
     if (newEth.trim() && !eth.includes(newEth.trim())) {
       setWallets(prev => ({ ...prev, eth: [...prev.eth, newEth.trim()] }));
-      showToast("Ethereum address added!", "success");
+      showToast("EVM address added!", "success");
       if (onWalletAdded) onWalletAdded(newEth.trim(), 'eth');
       // Call backend to persist (fire and forget)
       await fetch('/api/wallets', {
@@ -102,7 +102,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
     if (editEthValue.trim()) {
       const oldAddress = eth[idx];
       setWallets(prev => ({ ...prev, eth: prev.eth.map((a, i) => i === idx ? editEthValue.trim() : a) }));
-      showToast("Ethereum address updated!", "success");
+      showToast("EVM address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleEthRemove = async (idx: number) => {
     const address = eth[idx];
     setWallets(prev => ({ ...prev, eth: prev.eth.filter((_, i) => i !== idx) }));
-    showToast("Ethereum address removed!", "success");
+    showToast("EVM address removed!", "success");
     // Call backend to delete
     await fetch('/api/wallets', {
       method: 'DELETE',
@@ -307,8 +307,8 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
         {/* Ethereum Wallet */}
         <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-gray-400 text-sm">Ethereum wallet</span>
-            <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingEth(true)} aria-label="Add Ethereum address">
+            <span className="text-gray-400 text-sm">EVM wallet</span>
+            <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingEth(true)} aria-label="Add EVM address">
               <FiPlus className="text-base text-[#A259FF]" />
             </button>
           </div>
@@ -364,8 +364,8 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
             )}
             {eth.length === 0 && !addingEth && (
               <div className="w-full max-w-[400px]">
-                <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center cursor-pointer" onClick={() => setAddingEth(true)} tabIndex={0} role="button" aria-label="Add Ethereum address">
-                  <span className="text-gray-500">Input Ethereum address</span>
+                <div className="w-full bg-[#23272b] text-white px-3 py-2 rounded-lg border border-[#23272b] text-sm flex items-center cursor-pointer" onClick={() => setAddingEth(true)} tabIndex={0} role="button" aria-label="Add EVM address">
+                  <span className="text-gray-500">Input EVM address</span>
                 </div>
               </div>
             )}

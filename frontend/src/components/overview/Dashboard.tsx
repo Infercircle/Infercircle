@@ -119,12 +119,72 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         setCuratedTweets(results.flat());
         console.log(curatedTweets);
       }
+
     }
     if(allElites.size > 0) {
       const usernames = Array.from(allElites);
       processInBatches(usernames);
     }
   }, [allElites]);
+
+  // Background processing for elite curators on login (only once per session)
+  useEffect(() => {
+    async function processEliteCurators() {
+      if (!session || status !== "authenticated") return;
+      const user = session.user as any;
+      if (!user || !user.id) return;
+      
+      // Skip processing if user doesn't have Twitter account
+      if (!user.twitterId) {
+        console.log('User has no Twitter ID, skipping elite curators processing');
+        return;
+      }
+      
+      // Check if we've already processed this user in this session
+      const sessionKey = `elite_processed_${user.id}`;
+      if (sessionStorage.getItem(sessionKey)) {
+        return; // Already processed in this session
+      }
+      
+      try {
+        // Check if user has already been processed in database
+        const statusRes = await fetch(`/api/elite-curators/status?user_id=${user.id}`);
+        const statusData = await statusRes.json();
+        
+        if (statusRes.ok && statusData.hasBeenProcessed) {
+          // User already processed, mark session as processed
+          sessionStorage.setItem(sessionKey, 'true');
+          return;
+        }
+        
+        // Process elite curators in background (fire and forget)
+        fetch('/api/elite-curators/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id })
+        }).then(res => res.json())
+          .then(data => {
+            if (data.count > 0) {
+              console.log(`Found ${data.count} elite curators for user`);
+            }
+            // Mark as processed in session storage
+            sessionStorage.setItem(sessionKey, 'true');
+            
+            // Dispatch background completion event
+            window.dispatchEvent(new CustomEvent('eliteBackgroundComplete', { 
+              detail: { userId: user.id } 
+            }));
+          })
+          .catch(error => {
+            console.error('Error processing elite curators:', error);
+          });
+      } catch (error) {
+        console.error('Error in elite curators processing:', error);
+      }
+    }
+    
+    processEliteCurators();
+  }, [session, status]);
 
   if(!session || status !== "authenticated") {
     return (
@@ -180,8 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
           netWorth={netWorth} 
           totalPriceChange={totalPriceChange} 
           loadingNetWorth={loadingNetWorth} 
-          connectedWallets={connectedWallets} 
-          allElites={allElites} />
+          connectedWallets={connectedWallets} />
       </div>
     {/* Second Row: Suggested (full width, prominent) */}
     {/* <div className="col-span-12">

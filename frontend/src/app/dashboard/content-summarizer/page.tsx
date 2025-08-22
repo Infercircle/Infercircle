@@ -1,315 +1,427 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { FiPlay, FiFileText, FiMessageSquare, FiClock, FiUsers, FiCopy, FiX, FiCheckCircle, FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
-import { FaSquareXTwitter } from 'react-icons/fa6';
+import React, { useState, useRef, useEffect } from 'react';
+import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiUsers, FiMessageSquare } from 'react-icons/fi';
 import { marked } from 'marked';
+import axios from 'axios';
 
-interface SpaceResult {
-  space_id?: string;
-  broadcast_id?: string;
+// Typewriter component for animated text display
+const Typewriter: React.FC<{ text: string; speed?: number; className?: string; onComplete?: () => void }> = ({ 
+  text, 
+  speed = 30, 
+  className = '', 
+  onComplete 
+}) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+
+      return () => clearTimeout(timer);
+    } else if (onComplete) {
+      onComplete();
+    }
+  }, [currentIndex, text, speed, onComplete]);
+
+  return (
+    <div 
+      className={className}
+      dangerouslySetInnerHTML={{ __html: marked.parse(displayedText) }}
+    />
+  );
+};
+
+interface SummarizationResult {
   summary: string;
   transcript: string;
-  metadata?: {
-    confidence?: number;
-    speakers?: number;
-    chapters?: number;
-  };
+  duration?: string;
+  participants?: number;
+  space_id?: string;
+  broadcast_id?: string;
   download?: {
     file_path: string;
     file_size: number;
     duration: number;
   };
+  metadata?: {
+    confidence?: number;
+    speakers?: number;
+    chapters?: number;
+  };
 }
 
-// Typewriter component
-function Typewriter({ text, speed = 25, className = "" }: { text: string; speed?: number; className?: string }) {
-  const [displayed, setDisplayed] = useState("");
-  useEffect(() => {
-    setDisplayed("");
-    if (!text) return;
-    let i = 0;
-    const type = () => {
-      const currentText = text.slice(0, i + 1);
-      setDisplayed(currentText);
-      i++;
-      if (i < text.length) {
-        setTimeout(type, speed);
-      }
-    };
-    type();
-    return () => {};
-  }, [text, speed]);
-  
-  // Configure marked options for better rendering
-  marked.setOptions({
-    breaks: true,
-    gfm: true
-  });
-  
-  // Render markdown for the displayed text
-  const renderedContent = marked.parse(displayed);
-  
-  return (
-    <div 
-      className={className}
-      dangerouslySetInnerHTML={{ __html: renderedContent }}
-    />
-  );
+interface Task {
+  id: string;
+  url: string;
+  contentType: 'space' | 'broadcast';
+  status: 'running' | 'completed' | 'error';
+  startTime: number;
+  result?: SummarizationResult;
 }
 
-export default function ContentSummarizerPage() {
+export default function ContentSummarizer() {
+  // Basic state
   const [url, setUrl] = useState('');
   const [contentType, setContentType] = useState<'space' | 'broadcast'>('space');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'transcript' | 'summary'>('summary');
-  const [result, setResult] = useState<SpaceResult | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [persistedSummary, setPersistedSummary] = useState<string>("");
-  const [transcriptFadeKey, setTranscriptFadeKey] = useState(0);
-  const [showInstructions, setShowInstructions] = useState(true);
-  const [copiedParagraphIndex, setCopiedParagraphIndex] = useState<number | null>(null);
+  const [result, setResult] = useState<SummarizationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Finder state for per-mention navigation
-  const [transcriptSearch, setTranscriptSearch] = useState("");
-  const [transcriptMentions, setTranscriptMentions] = useState<{ paragraph: number; match: number; }[]>([]);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [activeTab, setActiveTab] = useState<'summary' | 'transcript'>('summary');
+  const [transcriptSearch, setTranscriptSearch] = useState('');
   const [currentMention, setCurrentMention] = useState(0);
-  const transcriptRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [copiedParagraphIndex, setCopiedParagraphIndex] = useState<number | null>(null);
+  const [isFreshResult, setIsFreshResult] = useState(false);
+  const [typewriterShown, setTypewriterShown] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   // Countdown timer state
   const [countdownActive, setCountdownActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) return;
+  // Notifications
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const notificationsEnabledRef = useRef(false);
 
-    setResult(null); // Clear previous result immediately
-    setPersistedSummary(""); // Clear persisted summary
-    setError(null); // Clear previous errors
-    setIsLoading(true);
+  // Background processing
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Refs for transcript search
+  const transcriptRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Notification functions
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('This browser does not support notifications');
+      return false;
+    }
+
+    if (Notification.permission === 'granted') {
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      alert('Please enable notifications in your browser settings to receive alerts when summarization completes.');
+      return false;
+    }
+
+    // Permission is 'default' - request it
+    const permission = await Notification.requestPermission();
     
-    // Start countdown timer
-    const totalTime = 2 * 60; // 2 minutes in seconds
-    setTimeLeft(totalTime);
-    setProgress(0);
-    setCountdownActive(true);
-    
-    // Simulate API delay (2 minutes for testing)
-    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000));
-    
-    // Mock data for development
-    const mockData: SpaceResult = {
-      space_id: 'mock-space-123',
-      summary: `# 🚀 Crypto Market Analysis & Future Trends
-
-## Introduction
-This Twitter Space featured **@crypto_analyst** and **@defi_builder** discussing the current state of the crypto market, emerging trends, and what to expect in the coming months. The session was highly informative with deep insights into DeFi protocols and market dynamics.
-
-## 🧠 Key Insights
-
-- **Market Sentiment**: The overall sentiment remains cautiously optimistic despite recent volatility
-- **Institutional Adoption**: Major institutions are quietly accumulating Bitcoin and Ethereum
-- **DeFi Innovation**: New protocols are emerging that solve real-world problems
-- **Regulatory Landscape**: Clearer regulations are expected in Q2 2024
-
-## 📚 Terminology Explained
-
-- **MEV (Maximal Extractable Value)**: The maximum value that can be extracted from block production in excess of the standard block reward and gas fees
-- **Layer 2 Scaling**: Solutions built on top of existing blockchains to improve transaction throughput
-- **Yield Farming**: The practice of lending or staking crypto assets to earn rewards
-
-## ⚠️ Problems Identified
-
-- **High Gas Fees**: Ethereum network congestion continues to be a major concern
-- **Centralization Risks**: Some DeFi protocols are becoming increasingly centralized
-- **Security Vulnerabilities**: Smart contract exploits remain a significant threat
-- **User Experience**: Complex interfaces are still a barrier to mainstream adoption
-
-## 💡 Proposed Solutions
-
-- **Layer 2 Adoption**: Encouraging users to migrate to L2 solutions for lower fees
-- **Cross-Chain Bridges**: Improving interoperability between different blockchains
-- **Better UX Design**: Simplifying DeFi interfaces for non-technical users
-- **Enhanced Security**: Implementing more robust security measures and audits
-
-## 🔮 What's Coming Next
-
-- **Ethereum 2.0**: Full transition to proof-of-stake expected by end of 2024
-- **CBDCs**: Central Bank Digital Currencies will likely impact the crypto landscape
-- **Web3 Gaming**: Gaming tokens and NFTs are expected to see significant growth
-- **DeFi 2.0**: Next generation of DeFi protocols with improved efficiency
-
-## 🎯 Final Takeaways
-
-1. **Long-term Perspective**: Focus on fundamentals rather than short-term price movements
-2. **Diversification**: Spread investments across different sectors and protocols
-3. **Education**: Continuous learning is crucial in this rapidly evolving space
-4. **Risk Management**: Never invest more than you can afford to lose
-
-The session concluded with a Q&A where participants discussed specific investment strategies and upcoming projects to watch.`,
-      transcript: `[00:00:00] Speaker: Welcome everyone to today's crypto market analysis session. I'm @crypto_analyst and I'm joined by @defi_builder. We'll be discussing the current state of the market and what we can expect in the coming months.
-
-[00:00:15] Speaker: Thanks for having me. The market has been quite volatile lately, but I think we're seeing some interesting patterns emerge.
-
-[00:00:30] Speaker: Absolutely. Let's start with the overall sentiment. Despite the recent price fluctuations, institutional adoption is quietly accelerating behind the scenes.
-
-[00:00:45] Speaker: That's a great point. We're seeing major players like BlackRock and Fidelity entering the space, which is a strong signal for long-term growth.
-
-[00:01:00] Speaker: The DeFi space is particularly interesting right now. New protocols are emerging that actually solve real problems, not just copy existing solutions.
-
-[00:01:15] Speaker: I agree. The innovation in DeFi is incredible. We're seeing protocols that address issues like MEV, cross-chain interoperability, and user experience.
-
-[00:01:30] Speaker: Let's talk about some of the challenges we're facing. Gas fees on Ethereum are still a major concern for users.
-
-[00:01:45] Speaker: Yes, that's why Layer 2 solutions are so important. We need to encourage more users to migrate to L2s for their daily transactions.
-
-[00:02:00] Speaker: Security is another critical issue. Smart contract exploits are still happening too frequently.
-
-[00:02:15] Speaker: That's why proper auditing and security measures are essential. Users should always DYOR and understand the risks.
-
-[00:02:30] Speaker: Looking ahead, what are your thoughts on Ethereum 2.0 and the transition to proof-of-stake?
-
-[00:02:45] Speaker: The transition is going well so far. We should see the full implementation by the end of 2024, which will significantly reduce energy consumption.
-
-[00:03:00] Speaker: And what about regulatory developments? How do you see that affecting the market?
-
-[00:03:15] Speaker: Regulation is inevitable and actually necessary for mainstream adoption. We need clear guidelines to protect users while fostering innovation.
-
-[00:03:30] Speaker: Great insights everyone. Let's open it up for questions from the audience.
-
-[00:03:45] Speaker: Thanks for the comprehensive overview. This has been very informative for our community.`,
-      metadata: {
-        confidence: 0.95,
-        speakers: 2,
-        chapters: 6
-      },
-      download: {
-        file_path: '/tmp/mock_audio.mp3',
-        file_size: 15728640, // 15MB
-        duration: 225 // 3 minutes 45 seconds
-      }
-    };
-    
-    setResult(mockData);
-      setIsLoading(false);
-    setCountdownActive(false); // Stop countdown when done
+    if (permission === 'granted') {
+      return true;
+    } else {
+      return false;
+    }
   };
 
-  // When a new result is set, update persistedSummary
-  useEffect(() => {
-    console.log('Result changed:', result);
-    if (result && result.summary) {
-      setPersistedSummary("");
-      // Use a timeout to allow the typewriter to animate, then persist the summary
-      setTimeout(() => setPersistedSummary(result.summary), result.summary.length * 22 + 500);
+  const toggleNotifications = async () => {
+    if (notificationsEnabledRef.current) {
+      // Disable notifications
+      setNotificationsEnabled(false);
+      notificationsEnabledRef.current = false;
+      localStorage.setItem('content_summarizer_notifications', 'false');
+    } else {
+      // Enable notifications
+      const hasPermission = await requestNotificationPermission();
+      
+      if (hasPermission) {
+        setNotificationsEnabled(true);
+        notificationsEnabledRef.current = true;
+        localStorage.setItem('content_summarizer_notifications', 'true');
+      }
     }
-  }, [result]);
+  };
 
-  // When switching to transcript tab, increment the fade key to re-trigger fade-in
-  useEffect(() => {
-    if (activeTab === 'transcript') {
-      setTranscriptFadeKey((k) => k + 1);
-    }
-  }, [activeTab]);
-
-  // Update mentions when search or transcript changes
-  useEffect(() => {
-    if (!result || !transcriptSearch) {
-      setTranscriptMentions([]);
-      setCurrentMention(0);
+  const sendNotification = (title: string, body: string) => {
+    if (!notificationsEnabledRef.current) {
       return;
     }
-    const mentions: { paragraph: number; match: number; }[] = [];
     
-    // Use the same parsing logic as the display
-    const unescapedTranscript = result.transcript
-      .replace(/\\n/g, '\n')
-      .replace(/\\r/g, '\r')
-      .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"');
+    if (!('Notification' in window)) {
+      return;
+    }
     
-    const segments = unescapedTranscript.split('\n\n')
-      .filter(segment => segment.trim())
-      .filter(segment => {
-        const trimmed = segment.trim();
-        // Filter out lines that look like JSON metadata
-        return !trimmed.startsWith('{"success":') && 
-               !trimmed.startsWith('{"space_id":') && 
-               !trimmed.startsWith('{"download":') &&
-               !trimmed.startsWith('Space Transcript:') &&
-               !trimmed.includes('"formatted_transcript"') &&
-               !trimmed.includes('"metadata":{') &&
-               !trimmed.includes('"language":"en"') &&
-               !trimmed.includes('"segments":') &&
-               !trimmed.includes('"confidence":null') &&
-               !trimmed.includes('"speakers":null') &&
-               !trimmed.includes('"chapters":null');
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+    
+    // Only send notification if tab is not active (user is in another tab)
+    if (!document.hidden) {
+      return;
+    }
+    
+    try {
+      const notification = new Notification(title, {
+        body: body,
+        icon: '/icons/image.svg'
       });
-    
-    segments.forEach((segment, pIdx) => {
-      // Clean the content the same way as display
-      const cleanContent = segment
-        .replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '')
-        .replace(/Speaker:\s*/g, '')
-        .replace(/\n+/g, ' ')
-        .trim();
       
-      if (cleanContent) {
-        const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        let match;
-        let matchIdx = 0;
-        while ((match = regex.exec(cleanContent)) !== null) {
-          mentions.push({ paragraph: pIdx, match: matchIdx });
-          matchIdx++;
-          // Prevent infinite loop for zero-width matches
-          if (regex.lastIndex === match.index) regex.lastIndex++;
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+      
+    } catch (error){}
+  };
+
+  // Task management
+  const saveTaskToStorage = (task: Task) => {
+    localStorage.setItem('currentTask', JSON.stringify(task));
+  };
+
+  const loadTaskFromStorage = () => {
+    const taskData = localStorage.getItem('currentTask');
+    if (taskData) {
+      const task: Task = JSON.parse(taskData);
+      setCurrentTask(task);
+      
+      if (task.status === 'completed' && task.result) {
+        setResult(task.result);
+        setIsFreshResult(false);
+        setTypewriterShown(true);
+        setIsLoading(false);
+        setCountdownActive(false);
+      } else if (task.status === 'running') {
+        setIsLoading(true);
+        setCountdownActive(true);
+        startProgressSimulation(task);
+      }
+    }
+  };
+
+  const clearTaskFromStorage = () => {
+    localStorage.removeItem('currentTask');
+    setCurrentTask(null);
+  };
+
+  const startProgressSimulation = (task: Task) => {
+    const expectedDuration = contentType === 'space' ? 15 * 60 : 30 * 60; // 15 or 30 minutes
+    const startTime = task.startTime;
+    
+    progressIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progressPercent = Math.min((elapsed / (expectedDuration * 1000)) * 100, 95);
+      const remaining = Math.max(expectedDuration - (elapsed / 1000), 0);
+      
+      setProgress(progressPercent);
+      setTimeLeft(Math.ceil(remaining));
+      
+      if (remaining <= 0) {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
         }
       }
-    });
-    
-    setTranscriptMentions(mentions);
-    setCurrentMention(mentions.length > 0 ? 0 : -1);
-  }, [transcriptSearch, result]);
+    }, 1000);
+  };
 
-  // Scroll to current mention
-  useEffect(() => {
-    if (transcriptMentions.length > 0 && transcriptRefs.current[transcriptMentions[currentMention]?.paragraph]) {
-      transcriptRefs.current[transcriptMentions[currentMention].paragraph]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const startBackgroundTask = async () => {
+    // Clear any existing task
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
-  }, [currentMention, transcriptMentions]);
+    clearTaskFromStorage();
+
+    // Create new task
+    const task: Task = {
+      id: Date.now().toString(),
+      url,
+      contentType,
+      status: 'running',
+      startTime: Date.now()
+    };
+
+    setCurrentTask(task);
+    saveTaskToStorage(task);
+    setIsLoading(true);
+    setCountdownActive(true);
+    setResult(null);
+    setError(null);
+    setIsFreshResult(false);
+    setTypewriterShown(false);
+
+    // Start progress simulation
+    startProgressSimulation(task);
+
+    // Make API call
+    try {
+      const endpoint = contentType === 'space' ? '/api/content-summarizer/spaces' : '/api/content-summarizer/broadcasts';
+      const response = await axios.post(endpoint, { 
+        space_url: url,
+        is_ended: true 
+      }, {
+        timeout: 1800000, // 30 minutes timeout
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = response.data as SummarizationResult;
+      
+      // Update task as completed
+      const completedTask: Task = {
+        ...task,
+        status: 'completed',
+        result: data
+      };
+
+      setCurrentTask(completedTask);
+      saveTaskToStorage(completedTask);
+      setResult(data);
+      setIsFreshResult(true);
+      setIsLoading(false);
+      setCountdownActive(false);
+
+      // Clear progress simulation
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
+      // Send notification if in another tab
+      const notificationBody = contentType === 'space' 
+        ? 'Your Twitter Space has been processed successfully.' 
+        : 'Your Twitter Broadcast has been processed successfully.';
+      sendNotification('Content Summarization Complete! 🎉', notificationBody);
+
+    } catch (error) {
+      console.error('🐢 Slow or no connection detected, please try again:', error);
+      
+      // Update task as error
+      const errorTask: Task = {
+        ...task,
+        status: 'error'
+      };
+
+      setCurrentTask(errorTask);
+      saveTaskToStorage(errorTask);
+      
+      // Handle axios error
+      if (error && typeof error === 'object' && 'isAxiosError' in error) {
+        const axiosError = error as any;
+        setError(`🐢 Slow or no connection detected, please try again: ${axiosError.response?.status || 'Network error'}`);
+      } else {
+        setError(error instanceof Error ? error.message : 'An error occurred');
+      }
+      
+      setIsLoading(false);
+      setCountdownActive(false);
+
+      // Clear progress simulation
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim()) return;
+    startBackgroundTask();
+  };
+
+  // Load task on mount
+  useEffect(() => {
+    loadTaskFromStorage();
+    
+    // Load notification preference - disabled by default
+    const notificationSetting = localStorage.getItem('content_summarizer_notifications');
+    // Only enable if explicitly set to 'true' in localStorage
+    const isEnabled = notificationSetting === 'true';
+    setNotificationsEnabled(isEnabled);
+    notificationsEnabledRef.current = isEnabled;
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Typewriter effect logic
+  useEffect(() => {
+    if (isFreshResult && !typewriterShown) {
+      const duration = result?.summary ? (result.summary.length * 22) : 0;
+      const timer = setTimeout(() => {
+        setTypewriterShown(true);
+      }, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [isFreshResult, typewriterShown, result?.summary]);
+
+  // Tab visibility handling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadTaskFromStorage();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Countdown timer effect
   useEffect(() => {
-    if (!countdownActive || timeLeft <= 0) return;
+    if (!countdownActive) return;
 
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) {
-          setCountdownActive(false);
+        if (prev <= 0) {
+          clearInterval(timer);
           return 0;
         }
         return prev - 1;
       });
-      
-          // Update progress
-    const totalTime = 2 * 60; // 2 minutes in seconds
-    const newProgress = ((totalTime - timeLeft + 1) / totalTime) * 100;
-      setProgress(newProgress);
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [countdownActive, timeLeft, contentType]);
+    return () => clearInterval(timer);
+  }, [countdownActive]);
 
-  const handleNextMention = () => {
-    if (transcriptMentions.length === 0) return;
-    setCurrentMention((prev) => (prev + 1) % transcriptMentions.length);
+  // Utility functions
+  const handleCopySummary = async () => {
+    if (result?.summary) {
+      try {
+        await navigator.clipboard.writeText(result.summary);
+        // Show copied state briefly
+        setTimeout(() => {}, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
   };
-  const handlePrevMention = () => {
-    if (transcriptMentions.length === 0) return;
-    setCurrentMention((prev) => (prev - 1 + transcriptMentions.length) % transcriptMentions.length);
+
+  const handleCopyTranscript = async () => {
+    if (result?.transcript) {
+      try {
+        await navigator.clipboard.writeText(result.transcript);
+        // Show copied state briefly
+        setTimeout(() => {}, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
+  const handleCopyParagraph = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedParagraphIndex(index);
+      setTimeout(() => setCopiedParagraphIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy paragraph:', err);
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -342,13 +454,52 @@ The session concluded with a Q&A where participants discussed specific investmen
     }
   };
 
-  const handleCopyParagraph = async (paragraph: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(paragraph);
-      setCopiedParagraphIndex(index);
-      setTimeout(() => setCopiedParagraphIndex(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy paragraph: ', err);
+  const handleClearStorage = () => {
+    // Clear all content summarizer related storage
+    localStorage.removeItem('currentTask');
+    localStorage.removeItem('content_summarizer_notifications');
+    
+    // Refresh the page
+    window.location.reload();
+  };
+
+  // Transcript search logic
+  const transcriptMentions = result?.transcript ? (() => {
+    if (!transcriptSearch) return [];
+    const regex = new RegExp(transcriptSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const mentions: { paragraph: number; match: number }[] = [];
+    const segments = result.transcript.split('\n\n');
+    
+    segments.forEach((segment, pIdx) => {
+      const matches = segment.match(regex);
+      if (matches) {
+        matches.forEach((_, mIdx) => {
+          mentions.push({ paragraph: pIdx, match: mIdx });
+        });
+      }
+    });
+    
+    return mentions;
+  })() : [];
+
+  const goToMention = (direction: 'next' | 'prev') => {
+    if (transcriptMentions.length === 0) return;
+    
+    if (direction === 'next') {
+      setCurrentMention(prev => (prev + 1) % transcriptMentions.length);
+    } else {
+      setCurrentMention(prev => prev === 0 ? transcriptMentions.length - 1 : prev - 1);
+    }
+  };
+
+  const goToMentionIndex = (index: number) => {
+    setCurrentMention(index);
+    const mention = transcriptMentions[index];
+    if (mention && transcriptRefs.current[mention.paragraph]) {
+      transcriptRefs.current[mention.paragraph]?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
     }
   };
 
@@ -357,62 +508,65 @@ The session concluded with a Q&A where participants discussed specific investmen
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-xl sm:text-3xl text-white font-bold">𝕏</span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Content Summarizer</h1>
+            </div>
+                          <button
+                onClick={handleClearStorage}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-gray-200 rounded transition-colors cursor-pointer flex items-center gap-1"
+                title="Clear storage and refresh page"
+              >
+                <FiX className="w-3 h-3" />
+                Clear Storage
+              </button>
           </div>
           <p className="text-gray-400 text-sm sm:text-base">
             Get AI-powered transcriptions and summaries of Twitter Spaces and Broadcasts. Simply paste a URL below.
           </p>
         </div>
 
-        {/* Development Banner */}
-        <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🐒</span>
-            <div className="flex-1">
-              <p className="text-yellow-300 font-medium text-sm sm:text-base">
-                This feature is still under development. The tech monkeys are working hard to fix it! Feel free to test with any URL to see the mock data and preview what to expect.
-              </p>
-            </div>
-          </div>
-        </div>
+
 
         {/* Countdown Timer */}
-        {countdownActive && (
+        {countdownActive && isLoading && !result && (
           <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
                   <span className="text-white font-medium">
                     <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
                   </span>
-                </div>
-                <div className="relative">
-                  <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
-                    <div 
-                      className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                  <div 
-                    className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-1000 ease-out"
-                    style={{ left: `calc(${progress}% - 4px)` }}
-                  ></div>
-                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-400 ml-4">
+              <button 
+                onClick={toggleNotifications}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+              >
                 <div className="p-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 </div>
                 <span>{notificationsEnabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
+              </button>
+                </div>
+                <div className="relative">
+              <div className="w-full bg-gray-700 rounded-full h-2 shadow-inner">
+                    <div 
+                  className="bg-gradient-to-r from-[#A259FF] to-[#8B4DFF] h-2 rounded-full transition-all duration-2000 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div 
+                className="absolute top-0 w-2 h-2 bg-[#A259FF] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-2000 ease-out"
+                    style={{ left: `calc(${progress}% - 4px)` }}
+                  ></div>
             </div>
           </div>
         )}
+
+
 
         {/* Error Display */}
         {error && (
@@ -440,7 +594,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                       ? 'bg-[#A259FF] text-white'
                       : isLoading 
                         ? 'text-gray-500 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-gray-300'
+                      : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Spaces
@@ -454,7 +608,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                       ? 'bg-[#A259FF] text-white'
                       : isLoading 
                         ? 'text-gray-500 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-gray-300'
+                      : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   Broadcasts
@@ -581,10 +735,11 @@ The session concluded with a Q&A where participants discussed specific investmen
             <div className="p-4 sm:p-6">
               {activeTab === 'summary' ? (
                 <div className="space-y-4">
-                  <div className="fade-in bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
+                  <div className="bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-[#A259FF] mb-3 text-base sm:text-lg">AI Summary</h3>
                     <div className="text-gray-300 text-sm sm:text-base leading-relaxed prose prose-invert max-w-none">
-                      {result && !persistedSummary ? (
+                      {result && result.summary && (
+                        isFreshResult && !typewriterShown ? (
                         <Typewriter 
                           text={result.summary} 
                           speed={22} 
@@ -592,8 +747,9 @@ The session concluded with a Q&A where participants discussed specific investmen
                         />
                       ) : (
                         <div dangerouslySetInnerHTML={{ 
-                          __html: marked.parse(persistedSummary) 
+                            __html: marked.parse(result.summary) 
                         }} />
+                        )
                       )}
                     </div>
                   </div>
@@ -628,7 +784,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div key={transcriptFadeKey} className="fade-in bg-[rgba(24,26,32,0.2)] rounded-lg p-4 sm:p-6">
+                  <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-white mb-4 text-base sm:text-lg">Full Transcript</h3>
                     {/* Finder UI */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
@@ -645,8 +801,8 @@ The session concluded with a Q&A where participants discussed specific investmen
                       {transcriptSearch && (
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                           <span>{transcriptMentions.length > 0 ? `${currentMention + 1} of ${transcriptMentions.length}` : 'No matches'}</span>
-                          <button onClick={handlePrevMention} disabled={transcriptMentions.length === 0} className="p-1 rounded hover:bg-[#23272b] disabled:opacity-50"><FiChevronUp /></button>
-                          <button onClick={handleNextMention} disabled={transcriptMentions.length === 0} className="p-1 rounded hover:bg-[#23272b] disabled:opacity-50"><FiChevronDown /></button>
+                          <button onClick={() => goToMention('prev')} disabled={transcriptMentions.length === 0} className="p-1 rounded hover:bg-[#23272b] disabled:opacity-50"><FiChevronLeft /></button>
+                          <button onClick={() => goToMention('next')} disabled={transcriptMentions.length === 0} className="p-1 rounded hover:bg-[#23272b] disabled:opacity-50"><FiChevronRight /></button>
                         </div>
                       )}
                     </div>
@@ -714,7 +870,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                                 ref={el => { transcriptRefs.current[pIdx] = el; }}
                                 className={`p-3 sm:p-4 bg-[rgba(24,26,32,0.3)] rounded border border-[#2a2e35] relative group transition-shadow`}
                               >
-                                <div className="pr-12">
+                                <div className="pr-8">
                                   {(speakerMatch || timestampMatch) && (
                                     <div className="flex items-center gap-2 mb-2 text-xs">
                                       {speakerMatch && (
@@ -735,7 +891,7 @@ The session concluded with a Q&A where participants discussed specific investmen
                                 </div>
                                 <button
                                   onClick={() => handleCopyParagraph(cleanContent, pIdx)}
-                                  className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                  className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white transition-colors"
                                   title="Copy paragraph"
                                 >
                                   {copiedParagraphIndex === pIdx ? (

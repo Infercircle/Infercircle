@@ -280,7 +280,6 @@ min-height: 2px;
   font-size: 12px !important;
   font-weight: 500 !important;
 }
-
 /* buttons tweak */
 .button-circle-fill {
   position: relative;
@@ -415,15 +414,7 @@ min-height: 2px;
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-.fade-in {
-  opacity: 0;
-  animation: fadeInAnim 0.7s ease-in forwards;
-}
-@keyframes fadeInAnim {
-  to {
-    opacity: 1;
-  }
-}
+
 
 /* Markdown styling for better rendering */
 .prose-invert h1,
