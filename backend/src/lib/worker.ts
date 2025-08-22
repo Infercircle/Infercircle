@@ -1,5 +1,5 @@
 import axios from "axios";
-import { createAssetMindShare, getAllAssetSentimentScores, getAssetById } from "./queries";
+import { createAssetMindShare, getAllAssetSentimentScores, getAssetById, createDailySentimentScore } from "./queries";
 
 export async function startMindShareCalculation() {
     console.log("Starting the mindshare calculation............");
@@ -41,6 +41,24 @@ export async function startMindShareCalculation() {
 
 interface resultType {symbol: string, sentiment: string, image: string, positiveTweets: number, negativeTweets: number, neutralTweets: number }
 
+// Helper function to calculate sentiment score from tweet counts
+function calculateSentimentScore(positiveTweets: number, negativeTweets: number, neutralTweets: number): number {
+    const SentimentIndex = (positiveTweets - negativeTweets) / (positiveTweets + neutralTweets + negativeTweets);
+    const totalTweets = positiveTweets + negativeTweets + neutralTweets;
+    if (totalTweets === 0) return 0;
+    
+    const mindshare = ((SentimentIndex*50) + 50).toFixed(2);
+    
+    return parseFloat(mindshare);
+}
+
+// Helper function to get today's date at midnight (for consistent daily records)
+function getTodayDate(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+}
+
 export async function getSentiment(data: { id: string, symbol: string, name: string, image?: string }[]): Promise<resultType[]> {
     console.log("getting sentiment for ",data.length);
     const result = await axios.post(`${process.env.BASE_URL}/twitter/sentiment-batch`, {
@@ -50,6 +68,7 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
     console.log("Got Fresult.....");
 
     let resultArray: resultType[] = [];
+    const todayDate = getTodayDate();
 
     await Promise.all(Fresult.map(async(res)=>{
         try {
@@ -57,6 +76,8 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
             const getAsset = await getAssetById(res.id);
             res.image = getAsset?.image || "";
           }
+          
+            // Update the main AssetSentiMentScore table
             await createAssetMindShare({
                 id: res.id,
                 name: res.name,
@@ -67,6 +88,27 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
                 negativeTweets: res.negativeTweets,
                 neutralTweets: res.neutralTweets
             });
+
+            // Calculate sentiment score for daily record
+            const sentimentScore = calculateSentimentScore(
+                res.positiveTweets || 0,
+                res.negativeTweets || 0,
+                res.neutralTweets || 0
+            );
+
+            const totalTweets = (res.positiveTweets || 0) + (res.negativeTweets || 0) + (res.neutralTweets || 0);
+
+            // Save daily sentiment data for graphing
+            await createDailySentimentScore({
+                assetId: res.id,
+                date: todayDate,
+                sentimentScore: sentimentScore,
+                positiveTweets: res.positiveTweets || 0,
+                negativeTweets: res.negativeTweets || 0,
+                neutralTweets: res.neutralTweets || 0,
+                totalTweets: totalTweets
+            });
+
             resultArray.push({
                 symbol: res.symbol,
                 sentiment: res.sentiment.toString(),
@@ -75,7 +117,7 @@ export async function getSentiment(data: { id: string, symbol: string, name: str
                 negativeTweets: res.negativeTweets || 0,
                 neutralTweets: res.neutralTweets || 0
             });
-            console.log("done for ",res.name);
+            console.log(`Saved daily sentiment data for ${res.name} - Score: ${sentimentScore}, Total Tweets: ${totalTweets}`);
             setTimeout(() => {
                 console.log("Waiting for 5 seconds before next request...");
             }, 5000);

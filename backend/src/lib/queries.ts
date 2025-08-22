@@ -42,3 +42,81 @@ export async function getAssetById(id: string) {
 export async function getAllAssetSentimentScores() {
   return db.assetSentiMentScore.findMany();
 }
+
+export async function createDailySentimentScore(params: {
+  assetId: string;
+  date: Date;
+  sentimentScore: number;
+  positiveTweets: number;
+  negativeTweets: number;
+  neutralTweets: number;
+  totalTweets: number;
+}) {
+  return db.dailySentimentScore.upsert({
+    where: {
+      assetId_date: {
+        assetId: params.assetId,
+        date: params.date,
+      },
+    },
+    update: {
+      sentimentScore: params.sentimentScore,
+      positiveTweets: params.positiveTweets,
+      negativeTweets: params.negativeTweets,
+      neutralTweets: params.neutralTweets,
+      totalTweets: params.totalTweets,
+    },
+    create: {
+      assetId: params.assetId,
+      date: params.date,
+      sentimentScore: params.sentimentScore,
+      positiveTweets: params.positiveTweets,
+      negativeTweets: params.negativeTweets,
+      neutralTweets: params.neutralTweets,
+      totalTweets: params.totalTweets,
+    },
+  });
+}
+
+export async function getDailySentimentScores(assetId: string, days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  return db.dailySentimentScore.findMany({
+    where: {
+      assetId,
+      date: {
+        gte: startDate,
+      },
+    },
+    orderBy: {
+      date: 'asc',
+    },
+  });
+}
+
+export async function getAllAssetsDailySentiment(days: number) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  return db.dailySentimentScore.findMany({
+    where: {
+      date: {
+        gte: startDate,
+      },
+    },
+    include: {
+      asset: {
+        select: {
+          name: true,
+          symbol: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: [
+      { assetId: 'asc' },
+      { date: 'asc' },
+    ],
+  });
+}
