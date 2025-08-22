@@ -46,12 +46,18 @@ export function InviteCodeModal({ inviteCode, setInviteCode, addX }: InviteCodeM
       console.log("Invite Code Response: ", response);
       if(addX){
         router.push('/dashboard?addX=true');
+        if (session?.user) {
+          session.user.inviteAccepted = true;
+        }
       }else{
         const usr = session?.user as User;
         if (usr.username && usr.username.length > 0) {
             router.push('/dashboard');
         }else {
             router.push('/dashboard?addX=true');
+        }
+        if (session?.user) {
+          session.user.inviteAccepted = true;
         }
       }
     } catch (error) {

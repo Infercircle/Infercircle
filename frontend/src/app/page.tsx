@@ -10,6 +10,7 @@ import { BsTwitterX } from "react-icons/bs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 interface Provider {
   id: string;
@@ -24,6 +25,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [providers, setProviders] = useState<Record<string, Provider> | null>(null);
   const [inviteCode, setInviteCode] = useState<string>("");
+  const router = useRouter();
 
   useEffect(() => {
     console.log("Session: ", session);
@@ -32,7 +34,11 @@ export default function Home() {
       const fetchedUser = session.user as User;
       setUser(fetchedUser);
       if (fetchedUser && fetchedUser.inviteAccepted) {
-        window.location.href = `${fetchedUser.username && fetchedUser.username.length > 0 ? `/dashboard` : `/dashboard?addX=true`}`;
+        if(fetchedUser.username && fetchedUser.username.length >0) {
+          router.push(`/dashboard`);
+        } else {
+          router.push(`/dashboard?addX=true`);
+        }
       }
     }
     console.log("Fetched User: ", user);

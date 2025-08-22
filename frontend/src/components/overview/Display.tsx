@@ -113,6 +113,42 @@ const SYMBOL_MAPPINGS: Record<string, string> = {
   'polygon': 'pol',
 };
 
+// Function to format timestamp to relative time (5s, 3min, 2h, 1d, etc.)
+const formatRelativeTime = (timestamp: string | number | Date): string => {
+  try {
+    const now = new Date();
+    const tweetTime = new Date(timestamp);
+    
+    // Check if the date is valid
+    if (isNaN(tweetTime.getTime())) {
+      return 'now';
+    }
+    
+    const diffInSeconds = Math.floor((now.getTime() - tweetTime.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds}s`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes}min`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours}h`;
+    } else if (diffInSeconds < 2592000) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days}d`;
+    } else if (diffInSeconds < 31536000) {
+      const months = Math.floor(diffInSeconds / 2592000);
+      return `${months}mo`;
+    } else {
+      const years = Math.floor(diffInSeconds / 31536000);
+      return `${years}y`;
+    }
+  } catch (error) {
+    return 'now';
+  }
+};
+
 const Display: React.FC<DisplayProps> = React.memo(({ 
   selectedAsset, 
   showPriceChart = false, 
@@ -487,6 +523,85 @@ const Display: React.FC<DisplayProps> = React.memo(({
     }
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
 
+
+  // Fetch tweets for selected asset with batch optimization
+  // const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
+  //   if (!assetName) return;
+    
+  //   try {
+  //     const batchSize = 5;
+  //     const totalLimit = 10;
+  //     const batches = Math.ceil(totalLimit / batchSize);
+  //     const allTweets: Tweet[] = [];
+      
+  //     // Create chain-specific search queries
+  //     const searchQueries = generateChainSpecificQueries(assetName, chain);
+      
+  //     for (const query of searchQueries) {
+  //       for (let i = 0; i < batches; i++) {
+  //         const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
+          
+  //         const response = await fetch(`${API_BASE}/twitter/stream`, {
+  //           method: 'POST',
+  //           headers: { 'Content-Type': 'application/json' },
+  //           body: JSON.stringify({ 
+  //             query: query, 
+  //             limit: currentLimit, 
+  //             product: 'Latest',
+  //             offset: i * batchSize 
+  //           })
+  //         });
+
+  //         if (response.ok) {
+  //           const data = await response.json();
+  //           if (data.data && Array.isArray(data.data)) {
+  //             const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
+  //               sentiment: tweet.sentiment || 'neutral',
+  //               avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+  //               name: tweet.name || 'Unknown',
+  //               handle: tweet.handle || '@unknown',
+  //               timestamp: formatRelativeTime(tweet.timestamp || new Date()),
+  //               followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+  //               tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+  //               text: tweet.text || ''
+  //             }));
+              
+  //             allTweets.push(...transformedTweets);
+  //           }
+  //         }
+          
+  //         if (i < batches - 1) {
+  //           await new Promise(resolve => setTimeout(resolve, 500));
+  //         }
+  //       }
+  //     }
+      
+  //     if (allTweets.length > 0) {
+  //       setTweetQueue(prev => [...prev, ...allTweets]);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching tweets:', error);
+  //   }
+  // }, [API_BASE]);
+
+  // Animate tweets from queue to display
+  useEffect(() => {
+    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
+      setIsAnimating(true);
+      const newTweet = tweetQueue[0];
+      
+      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
+      setNewTweetIndex(0);
+      
+      setTweetQueue(prev => prev.slice(1));
+      
+      setTimeout(() => {
+        setNewTweetIndex(null);
+        setIsAnimating(false);
+      }, 5000);
+    }
+  }, [tweetQueue, isAnimating, expandedIndex]);
+
   // Fetch tweets when selected asset changes
   useEffect(() => {
     if (selectedAsset?.name && selectedAsset?.symbol) {
@@ -553,7 +668,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
         name: tweet.raw_data?.user?.displayname || 'Unknown',
         handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
-        timestamp: tweet.date || 'now',
+        timestamp: formatRelativeTime(tweet.timestamp || tweet.date || new Date()),
         followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
         tweetUrl: tweet.url || 'https://twitter.com',
         text: tweet.content || tweet.text || ''
