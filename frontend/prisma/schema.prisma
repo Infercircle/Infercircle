@@ -71,4 +71,23 @@ model AssetSentiMentScore {
   negativeTweets Int     @default(0)
   neutralTweets  Int     @default(0)
   positiveTweets Int     @default(0)
+  dailySentiment DailySentimentScore[]
+}
+
+model DailySentimentScore {
+  id               String               @id @default(cuid())
+  assetId          String
+  date             DateTime             @db.Date
+  sentimentScore   Float                @default(0)
+  positiveTweets   Int                  @default(0)
+  negativeTweets   Int                  @default(0)
+  neutralTweets    Int                  @default(0)
+  totalTweets      Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  asset            AssetSentiMentScore  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, date])
+  @@index([date])
+  @@index([assetId, date])
 }

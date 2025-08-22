@@ -1,3 +1,4 @@
+import { AssetSentiMentScore } from "../generated/prisma";
 import db from "./db";
 
 export async function getUserById(id: string) {

@@ -3,7 +3,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { asyncHandler } from "../lib/helper";
 import { token } from "../interfaces/tokens";
-import { getDailySentimentScores, getAllAssetsDailySentiment } from "../lib/queries";
+import { getDailySentimentScores, getAllAssetsDailySentiment, getAssetById } from "../lib/queries";
 
 dotenv.config();
 
