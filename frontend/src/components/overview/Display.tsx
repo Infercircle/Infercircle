@@ -59,6 +59,111 @@ interface Tweet {
   followers: string;
   tweetUrl: string;
   text: string;
+  rawTimestamp?: number;
+}
+
+// Priority Queue implementation for tweets (max-heap based on timestamp)
+class TweetPriorityQueue {
+  private heap: Tweet[] = [];
+
+  // Add a tweet to the priority queue
+  enqueue(tweet: Tweet): void {
+    this.heap.push(tweet);
+    this.bubbleUp(this.heap.length - 1);
+  }
+
+  // Remove and return the tweet with the latest timestamp
+  dequeue(): Tweet | null {
+    if (this.heap.length === 0) return null;
+    if (this.heap.length === 1) return this.heap.pop()!;
+
+    const latest = this.heap[0];
+    this.heap[0] = this.heap.pop()!;
+    this.bubbleDown(0);
+    return latest;
+  }
+
+  // Add multiple tweets at once
+  enqueueBatch(tweets: Tweet[]): void {
+    tweets.forEach(tweet => this.enqueue(tweet));
+  }
+
+  // Get all tweets sorted by timestamp (latest first) without removing them
+  getAllSorted(): Tweet[] {
+    return [...this.heap].sort((a, b) => {
+      const aTime = a.rawTimestamp || new Date().getTime();
+      const bTime = b.rawTimestamp || new Date().getTime();
+      return bTime - aTime; // Latest first
+    });
+  }
+
+  // Get the latest tweet without removing it
+  peek(): Tweet | null {
+    return this.heap.length > 0 ? this.heap[0] : null;
+  }
+
+  // Get current size
+  size(): number {
+    return this.heap.length;
+  }
+
+  // Check if empty
+  isEmpty(): boolean {
+    return this.heap.length === 0;
+  }
+
+  // Clear all tweets
+  clear(): void {
+    this.heap = [];
+  }
+
+  // Get top N latest tweets without removing them
+  getTopN(n: number): Tweet[] {
+    return this.getAllSorted().slice(0, n);
+  }
+
+  private bubbleUp(index: number): void {
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2);
+      const currentTime = this.heap[index].rawTimestamp || 0;
+      const parentTime = this.heap[parentIndex].rawTimestamp || 0;
+
+      if (currentTime <= parentTime) break;
+
+      [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
+      index = parentIndex;
+    }
+  }
+
+  private bubbleDown(index: number): void {
+    while (true) {
+      const leftChild = 2 * index + 1;
+      const rightChild = 2 * index + 2;
+      let largest = index;
+
+      const currentTime = this.heap[index].rawTimestamp || 0;
+      
+      if (leftChild < this.heap.length) {
+        const leftTime = this.heap[leftChild].rawTimestamp || 0;
+        if (leftTime > currentTime) {
+          largest = leftChild;
+        }
+      }
+
+      if (rightChild < this.heap.length) {
+        const rightTime = this.heap[rightChild].rawTimestamp || 0;
+        const largestTime = this.heap[largest].rawTimestamp || 0;
+        if (rightTime > largestTime) {
+          largest = rightChild;
+        }
+      }
+
+      if (largest === index) break;
+
+      [this.heap[index], this.heap[largest]] = [this.heap[largest], this.heap[index]];
+      index = largest;
+    }
+  }
 }
 
 const sentimentIcon = (sentiment: string) => {
@@ -194,7 +299,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
   const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
   const [loadingLogo, setLoadingLogo] = useState(false);
-  const [tweets, setTweets] = useState<Tweet[]>([]);
+  
+  // Replace tweets state with two priority queues
+  const [tweets] = useState<TweetPriorityQueue>(() => new TweetPriorityQueue());
+  const [eliteTweets] = useState<TweetPriorityQueue>(() => new TweetPriorityQueue());
+  const [displayTweetsArray, setDisplayTweetsArray] = useState<Tweet[]>([]);
+  
   const [tweetBuffer, setTweetBuffer] = useState<Tweet[]>([]);
   const [newTweetIndex, setNewTweetIndex] = useState<number | null>(null);
   const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
@@ -204,6 +314,18 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
+
+  // Helper function to update display array from priority queues
+  const updateDisplayTweets = useCallback(() => {
+    const currentQueue = isCurated ? eliteTweets : tweets;
+    const topTweets = currentQueue.getTopN(20); // Get top 20 latest tweets
+    setDisplayTweetsArray(topTweets);
+  }, [tweets, eliteTweets, isCurated]);
+
+  // Update display when elite feed toggle changes
+  useEffect(() => {
+    updateDisplayTweets();
+  }, [isCurated, updateDisplayTweets]);
 
 
 
@@ -218,10 +340,13 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setIsAnimating(true);
       const newTweet = tweetQueue[0];
       
-      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
-      setNewTweetIndex(0);
+      // Add new tweet to the appropriate priority queue
+      tweets.enqueue(newTweet);
+      updateDisplayTweets();
       
+      setNewTweetIndex(0);
       setTweetQueue(prev => prev.slice(1));
+      
       let time = 100;
       if(newTweetIndex == null){
         time = 5000;
@@ -231,7 +356,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         setIsAnimating(false);
       }, time);
     }
-  }, [tweetQueue, isAnimating, expandedIndex]);
+  }, [tweetQueue, isAnimating, expandedIndex, tweets, updateDisplayTweets, newTweetIndex]);
 
   // Fetch tweets for selected asset with async batch optimization
   const fetchTweets = useCallback(async (assetName: string, assetSymbol: string, chain?: string) => {
@@ -294,7 +419,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
                     timestamp: tweet.timestamp || 'now',
                     followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
                     tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-                    text: tweet.text || ''
+                    text: tweet.text || '',
+                    rawTimestamp: new Date(tweet.timestamp || new Date()).getTime()
                   }));
                   
                   // Add tweets to queue immediately as they arrive
@@ -373,15 +499,42 @@ const Display: React.FC<DisplayProps> = React.memo(({
     return nameMatches || symbolMatches || specialMatch;
   }, []);
 
-  // Filter curated tweets based on selected asset
+  // Filter curated tweets based on selected asset and populate eliteTweets queue
   const filteredCuratedTweets = useMemo(() => {
     if (!curatedTweets || !selectedAsset) return [];
     
-    return curatedTweets.filter(tweet => {
+    const filtered = curatedTweets.filter(tweet => {
       const tweetContent = tweet.content || tweet.text || '';
       return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol);
     });
-  }, [curatedTweets, selectedAsset, isAssetRelated]);
+
+    // Transform and add to eliteTweets priority queue
+    if (filtered.length > 0) {
+      eliteTweets.clear(); // Clear existing elite tweets
+      const transformedTweets = filtered.map((tweet: any) => ({
+        sentiment: tweet.sentiment || 'neutral',
+        avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
+        name: tweet.raw_data?.user?.displayname || 'Unknown',
+        handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
+        timestamp: formatRelativeTime(tweet.timestamp || tweet.date || new Date()),
+        followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
+        tweetUrl: tweet.url || 'https://twitter.com',
+        text: tweet.content || tweet.text || '',
+        rawTimestamp: new Date(tweet.timestamp || tweet.date || new Date()).getTime()
+      }));
+      
+      eliteTweets.enqueueBatch(transformedTweets);
+    }
+    
+    return filtered;
+  }, [curatedTweets, selectedAsset, isAssetRelated, eliteTweets]);
+
+  // Update display when filtered curated tweets change
+  useEffect(() => {
+    if (isCurated) {
+      updateDisplayTweets();
+    }
+  }, [filteredCuratedTweets, isCurated, updateDisplayTweets]);
 
   // Fetch logo for selected asset if it doesn't have one
   useEffect(() => {
@@ -634,41 +787,23 @@ const Display: React.FC<DisplayProps> = React.memo(({
   //   }
   // }, [API_BASE]);
 
-  // Animate tweets from queue to display
-  useEffect(() => {
-    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
-      setIsAnimating(true);
-      const newTweet = tweetQueue[0];
-      
-      setTweets(prev => [newTweet, ...prev.slice(0, 19)]);
-      setNewTweetIndex(0);
-      
-      setTweetQueue(prev => prev.slice(1));
-      let time = 100;
-      if (newTweetIndex == null){
-        time = 5000;
-      }
-      
-      setTimeout(() => {
-        setNewTweetIndex(null);
-        setIsAnimating(false);
-      }, time);
-    }
-  }, [tweetQueue, isAnimating, expandedIndex]);
-
   // Fetch tweets when selected asset changes
   useEffect(() => {
     if (selectedAsset?.name && selectedAsset?.symbol) {
-      setTweets([]);
+      tweets.clear();
+      eliteTweets.clear();
+      setDisplayTweetsArray([]);
       setTweetQueue([]);
       setTweetBuffer([]);
       fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
     } else {
-      setTweets([]);
+      tweets.clear();
+      eliteTweets.clear();
+      setDisplayTweetsArray([]);
       setTweetQueue([]);
       setTweetBuffer([]);
     }
-  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets, tweets, eliteTweets]);
 
   // Poll for new tweets every 60 seconds when an asset is selected
   useEffect(() => {
@@ -692,15 +827,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // When expandedIndex goes from not-null to null, flush buffer
   useEffect(() => {
     if (expandedIndex === null && tweetBuffer.length > 0) {
-      setTweets(prev => [
-        ...tweetBuffer,
-        ...prev.slice(0, 20 - tweetBuffer.length)
-      ]);
+      // Add buffered tweets to the appropriate priority queue
+      tweets.enqueueBatch(tweetBuffer);
+      updateDisplayTweets();
+      
       setNewTweetIndex(tweetBuffer.length - 1);
       setTimeout(() => setNewTweetIndex(null), 1200);
       setTweetBuffer([]);
     }
-  }, [expandedIndex, tweetBuffer]);
+  }, [expandedIndex, tweetBuffer, tweets, updateDisplayTweets]);
 
   // Use selected asset data if available, otherwise show loading state
   const displayName = selectedAsset ? selectedAsset.name : "Loading...";
@@ -715,30 +850,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Memoized tweets to display based on elite filter with asset filtering
   const displayTweets = useMemo(() => {
-    if (isCurated && filteredCuratedTweets && filteredCuratedTweets.length > 0) {
-      // Transform filteredCuratedTweets to match Tweet interface
-      const transformedTweets = filteredCuratedTweets.map((tweet: any) => ({
-        sentiment: tweet.sentiment || 'neutral',
-        avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
-        name: tweet.raw_data?.user?.displayname || 'Unknown',
-        handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
-        timestamp: formatRelativeTime(tweet.timestamp || tweet.date || new Date()),
-        followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
-        tweetUrl: tweet.url || 'https://twitter.com',
-        text: tweet.content || tweet.text || ''
-      }));
-      
-      // Shuffle the tweets for better variety using Fisher-Yates algorithm
-      const shuffledTweets = [...transformedTweets];
-      for (let i = shuffledTweets.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledTweets[i], shuffledTweets[j]] = [shuffledTweets[j], shuffledTweets[i]];
-      }
-      
-      return shuffledTweets;
-    }
-    return tweets;
-  }, [isCurated, filteredCuratedTweets, tweets]);
+    // Simply return the displayTweetsArray which is already properly managed by the priority queues
+    return displayTweetsArray;
+  }, [displayTweetsArray]);
 
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
@@ -800,7 +914,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         {/* Price and change */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4">
           <div className="text-2xl font-bold text-white">
-            {displayPrice !== null ? `$${displayPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "N/A"}
+            {displayPrice !== null ? `$${displayPrice.toLocaleString(undefined, { maximumFractionDigits: 9 })}` : "N/A"}
           </div>
           <div className={
             displayChange !== null && displayChange >= 0

@@ -97,31 +97,38 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         // Process each batch concurrently
         const batchResults = await Promise.all(
           batch.map(async (username) => {
-            // Your async logic here
-            const res  = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user/tweets`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ username, limit: 10 }),
-            });
-            const data = await res.json();
-            return data.tweets || [];
+            try {
+              const res = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user/tweets`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, limit: 10 }),
+              });
+              const data = await res.json();
+              return data.tweets || [];
+            } catch (error) {
+              console.error(`Error fetching tweets for ${username}:`, error);
+              return [];
+            }
           })
         );
 
         setTimeout(() => {}, 1000); // Small delay to avoid rate limiting
 
         console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(usernames.length / BATCH_SIZE)}`);
-        console.log(batchResults);
-        results.push(...(batchResults.flat()));
-        console.log(results.flat()[0]);
-        setCuratedTweets(results.flat());
-        console.log(curatedTweets);
+        
+        const flattenedBatchResults = batchResults.flat();
+        results.push(...flattenedBatchResults);
+        
+        // Update curatedTweets immediately after each batch for real-time UI updates
+        setCuratedTweets(prev => [...prev, ...flattenedBatchResults]);
+        
+        console.log(`Added ${flattenedBatchResults.length} tweets from current batch`);
       }
 
     }
-    if(allElites.size > 0 && curatedTweets.length <0) {
+    if(allElites.size > 0 && curatedTweets.length <= 0) {
       const usernames = Array.from(allElites);
       processInBatches(usernames);
     }
