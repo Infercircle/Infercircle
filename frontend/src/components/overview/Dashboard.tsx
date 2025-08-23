@@ -128,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
       }
 
     }
-    if(allElites.size > 0 && curatedTweets.length <= 0) {
+    if(allElites.size > 0) {
       const usernames = Array.from(allElites);
       processInBatches(usernames);
     }
