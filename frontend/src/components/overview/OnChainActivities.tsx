@@ -65,7 +65,8 @@ interface OnChainActivitiesProps {
   onFirstAssetLoad?: (asset: Asset) => void;
   onPriceChartRequest?: (asset: Asset) => void;
   onBalanceChartRequest?: (asset: Asset) => void;
-  activeChartType?: 'price' | 'balance' | null;
+  onSentimentChartRequest?: (asset: Asset) => void;
+  activeChartType?: 'price' | 'balance' | 'sentiment' | null;
   activeChartAsset?: Asset | null;
   connectedWallets?: number;
   onLogoCacheUpdate?: (logoCache: Record<string, string>) => void;
@@ -83,7 +84,7 @@ type AssetSentimentArrayMap = {
   [symbol: string]: AssetSentiMentScore[];
 };
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -361,6 +362,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     }
   };
 
+  const handleSentimentClick = (asset: Asset, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row selection
+    if (onSentimentChartRequest) {
+      onSentimentChartRequest(asset);
+    }
+  };
+
   if (connectedWallets === 0) {
     return (
       <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
@@ -513,7 +521,24 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center w-[135px]">Sentiment Score</th>
+              <th className="py-2 px-2 font-medium text-center w-[135px]">
+                <div className="flex items-center justify-center gap-1">
+                  Sentiment Score
+                  <Tippy
+                    content={
+                      <div className="text-xs">
+                        <div>Community sentiment score (0-100)</div>
+                        <div className="text-[#A259FF]">Click to view sentiment chart</div>
+                      </div>
+                    }
+                    placement="top"
+                    arrow={true}
+                    theme="custom"
+                  >
+                    <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                  </Tippy>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -586,7 +611,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
                     </div>
                   </td>
-                  <td className="py-2 px-2 w-[120px] text-center align-middle">
+                  <td 
+                    className={`py-2 px-2 w-[120px] text-center align-middle cursor-pointer hover:opacity-80 transition-opacity ${
+                      activeChartType === 'sentiment' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
+                        ? 'opacity-80' 
+                        : ''
+                    }`}
+                    onClick={(e) => handleSentimentClick(asset, e)}
+                  >
                     {/* Placeholder for circular progress */}
                     <div className="relative w-10 h-10 flex items-center justify-center m-auto">
                       <svg className="absolute top-0 left-0" width="40" height="40">
