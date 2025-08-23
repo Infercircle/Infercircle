@@ -87,6 +87,32 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
+// Tweet skeleton loading component
+const TweetSkeleton = () => (
+  <div className="flex items-start gap-3 rounded-xl px-3 py-2 bg-[rgba(36,37,42,0.25)] animate-pulse" style={{ minHeight: 80, maxHeight: 80 }}>
+    {/* Avatar skeleton */}
+    <div className="w-10 h-10 rounded-full bg-gray-600 mt-1"></div>
+    
+    <div className="flex-1 flex flex-col min-w-0">
+      {/* Header skeleton */}
+      <div className="flex items-center gap-2 w-full mb-2">
+        <div className="w-5 h-5 rounded bg-gray-600"></div>
+        <div className="h-3 bg-gray-600 rounded w-20"></div>
+        <div className="h-3 bg-gray-600 rounded w-16"></div>
+        <div className="ml-auto">
+          <div className="h-3 bg-gray-600 rounded w-8"></div>
+        </div>
+      </div>
+      
+      {/* Text skeleton */}
+      <div className="space-y-1">
+        <div className="h-3 bg-gray-600 rounded w-full"></div>
+        <div className="h-3 bg-gray-600 rounded w-3/4"></div>
+      </div>
+    </div>
+  </div>
+);
+
 interface DisplayProps {
   selectedAsset?: SelectedAsset | null;
   showPriceChart?: boolean;
@@ -241,7 +267,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
           const fetchPromise = (async () => {
             try {
               // Add staggered delay to avoid overwhelming the API
-              const delay = (searchQueries.indexOf(query) * batches + i) * 200; // 200ms between each call
+              const delay = (searchQueries.indexOf(query) * batches + i) * 50; // 200ms between each call
               await new Promise(resolve => setTimeout(resolve, delay));
               
               const response = await fetch(`${API_BASE}/twitter/stream`, {
@@ -824,21 +850,27 @@ const Display: React.FC<DisplayProps> = React.memo(({
           </div>
 
           {displayTweets.length === 0 ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="text-center">
-                <span className="text-gray-500 text-sm">
-                  {isCurated 
-                    ? `No curated tweets found for ${selectedAsset?.name || 'this asset'}` 
-                    : "No tweets available for this asset yet"
-                  }
-                </span>
-                {isCurated && filteredCuratedTweets.length === 0 && curatedTweets && curatedTweets.length > 0 && (
-                  <div className="text-xs text-gray-400 mt-1">
-                    Try toggling off "Elite Feed" to see live tweets
-                  </div>
-                )}
-              </div>
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+              {/* Show 4 skeleton tweets while loading */}
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <TweetSkeleton key={`skeleton-${idx}`} />
+              ))}
             </div>
+            // <div className="flex items-center justify-center h-32">
+            //   <div className="text-center">
+            //     <span className="text-gray-500 text-sm">
+            //       {isCurated 
+            //         ? `No curated tweets found for ${selectedAsset?.name || 'this asset'}` 
+            //         : "No tweets available for this asset yet"
+            //       }
+            //     </span>
+            //     {isCurated && filteredCuratedTweets.length === 0 && curatedTweets && curatedTweets.length > 0 && (
+            //       <div className="text-xs text-gray-400 mt-1">
+            //         Try toggling off "Elite Feed" to see live tweets
+            //       </div>
+            //     )}
+            //   </div>
+            // </div>
           ) : expandedIndex === null ? (
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {displayTweets.map((tweet, idx) => (
