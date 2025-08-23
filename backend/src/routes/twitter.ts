@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { asyncHandler } from "../lib/helper";
 import * as vader from "vader-sentiment";
 import fetch from "node-fetch";
+import { tweetCacheService } from "../services/tweetCache";
 
 const router = Router();
 
@@ -10,75 +11,116 @@ router.get("/", (req: Request, res: Response) => {
   res.send("Helper Twitter API Server 🚀");
 });
 
+// Cache stats endpoint
+router.get("/cache/stats", asyncHandler(async (req: Request, res: Response) => {
+  const stats = tweetCacheService.getCacheStats();
+  res.status(200).json({
+    status: "success",
+    cache: stats
+  });
+}));
+
+// Cache invalidation endpoint
+router.delete("/cache/:query", asyncHandler(async (req: Request, res: Response) => {
+  const { query } = req.params;
+  if (!query) {
+    return res.status(400).json({ error: "Query is required" });
+  }
+  
+  await tweetCacheService.invalidateQueryCache(decodeURIComponent(query));
+  res.status(200).json({
+    status: "success",
+    message: `Cache invalidated for query: ${query}`
+  });
+}));
+
 // POST /twitter/stream
-// Body: { query: string, limit?: number, product?: string }
+// Body: { query: string, limit?: number, product?: string, offset?: number }
 router.post("/stream", asyncHandler(async (req: Request, res: Response) => {
-  const { query, limit = 10, product = "Latest" } = req.body;
+  const { query, limit = 10, product = "Latest", offset = 0 } = req.body;
   if (!query) {
     return res.status(400).json({ error: "Query is required" });
   }
 
-  // Fetch tweets from helper API
-  const helperRes = await fetch("https://helper-apis-and-scrappers.onrender.com/twitter/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, limit, product })
-  });
-
-  if (!helperRes.ok) {
-    return res.status(500).json({ error: "Failed to fetch tweets from helper API" });
+  try {
+    // Check cache first
+    const cachedResult = await tweetCacheService.getCachedTweets(query, limit, offset);
+    if (cachedResult) {
+      return res.status(200).json(cachedResult);
     }
 
-  const helperData = await helperRes.json();
-  // The API may return { data: [...] } or just an array
-  const tweets = Array.isArray(helperData) ? helperData : helperData.data || helperData.tweets || helperData.results || [];
+    // If not cached, fetch from external API
+    const helperRes = await fetch("https://helper-apis-and-scrappers.onrender.com/twitter/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, limit, product })
+    });
 
-  // Helper: format relative time like "2m ago"
-  function getRelativeTime(timestamp: string) {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diff = (now.getTime() - then.getTime()) / 1000;
-    if (diff < 60) return `${Math.floor(diff)}s`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    return `${Math.floor(diff / 86400)}d`;
+    if (!helperRes.ok) {
+      return res.status(500).json({ error: "Failed to fetch tweets from helper API" });
+    }
+
+    const helperData = await helperRes.json();
+    // The API may return { data: [...] } or just an array
+    const tweets = Array.isArray(helperData) ? helperData : helperData.data || helperData.tweets || helperData.results || [];
+
+    // Helper: format relative time like "2m ago"
+    function getRelativeTime(timestamp: string) {
+      const now = new Date();
+      const then = new Date(timestamp);
+      const diff = (now.getTime() - then.getTime()) / 1000;
+      if (diff < 60) return `${Math.floor(diff)}s`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+      return `${Math.floor(diff / 86400)}d`;
+    }
+
+    // Normalize tweets (handle both array and object response)
+    const normalizedTweets = (tweets.length ? tweets : (helperData.results || [])).map((tweet: any) => {
+      const text = tweet.content || tweet.raw_data?.rawContent || tweet.raw_data?.content || tweet.text || "";
+      const user = tweet.raw_data?.user || {};
+      const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
+      let sentimentLabel = "neutral";
+      if (sentiment.compound >= 0.05) sentimentLabel = "positive";
+      else if (sentiment.compound <= -0.05) sentimentLabel = "negative";
+
+      // Format timestamp as relative time
+      let rawTimestamp = tweet.date || tweet.raw_data?.date || new Date().toISOString();
+      let formattedTimestamp = getRelativeTime(rawTimestamp);
+      return {
+        id: tweet.id,
+        name: user.displayname || tweet.username || user.username || "Unknown",
+        handle: user.username ? `@${user.username}` : (tweet.username ? `@${tweet.username}` : ""),
+        avatar: user.profileImageUrl || user.profile_image_url || null,
+        followers: user.followersCount || user.followers_count || 0,
+        tweetUrl: tweet.url || tweet.raw_data?.url || tweet.raw_data?.url || "",
+        text,
+        timestamp: formattedTimestamp,
+        sentiment: sentimentLabel,
+        sentimentScore: sentiment.compound,
+        likes: tweet.likes || tweet.raw_data?.likeCount || 0,
+        retweets: tweet.retweets || tweet.raw_data?.retweetCount || 0,
+        replies: tweet.replies || tweet.raw_data?.replyCount || 0,
+      };
+    });
+
+    // Cache the results if we have any tweets
+    if (normalizedTweets.length > 0) {
+      await tweetCacheService.cacheTweets(query, limit, normalizedTweets, offset);
+    }
+
+    res.status(200).json({
+      status: "success",
+      count: normalizedTweets.length,
+      data: normalizedTweets,
+      query,
+      cached: false
+    });
+
+  } catch (error) {
+    console.error('Twitter stream error:', error);
+    res.status(500).json({ error: "Internal server error" });
   }
-
-  // Normalize tweets (handle both array and object response)
-  const normalizedTweets = (tweets.length ? tweets : (helperData.results || [])).map((tweet: any) => {
-    const text = tweet.content || tweet.raw_data?.rawContent || tweet.raw_data?.content || tweet.text || "";
-    const user = tweet.raw_data?.user || {};
-    const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
-    let sentimentLabel = "neutral";
-    if (sentiment.compound >= 0.05) sentimentLabel = "positive";
-    else if (sentiment.compound <= -0.05) sentimentLabel = "negative";
-
-    // Format timestamp as relative time
-    let rawTimestamp = tweet.date || tweet.raw_data?.date || new Date().toISOString();
-    let formattedTimestamp = getRelativeTime(rawTimestamp);
-    return {
-      id: tweet.id,
-      name: user.displayname || tweet.username || user.username || "Unknown",
-      handle: user.username ? `@${user.username}` : (tweet.username ? `@${tweet.username}` : ""),
-      avatar: user.profileImageUrl || user.profile_image_url || null,
-      followers: user.followersCount || user.followers_count || 0,
-      tweetUrl: tweet.url || tweet.raw_data?.url || tweet.raw_data?.url || "",
-      text,
-      timestamp: formattedTimestamp,
-      sentiment: sentimentLabel,
-      sentimentScore: sentiment.compound,
-      likes: tweet.likes || tweet.raw_data?.likeCount || 0,
-      retweets: tweet.retweets || tweet.raw_data?.retweetCount || 0,
-      replies: tweet.replies || tweet.raw_data?.replyCount || 0,
-    };
-  });
-
-  res.status(200).json({
-    status: "success",
-    count: normalizedTweets.length,
-    data: normalizedTweets,
-    query,
-  });
 }));
 
 // POST /twitter/sentiment-batch

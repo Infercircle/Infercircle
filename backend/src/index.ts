@@ -13,6 +13,7 @@ import { automationManager } from "./automation";
 import suggestionsRoutes from "./routes/suggestions";
 import balancesRoutes from "./routes/balances";
 import { startMindShareCalculation } from "./lib/worker";
+import { cacheWarmupService } from "./services/cacheWarmup";
 dotenv.config();
 
 const app: Application = express();
@@ -53,6 +54,10 @@ setInterval(startMindShareCalculation, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
+  
+  // Start cache warmup service for popular crypto assets
+  console.log('🔥 Initializing tweet cache warmup service...');
+  cacheWarmupService.startPeriodicWarmup(30); // Warmup every 30 minutes
   
   // Start Elite Curators automation after server starts
   // setTimeout(() => {

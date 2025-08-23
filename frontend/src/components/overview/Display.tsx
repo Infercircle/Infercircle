@@ -196,15 +196,18 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setNewTweetIndex(0);
       
       setTweetQueue(prev => prev.slice(1));
-      
+      let time = 100;
+      if(newTweetIndex == null){
+        time = 5000;
+      }
       setTimeout(() => {
         setNewTweetIndex(null);
         setIsAnimating(false);
-      }, 5000);
+      }, time);
     }
   }, [tweetQueue, isAnimating, expandedIndex]);
 
-  // Fetch tweets for selected asset with batch optimization
+  // Fetch tweets for selected asset with async batch optimization
   const fetchTweets = useCallback(async (assetName: string, assetSymbol: string, chain?: string) => {
     if (!assetName || !assetSymbol) return;
     
@@ -212,7 +215,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const batchSize = 5;
       const totalLimit = 10;
       const batches = Math.ceil(totalLimit / batchSize);
-      const allTweets: Tweet[] = [];
       
       // Three-step search strategy for more precise results
       const searchQueries: string[] = [];
@@ -228,50 +230,72 @@ const Display: React.FC<DisplayProps> = React.memo(({
       // Step 3: Symbol with $ prefix (fallback)
       searchQueries.push(`$${assetSymbol}`);
       
+      // Create all fetch promises at once
+      const fetchPromises: Promise<void>[] = [];
+      
       for (const query of searchQueries) {
         for (let i = 0; i < batches; i++) {
           const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
           
-          const response = await fetch(`${API_BASE}/twitter/stream`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              query: query, 
-              limit: currentLimit, 
-              product: 'Latest',
-              offset: i * batchSize 
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.data && Array.isArray(data.data)) {
-              const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-                sentiment: tweet.sentiment || 'neutral',
-                avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-                name: tweet.name || 'Unknown',
-                handle: tweet.handle || '@unknown',
-                timestamp: tweet.timestamp || 'now',
-                followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-                tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-                text: tweet.text || ''
-              }));
+          // Create promise for each API call
+          const fetchPromise = (async () => {
+            try {
+              // Add staggered delay to avoid overwhelming the API
+              const delay = (searchQueries.indexOf(query) * batches + i) * 200; // 200ms between each call
+              await new Promise(resolve => setTimeout(resolve, delay));
               
-              allTweets.push(...transformedTweets);
+              const response = await fetch(`${API_BASE}/twitter/stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  query: query, 
+                  limit: currentLimit, 
+                  product: 'Latest',
+                  offset: i * batchSize 
+                })
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ Tweets received for "${query}" (batch ${i + 1}):`, data.data?.length || 0);
+                
+                if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                  const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
+                    sentiment: tweet.sentiment || 'neutral',
+                    avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+                    name: tweet.name || 'Unknown',
+                    handle: tweet.handle || '@unknown',
+                    timestamp: tweet.timestamp || 'now',
+                    followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+                    tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+                    text: tweet.text || ''
+                  }));
+                  
+                  // Add tweets to queue immediately as they arrive
+                  setTweetQueue(prev => [...prev, ...transformedTweets]);
+                }
+              } else {
+                console.log(`❌ API call failed for "${query}" (batch ${i + 1}):`, response.status);
+              }
+            } catch (error) {
+              console.error(`Error fetching tweets for "${query}" batch ${i + 1}:`, error);
             }
-          }
+          })();
           
-          if (i < batches - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          fetchPromises.push(fetchPromise);
         }
       }
       
-      if (allTweets.length > 0) {
-        setTweetQueue(prev => [...prev, ...allTweets]);
-      }
+      // Execute all promises concurrently - don't wait for all to complete
+      // This allows tweets to show up as soon as each individual call completes
+      Promise.allSettled(fetchPromises).then((results) => {
+        const successful = results.filter(result => result.status === 'fulfilled').length;
+        const failed = results.filter(result => result.status === 'rejected').length;
+        console.log(`🏁 Tweet fetching completed: ${successful} successful, ${failed} failed`);
+      });
+      
     } catch (error) {
-      console.error('Error fetching tweets:', error);
+      console.error('Error in fetchTweets:', error);
     }
   }, [API_BASE]);
 
@@ -594,11 +618,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setNewTweetIndex(0);
       
       setTweetQueue(prev => prev.slice(1));
+      let time = 100;
+      if (newTweetIndex == null){
+        time = 5000;
+      }
       
       setTimeout(() => {
         setNewTweetIndex(null);
         setIsAnimating(false);
-      }, 5000);
+      }, time);
     }
   }, [tweetQueue, isAnimating, expandedIndex]);
 
@@ -608,7 +636,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setTweets([]);
       setTweetQueue([]);
       setTweetBuffer([]);
-      setTimeout(() => fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain), 100);
+      fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
     } else {
       setTweets([]);
       setTweetQueue([]);
