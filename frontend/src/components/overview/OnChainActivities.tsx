@@ -405,13 +405,16 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       </Tippy>
                     </div>
                   </th>
+                  <th className="py-2 px-2 font-medium text-left w-[150px]">
+                      Balance
+                  </th>
                   <th className="py-2 px-2 font-medium text-left w-[100px]">
                     <div className="flex items-center gap-1">
-                      Balance
+                      Value
                       <Tippy
                         content={
                           <div className="text-xs">
-                            <div>Quantity of tokens you own</div>
+                            <div>Value of your current holdings</div>
                             <div className="text-[#A259FF]">Click to view balance chart</div>
                           </div>
                         }
@@ -501,12 +504,15 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 </div>
               </th>
               <th className="py-2 px-2 font-medium text-left w-[150px]">
-                <div className="flex items-center gap-1">
                   Balance
+              </th>
+              <th className="py-2 px-2 font-medium text-left w-[100px]">
+                <div className="flex items-center gap-1">
+                  Value
                   <Tippy
                     content={
                       <div className="text-xs">
-                        <div>Quantity of tokens you own</div>
+                        <div>Value of your current holdings</div>
                         <div className="text-[#A259FF]">Click to view balance chart</div>
                       </div>
                     }
@@ -518,7 +524,6 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   </Tippy>
                 </div>
               </th>
-              <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
               <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
               <th className="py-2 px-2 font-medium text-center w-[135px]">
@@ -586,20 +591,19 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   >
                     {asset.price !== undefined ? `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}` : '--'}
                   </td>
-                  <td 
-                    className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
-                      activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
-                        ? 'text-[#A259FF]' 
-                        : 'text-white'
-                    }`}
-                    onClick={(e) => handleBalanceClick(asset, e)}
-                  >
+                  <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
                     {asset.balance !== undefined && asset.symbol ? formatBalance(Number(asset.balance), asset.symbol) : '--'}
                   </td>
                   <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
-                                          <div>
-                        {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
-                      </div>
+                    <div                         
+                      className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                        activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
+                          ? 'text-[#A259FF]' 
+                          : 'text-white'
+                      }`}
+                      onClick={(e) => handleBalanceClick(asset, e)}>
+                      {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
+                    </div>
                   </td>
                   <td className={`py-2 px-2 w-[80px] font-semibold text-center align-middle ${asset.priceChange !== undefined && asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     <div>

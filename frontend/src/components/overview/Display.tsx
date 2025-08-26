@@ -1014,6 +1014,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
                           },
                           height: '100%'
                         },
+                        dataLabels: {
+                          enabled: false
+                        },
                         series: [
                           {
                             name: 'Sentiment Score',
@@ -1138,12 +1141,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
                           },
                           height: '100%'
                         },
+                        dataLabels: {
+                          enabled: false
+                        },
                         series: [
                           {
                             name: currentChartType === 'price' ? 'Price' : 'Balance Value',
                             data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
                               item.timestamp, 
-                              currentChartType === 'price' ? item.price : item.balanceValue
+                              item.balanceValue !== undefined ? item.balanceValue : item.price
                             ])
                           }
                         ],
