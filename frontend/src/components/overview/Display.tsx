@@ -965,7 +965,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
           ) : (chartData && chartAsset) || (sentimentChartData && chartAsset) ? (
             <div className="h-full p-2 sm:p-4 relative overflow-hidden">
               {/* Chart Filter Tabs */}
-              <div className="flex gap-1 sm:gap-2 mb-4 justify-end">
+              {currentChartType !== 'sentiment' && <div className="flex gap-1 sm:gap-2 mb-4 justify-end">
                 {CHART_FILTERS.map((filter) => (
                   <button
                     key={filter.label}
@@ -975,138 +975,114 @@ const Display: React.FC<DisplayProps> = React.memo(({
                     {filter.label}
                   </button>
                 ))}
-              </div>
+              </div>}
               <div className="h-full overflow-hidden">
                 {typeof window !== 'undefined' && 
                  ((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length > 0) ||
                   (currentChartType !== 'sentiment' && chartData?.prices && chartData.prices.length > 0)) ? (
                   currentChartType === 'sentiment' && sentimentChartData ? (
-                    <Chart
-                      options={{
-                        chart: {
-                          type: 'line',
-                          background: 'transparent',
-                          toolbar: {
-                            show: true,
-                            tools: {
-                              download: false,
-                              selection: true,
-                              zoom: true,
-                              zoomin: true,
-                              zoomout: true,
-                              pan: true,
-                              reset: true
-                            },
-                            autoSelected: 'zoom'
-                          },
-                          zoom: {
-                            enabled: true,
-                            type: 'x',
-                            autoScaleYaxis: true
-                          },
-                          pan: {
-                            enabled: true,
-                            type: 'x'
-                          },
-                          animations: {
-                            enabled: true,
-                            speed: 800
-                          },
-                          height: '100%'
-                        },
-                        dataLabels: {
-                          enabled: false
-                        },
-                        series: [
-                          {
-                            name: 'Sentiment Score',
-                            data: sentimentChartData.sentimentData.map((item) => [
-                              new Date(item.date).getTime(),
-                              item.sentimentScore
-                            ])
-                          }
-                        ],
-                        xaxis: {
-                          type: 'datetime',
-                          labels: {
-                            show: true,
-                            style: {
-                              colors: '#A3A3A3',
-                              fontSize: '10px'
-                            },
-                            datetimeFormatter: {
-                              year: 'yyyy',
-                              month: 'MMM \'yy',
-                              day: 'dd MMM',
-                              hour: 'HH:mm'
-                            }
-                          },
-                          axisBorder: {
-                            color: '#23262F'
-                          },
-                          axisTicks: {
-                            color: '#23262F'
-                          }
-                        },
-                        yaxis: {
-                          title: {
-                            text: 'Sentiment Score (0-100)',
-                            style: {
-                              color: '#A3A3A3'
-                            }
-                          },
-                          labels: {
-                            style: {
-                              colors: '#A3A3A3',
-                              fontSize: '10px'
-                            },
-                            formatter: function(val: number) {
-                              return val.toFixed(1);
-                            }
-                          },
-                          min: 0,
-                          max: 100
-                        },
-                        stroke: {
-                          curve: 'smooth',
-                          width: 3,
-                          colors: ['#A259FF']
-                        },
-                        grid: {
-                          borderColor: '#23262F',
-                          strokeDashArray: 3
-                        },
-                        theme: {
-                          mode: 'dark'
-                        },
-                        tooltip: {
-                          enabled: true,
-                          theme: 'dark',
-                          style: {
-                            fontSize: '12px'
-                          },
-                          x: {
-                            format: 'dd MMM yyyy'
-                          },
-                          y: {
-                            formatter: function(val: number) {
-                              return `Sentiment Score: ${val.toFixed(2)}`;
-                            }
-                          }
-                        }
-                      }}
-                      series={[
-                        {
-                          name: 'Sentiment Score',
-                          data: sentimentChartData.sentimentData.map((item) => [
-                            new Date(item.date).getTime(),
-                            item.sentimentScore
-                          ])
-                        }
-                      ]}
-                      type="line"
-                      height="100%"
-                    />
+                    <div className="flex flex-col h-full">
+                      <h2 className="text-white text-lg font-bold mb-6 text-center">Historical Sentiment Score</h2>
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-2xl">
+                          {/* Historical sentiment cards */}
+                          {(() => {
+                            // Helper function to get color based on sentiment score (0-100)
+                            const getSentimentColor = (sentiment: number): string => {
+                              if (sentiment >= 70) {
+                                const ratio = (sentiment - 70) / 30;
+                                const red = Math.round(255 * (1 - ratio >= 0.2 ? ratio : ratio + 0.2));
+                                const green = 255;
+                                const blue = 0;
+                                return `rgb(${red}, ${green}, ${blue})`;
+                              } else if (sentiment >= 50) {
+                                const ratio = (sentiment - 50) / 20;
+                                const red = 255;
+                                const green = Math.round(128 + (127 * ratio));
+                                const blue = 0;
+                                return `rgb(${red}, ${green}, ${blue})`;
+                              } else {
+                                const ratio = sentiment / 30;
+                                const red = 255;
+                                const green = Math.round(64 * ratio);
+                                const blue = 0;
+                                return `rgb(${red}, ${green}, ${blue})`;
+                              }
+                            };
+
+                            // Get sentiment data for different time periods
+                            const today = new Date();
+                            const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+                            const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            const oneMonthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+                            // Find closest sentiment data for each period
+                            const findClosestSentiment = (targetDate: Date) => {
+                              const targetTime = targetDate.getTime();
+                              let closest = sentimentChartData.sentimentData[0];
+                              let minDiff = Math.abs(new Date(closest.date).getTime() - targetTime);
+                              
+                              sentimentChartData.sentimentData.forEach(item => {
+                                const diff = Math.abs(new Date(item.date).getTime() - targetTime);
+                                if (diff < minDiff) {
+                                  minDiff = diff;
+                                  closest = item;
+                                }
+                              });
+                              
+                              return closest.sentimentScore;
+                            };
+
+                            const historicalData = [
+                              {
+                                label: 'Yesterday',
+                                sentiment: findClosestSentiment(yesterday),
+                                status: 'Greed'
+                              },
+                              {
+                                label: '7d ago', 
+                                sentiment: findClosestSentiment(sevenDaysAgo),
+                                status: 'Greed'
+                              },
+                              {
+                                label: '1m ago',
+                                sentiment: findClosestSentiment(oneMonthAgo), 
+                                status: 'Greed'
+                              }
+                            ];
+
+                            return historicalData.map((data, index) => (
+                              <div key={index} className="bg-[#1A1D24] rounded-xl p-4 border border-[#23272b] flex flex-col items-center text-center">
+                                <div className="text-white text-sm font-semibold mb-2">{data.label}</div>
+                                <div className="text-[#A3A3A3] text-xs mb-4">{data.status}</div>
+                                
+                                {/* Circular Progress */}
+                                <div className="relative w-20 h-20 flex items-center justify-center mb-3">
+                                  <svg className="absolute top-0 left-0" width="80" height="80">
+                                    <circle cx="40" cy="40" r="36" stroke="#23262F" strokeWidth="6" fill="none" />
+                                    <circle
+                                      cx="40"
+                                      cy="40"
+                                      r="36"
+                                      stroke={getSentimentColor(data.sentiment)}
+                                      strokeWidth="6"
+                                      fill="none"
+                                      strokeDasharray={226}
+                                      strokeDashoffset={226 - (data.sentiment/100) * 226}
+                                      strokeLinecap="round"
+                                      transform="rotate(-90 40 40)"
+                                    />
+                                  </svg>
+                                  <span className="text-white text-lg font-bold z-10">{Math.round(data.sentiment)}</span>
+                                </div>
+                                
+                                <div className="w-4 h-4 rounded-full bg-[#23262F] opacity-50"></div>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    </div>
                   ) : chartData ? (
                     <Chart
                       options={{
