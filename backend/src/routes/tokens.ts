@@ -3,6 +3,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { asyncHandler } from "../lib/helper";
 import { token } from "../interfaces/tokens";
+import { getDailySentimentScores, getAllAssetsDailySentiment, getAssetById } from "../lib/queries";
 
 dotenv.config();
 
@@ -266,6 +267,100 @@ router.get('/chart', asyncHandler(async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching chart data:", error);
     res.status(500).json({ error: "Failed to fetch chart data" });
+  }
+}));
+
+// Get sentiment graph data for a specific asset
+router.get("/sentiment-graph/:assetId", asyncHandler(async (req: Request, res: Response) => {
+  const { assetId } = req.params;
+  const { days = "7" } = req.query;
+  
+  if (!assetId) {
+    return res.status(400).json({ error: "Asset ID is required" });
+  }
+
+  const daysNum = parseInt(String(days));
+  if (isNaN(daysNum) || daysNum <= 0 || daysNum > 365) {
+    return res.status(400).json({ error: "Days must be a number between 1 and 365" });
+  }
+
+  try {
+    const sentimentData = await getDailySentimentScores(assetId, daysNum);
+    
+    if (sentimentData.length === 0) {
+      return res.status(404).json({ error: "No sentiment data found for this asset" });
+    }
+
+    // Transform data for graph consumption
+    const graphData = sentimentData.map((record: any) => ({
+      date: record.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      sentimentScore: record.sentimentScore,
+      positiveTweets: record.positiveTweets,
+      negativeTweets: record.negativeTweets,
+      neutralTweets: record.neutralTweets,
+      totalTweets: record.totalTweets
+    }));
+
+    res.status(200).json({
+      assetId,
+      days: daysNum,
+      data: graphData
+    });
+  } catch (error) {
+    console.error("Error fetching sentiment graph data:", error);
+    res.status(500).json({ error: "Failed to fetch sentiment graph data" });
+  }
+}));
+
+// Get sentiment graph data for all assets
+router.get("/sentiment-graph-all", asyncHandler(async (req: Request, res: Response) => {
+  const { days = "7" } = req.query;
+  
+  const daysNum = parseInt(String(days));
+  if (isNaN(daysNum) || daysNum <= 0 || daysNum > 365) {
+    return res.status(400).json({ error: "Days must be a number between 1 and 365" });
+  }
+
+  try {
+    const allSentimentData = await getAllAssetsDailySentiment(daysNum);
+    
+    if (allSentimentData.length === 0) {
+      return res.status(404).json({ error: "No sentiment data found" });
+    }
+
+    // Group data by asset
+    const groupedData = allSentimentData.reduce((acc: Record<string, any>, record: any) => {
+      if (!acc[record.assetId]) {
+        acc[record.assetId] = {
+          assetId: record.assetId,
+          assetInfo: {
+            name: record.asset.name,
+            symbol: record.asset.symbol,
+            image: record.asset.image
+          },
+          sentimentData: []
+        };
+      }
+      
+      acc[record.assetId].sentimentData.push({
+        date: record.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        sentimentScore: record.sentimentScore,
+        positiveTweets: record.positiveTweets,
+        negativeTweets: record.negativeTweets,
+        neutralTweets: record.neutralTweets,
+        totalTweets: record.totalTweets
+      });
+      
+      return acc;
+    }, {} as Record<string, any>);
+
+    res.status(200).json({
+      days: daysNum,
+      assets: Object.values(groupedData)
+    });
+  } catch (error) {
+    console.error("Error fetching all sentiment graph data:", error);
+    res.status(500).json({ error: "Failed to fetch sentiment graph data" });
   }
 }));
 

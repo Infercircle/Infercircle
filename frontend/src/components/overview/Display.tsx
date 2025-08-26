@@ -50,6 +50,17 @@ interface ChartData {
   }>;
 }
 
+interface SentimentChartData {
+  sentimentData: Array<{
+    date: string;
+    sentimentScore: number;
+    positiveTweets: number;
+    negativeTweets: number;
+    neutralTweets: number;
+    totalTweets: number;
+  }>;
+}
+
 interface Tweet {
   sentiment: string;
   avatar: string;
@@ -92,7 +103,7 @@ interface DisplayProps {
   showPriceChart?: boolean;
   chartAsset?: SelectedAsset | null;
   onCloseChart?: () => void;
-  chartType?: 'price' | 'balance';
+  chartType?: 'price' | 'balance' | 'sentiment';
   connectedWallets?: number;
   sharedLogoCache?: Record<string, string>;
   curatedTweets?: any[];
@@ -163,9 +174,10 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [rankRetryCount, setRankRetryCount] = useState(0);
   const [rankCache, setRankCache] = useState<Record<string, number>>({});
   const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [sentimentChartData, setSentimentChartData] = useState<SentimentChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
+  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment'>(chartType as 'price' | 'balance' | 'sentiment');
   const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
   const [loadingLogo, setLoadingLogo] = useState(false);
   const [tweets, setTweets] = useState<Tweet[]>([]);
@@ -183,7 +195,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
-    setCurrentChartType(chartType as 'price' | 'balance');
+    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment');
   }, [chartType]);
 
   // Animate tweets from queue to display
@@ -513,6 +525,20 @@ const Display: React.FC<DisplayProps> = React.memo(({
         setLoadingChart(true);
         setChartError(null);
         try {
+          if (currentChartType === 'sentiment') {
+            // Fetch sentiment data
+            const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.name.toLowerCase()}?days=${activeFilter.days}`);
+            if (res.ok) {
+              const data = await res.json();
+              console.log('Sentiment data fetched:', data);
+              setSentimentChartData({ sentimentData: data.data });
+              setChartData(null); // Clear price chart data
+            } else {
+              throw new Error("Failed to fetch sentiment data - data might not be available yet");
+            }
+            return;
+          }
+          
           const res = await fetch(`${API_BASE}/tokens/chart?symbol=${chartAsset.symbol}&days=${activeFilter.days}`);
           if (res.ok) {
             const data = await res.json();
@@ -533,6 +559,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
             } else {
               setChartData(data);
             }
+            setSentimentChartData(null); // Clear sentiment chart data
           } else {
             throw new Error("Failed to fetch chart data");
           }
@@ -935,7 +962,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 <div className="text-[#666] text-sm">{chartError}</div>
               </div>
             </div>
-          ) : chartData && chartAsset ? (
+          ) : (chartData && chartAsset) || (sentimentChartData && chartAsset) ? (
             <div className="h-full p-2 sm:p-4 relative overflow-hidden">
               {/* Chart Filter Tabs */}
               <div className="flex gap-1 sm:gap-2 mb-4 justify-end">
@@ -950,95 +977,199 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 ))}
               </div>
               <div className="h-full overflow-hidden">
-                {typeof window !== 'undefined' && chartData.prices.length > 0 ? (
-                  <Chart
-                    options={{
-                      chart: {
-                        type: 'area',
-                        background: 'transparent',
-                        toolbar: {
-                          show: true,
-                          tools: {
-                            download: false,
-                            selection: true,
-                            zoom: true,
-                            zoomin: true,
-                            zoomout: true,
-                            pan: true,
-                            reset: true
+                {typeof window !== 'undefined' && 
+                 ((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length > 0) ||
+                  (currentChartType !== 'sentiment' && chartData?.prices && chartData.prices.length > 0)) ? (
+                  currentChartType === 'sentiment' && sentimentChartData ? (
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'line',
+                          background: 'transparent',
+                          toolbar: {
+                            show: true,
+                            tools: {
+                              download: false,
+                              selection: true,
+                              zoom: true,
+                              zoomin: true,
+                              zoomout: true,
+                              pan: true,
+                              reset: true
+                            },
+                            autoSelected: 'zoom'
                           },
-                          autoSelected: 'zoom',
-                          export: {
-                            csv: {
-                              filename: `${chartAsset?.symbol || 'chart'}_data`,
-                              columnDelimiter: ',',
-                              headerCategory: 'Date',
-                              headerValue: 'Price'
+                          zoom: {
+                            enabled: true,
+                            type: 'x',
+                            autoScaleYaxis: true
+                          },
+                          pan: {
+                            enabled: true,
+                            type: 'x'
+                          },
+                          animations: {
+                            enabled: true,
+                            speed: 800
+                          },
+                          height: '100%'
+                        },
+                        series: [
+                          {
+                            name: 'Sentiment Score',
+                            data: sentimentChartData.sentimentData.map((item) => [
+                              new Date(item.date).getTime(),
+                              item.sentimentScore
+                            ])
+                          }
+                        ],
+                        xaxis: {
+                          type: 'datetime',
+                          labels: {
+                            show: true,
+                            style: {
+                              colors: '#A3A3A3',
+                              fontSize: '10px'
+                            },
+                            datetimeFormatter: {
+                              year: 'yyyy',
+                              month: 'MMM \'yy',
+                              day: 'dd MMM',
+                              hour: 'HH:mm'
+                            }
+                          },
+                          axisBorder: {
+                            color: '#23262F'
+                          },
+                          axisTicks: {
+                            color: '#23262F'
+                          }
+                        },
+                        yaxis: {
+                          title: {
+                            text: 'Sentiment Score (0-100)',
+                            style: {
+                              color: '#A3A3A3'
+                            }
+                          },
+                          labels: {
+                            style: {
+                              colors: '#A3A3A3',
+                              fontSize: '10px'
+                            },
+                            formatter: function(val: number) {
+                              return val.toFixed(1);
+                            }
+                          },
+                          min: 0,
+                          max: 100
+                        },
+                        stroke: {
+                          curve: 'smooth',
+                          width: 3,
+                          colors: ['#A259FF']
+                        },
+                        grid: {
+                          borderColor: '#23262F',
+                          strokeDashArray: 3
+                        },
+                        theme: {
+                          mode: 'dark'
+                        },
+                        tooltip: {
+                          enabled: true,
+                          theme: 'dark',
+                          style: {
+                            fontSize: '12px'
+                          },
+                          x: {
+                            format: 'dd MMM yyyy'
+                          },
+                          y: {
+                            formatter: function(val: number) {
+                              return `Sentiment Score: ${val.toFixed(2)}`;
                             }
                           }
-                        },
-                        zoom: {
-                          enabled: true,
-                          type: 'x',
-                          autoScaleYaxis: true
-                        },
-                        pan: {
-                          enabled: true,
-                          type: 'x'
-                        },
-                        animations: {
-                          enabled: true,
-                          speed: 800
-                        },
-                        height: '100%',
-                        events: {
-                          zoomed: function(chartContext: any, { xaxis }: any) {
-                            // Chart zoomed event
-                          },
-                          selection: function(chartContext: any, { xaxis }: any) {
-                            // Chart selection event
-                          },
-                          resetZoom: function() {
-                            // Chart reset event
-                          }
                         }
-                      },
-                      series: [
+                      }}
+                      series={[
                         {
-                          name: currentChartType === 'price' ? 'Price' : 'Balance Value',
-                          data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
-                            item.timestamp, 
-                            currentChartType === 'price' ? item.price : item.balanceValue
+                          name: 'Sentiment Score',
+                          data: sentimentChartData.sentimentData.map((item) => [
+                            new Date(item.date).getTime(),
+                            item.sentimentScore
                           ])
                         }
-                      ],
-                      xaxis: {
-                        type: 'datetime',
-                        labels: {
-                          show: true,
-                          style: {
-                            colors: '#A3A3A3',
-                            fontSize: '10px'
+                      ]}
+                      type="line"
+                      height="100%"
+                    />
+                  ) : chartData ? (
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'area',
+                          background: 'transparent',
+                          toolbar: {
+                            show: true,
+                            tools: {
+                              download: false,
+                              selection: true,
+                              zoom: true,
+                              zoomin: true,
+                              zoomout: true,
+                              pan: true,
+                              reset: true
+                            },
+                            autoSelected: 'zoom'
                           },
-                          datetimeFormatter: {
-                            year: 'yyyy',
-                            month: 'MMM \'yy',
-                            day: 'dd MMM',
-                            hour: 'HH:mm'
+                          zoom: {
+                            enabled: true,
+                            type: 'x',
+                            autoScaleYaxis: true
+                          },
+                          pan: {
+                            enabled: true,
+                            type: 'x'
+                          },
+                          animations: {
+                            enabled: true,
+                            speed: 800
+                          },
+                          height: '100%'
+                        },
+                        series: [
+                          {
+                            name: currentChartType === 'price' ? 'Price' : 'Balance Value',
+                            data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
+                              item.timestamp, 
+                              currentChartType === 'price' ? item.price : item.balanceValue
+                            ])
+                          }
+                        ],
+                        xaxis: {
+                          type: 'datetime',
+                          labels: {
+                            show: true,
+                            style: {
+                              colors: '#A3A3A3',
+                              fontSize: '10px'
+                            },
+                            datetimeFormatter: {
+                              year: 'yyyy',
+                              month: 'MMM \'yy',
+                              day: 'dd MMM',
+                              hour: 'HH:mm'
+                            }
+                          },
+                          axisBorder: {
+                            color: '#23262F'
+                          },
+                          axisTicks: {
+                            color: '#23262F'
                           }
                         },
-                        axisBorder: {
-                          color: '#23262F'
-                        },
-                        axisTicks: {
-                          color: '#23262F'
-                        },
-                        range: undefined,
-                        min: undefined,
-                        max: undefined
-                      },
-                      yaxis: [
-                        {
+                        yaxis: {
                           title: {
                             text: currentChartType === 'price' ? 'Price (USD)' : 'Value (USD)',
                             style: {
@@ -1050,87 +1181,84 @@ const Display: React.FC<DisplayProps> = React.memo(({
                               colors: '#A3A3A3',
                               fontSize: '10px'
                             },
-                            formatter: (value: number) => `${value.toLocaleString()}`
+                            formatter: function(val: number) {
+                              return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                            }
+                          }
+                        },
+                        stroke: {
+                          curve: 'smooth',
+                          width: 2,
+                          colors: ['#A259FF']
+                        },
+                        fill: {
+                          type: 'gradient',
+                          gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.3,
+                            opacityTo: 0.1,
+                            stops: [0, 100],
+                            colorStops: [
+                              {
+                                offset: 0,
+                                color: '#A259FF',
+                                opacity: 0.3
+                              },
+                              {
+                                offset: 100,
+                                color: '#A259FF',
+                                opacity: 0.1
+                              }
+                            ]
+                          }
+                        },
+                        grid: {
+                          borderColor: '#23262F',
+                          strokeDashArray: 3
+                        },
+                        theme: {
+                          mode: 'dark'
+                        },
+                        tooltip: {
+                          enabled: true,
+                          theme: 'dark',
+                          style: {
+                            fontSize: '12px'
                           },
-                          axisBorder: {
-                            color: '#23262F'
+                          x: {
+                            format: 'dd MMM yyyy HH:mm'
+                          },
+                          y: {
+                            formatter: function(val: number) {
+                              return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                            }
                           }
                         }
-                      ],
-                      colors: ['#22c55e'],
-                      fill: {
-                        type: 'gradient',
-                        gradient: {
-                          shadeIntensity: 1,
-                          opacityFrom: 0.15,
-                          opacityTo: 0.02,
-                          stops: [0, 100],
-                          colorStops: [
-                            {
-                              offset: 0,
-                              color: '#22c55e',
-                              opacity: 0.15
-                            },
-                            {
-                              offset: 100,
-                              color: '#22c55e',
-                              opacity: 0.02
-                            }
-                          ]
+                      }}
+                      series={[
+                        {
+                          name: currentChartType === 'price' ? 'Price' : 'Balance Value',
+                          data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
+                            item.timestamp, 
+                            currentChartType === 'price' ? item.price : item.balanceValue
+                          ])
                         }
-                      },
-                      stroke: {
-                        curve: 'smooth',
-                        width: 2
-                      },
-                      grid: {
-                        borderColor: '#23262F',
-                        strokeDashArray: 5
-                      },
-                      tooltip: {
-                        theme: 'dark',
-                        x: {
-                          format: 'dd MMM yyyy HH:mm'
-                        },
-                        y: {
-                          formatter: (value: number) => `${value.toLocaleString()}`
-                        }
-                      },
-                      legend: {
-                        show: false
-                      },
-                      dataLabels: {
-                        enabled: false
-                      },
-                      selection: {
-                        enabled: true,
-                        type: 'x',
-                        xaxis: {
-                          min: undefined,
-                          max: undefined
-                        }
-                      },
-                      brush: {
-                        enabled: true,
-                        target: 'chart'
-                      }
-                    }}
-                    series={[
-                      {
-                        name: currentChartType === 'price' ? 'Price' : 'Balance Value',
-                        data: chartData.prices.map((item: { timestamp: number; price: number; balanceValue?: number }) => [
-                          item.timestamp, 
-                          currentChartType === 'price' ? item.price : item.balanceValue
-                        ])
-                      }
-                    ]}
-                    type="area"
-                  />
+                      ]}
+                      type="area"
+                      height="100%"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="text-[#A259FF] text-base font-semibold mb-2">No Chart Data</div>
+                        <div className="text-[#666] text-sm">Unable to load {currentChartType} data for this asset</div>
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
-                      <div className="text-[#A259FF] text-base font-semibold mb-2">No Chart Data</div>
-                      <div className="text-[#666] text-sm">Unable to load price data for this asset</div>
+                      <div className="text-[#666] text-sm">No chart data available</div>
                     </div>
                   </div>
                 )}

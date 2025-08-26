@@ -69,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
   const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
-  const [chartType, setChartType] = useState<'price' | 'balance'>('price');
+  const [chartType, setChartType] = useState<'price' | 'balance' | 'sentiment'>('price');
   const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
   const [allElites, setAllElites] = useState<Set<string>>(new Set());
   const [curatedTweets, setCuratedTweets] = useState<any[]>([]);
@@ -228,6 +228,12 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     setShowPriceChart(true);
   };
 
+  const handleSentimentChartRequest = (asset: SelectedAsset) => {
+    setChartAsset(asset);
+    setChartType('sentiment');
+    setShowPriceChart(true);
+  };
+
   const handleLogoCacheUpdate = (logoCache: Record<string, string>) => {
     setSharedLogoCache(prev => ({ ...prev, ...logoCache }));
   };
@@ -255,6 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         onFirstAssetLoad={handleFirstAssetLoad}
         onPriceChartRequest={handlePriceChartRequest}
         onBalanceChartRequest={handleBalanceChartRequest}
+        onSentimentChartRequest={handleSentimentChartRequest}
         activeChartType={showPriceChart ? chartType : null}
         activeChartAsset={showPriceChart ? chartAsset : null}
         connectedWallets={connectedWallets}
