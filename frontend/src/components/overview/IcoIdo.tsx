@@ -151,8 +151,8 @@ const IcoIdo = () => {
   }, [selectedFilter])
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
-      {/* Preloader overlay */}
-      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      {/* Preloader overlay - only covers table area */}
+      <div className={`absolute top-[60px] left-0 right-0 bottom-0 flex items-center justify-center bg-[#181A20] rounded-b-2xl transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>

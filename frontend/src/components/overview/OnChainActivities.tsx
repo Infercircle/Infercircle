@@ -384,9 +384,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
           <table className="w-full text-sm text-left align-middle table-fixed">
-            <thead className="sticky top-0 z-40 bg-[#181A20]">
+            <thead className="sticky -top-px z-40 bg-[#181A20]">
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-                  <th className="py-2 px-2 font-medium text-left w-[200px] sticky left-0 bg-[#181A20] z-50">Asset</th>
+                  <th className="py-2 px-2 font-medium text-left w-[200px] sticky -left-px bg-[#181A20] z-50">Asset</th>
                   <th className="py-2 px-2 font-medium text-left w-[100px]">
                     <div className="flex items-center gap-1">
                       Price
@@ -445,8 +445,8 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
-      {/* Preloader overlay */}
-      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      {/* Preloader overlay - only covers table area */}
+      <div className={`absolute top-[60px] left-0 right-0 bottom-0 flex items-center justify-center bg-[#181A20] rounded-b-2xl transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -482,9 +482,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       </div>
       <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
         <table className="w-full text-sm text-left align-middle table-fixed">
-          <thead className="sticky top-0 z-40 bg-[#181A20]">
+          <thead className="sticky -top-px z-40 bg-[#181A20]">
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium text-left w-[180px] sticky left-0 bg-[#181A20] z-50">Asset</th>
+              <th className="py-2 px-2 font-medium text-left w-[180px] sticky -left-px bg-[#181A20] z-50">Asset</th>
               <th className="py-2 px-2 font-medium text-left w-[110px]">
                 <div className="flex items-center gap-1">
                   Price
@@ -557,10 +557,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               filteredAssets.map((asset, idx) => (
                 <tr 
                   key={asset.symbol + asset.chain + idx} 
-                  className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
+                  className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition-colors duration-150 cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
                   onClick={() => handleAssetClick(asset)}
                 >
-                  <td className={`py-2 px-2 w-[200px] sticky left-0 z-20 ${
+                  <td className={`py-2 px-2 w-[200px] sticky -left-px z-20 transition-colors duration-150 ${
                     selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain 
                       ? 'bg-[#23262F]' 
                       : 'bg-[#181A20] group-hover:bg-[#23262F]'
