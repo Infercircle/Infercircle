@@ -384,9 +384,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
           <table className="w-full text-sm text-left align-middle table-fixed">
-            <thead className="sticky top-0 z-10 bg-[rgba(24,26,32,1)]">
+            <thead className="sticky top-0 z-40 bg-[#181A20]">
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-                  <th className="py-2 px-2 font-medium text-left w-[200px]">Asset</th>
+                  <th className="py-2 px-2 font-medium text-left w-[200px] sticky left-0 bg-[#181A20] z-50">Asset</th>
                   <th className="py-2 px-2 font-medium text-left w-[100px]">
                     <div className="flex items-center gap-1">
                       Price
@@ -482,9 +482,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       </div>
       <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
         <table className="w-full text-sm text-left align-middle table-fixed">
-          <thead className="sticky top-0 z-10 bg-[rgba(24,26,32,1)]">
+          <thead className="sticky top-0 z-40 bg-[#181A20]">
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium text-left w-[180px]">Asset</th>
+              <th className="py-2 px-2 font-medium text-left w-[180px] sticky left-0 bg-[#181A20] z-50">Asset</th>
               <th className="py-2 px-2 font-medium text-left w-[110px]">
                 <div className="flex items-center gap-1">
                   Price
@@ -557,10 +557,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               filteredAssets.map((asset, idx) => (
                 <tr 
                   key={asset.symbol + asset.chain + idx} 
-                  className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition cursor-pointer ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]/60' : ''}`}
+                  className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
                   onClick={() => handleAssetClick(asset)}
                 >
-                  <td className="py-2 px-2 w-[200px]">
+                  <td className={`py-2 px-2 w-[200px] sticky left-0 z-20 ${
+                    selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain 
+                      ? 'bg-[#23262F]' 
+                      : 'bg-[#181A20] group-hover:bg-[#23262F]'
+                  }`}>
                     <div className="flex items-center gap-2 justify-start min-w-0">
                     {loadingLogos.has(asset.symbol.toLowerCase()) ? (
                       <div className="w-6 h-6 rounded-full bg-[#23262F] flex items-center justify-center flex-shrink-0">
