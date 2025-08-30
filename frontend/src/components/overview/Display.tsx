@@ -744,7 +744,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col overflow-x-auto">
         <div className="flex items-center justify-center h-full">
           <span className="text-gray-500 italic text-base">Add a wallet to view asset details</span>
         </div>
@@ -755,7 +755,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Show loading state if no asset is selected but wallets are connected
   if (!selectedAsset) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-x-auto">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col overflow-x-auto">
         <div className="flex items-center justify-center h-full">
           <div className="flex space-x-1">
             <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
@@ -768,15 +768,18 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[400px] flex-1 overflow-hidden relative">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col overflow-hidden relative">
       {/* Main Content */}
-      <div className={`transition-opacity duration-500 overflow-y-auto ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`transition-opacity duration-500 flex flex-col h-full ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        {/* Fixed Header Section */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
           <div className="flex items-center gap-3">
             {displayLogo ? (
-              <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
+              <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full object-contain" />
+              </div>
             ) : loadingLogo ? (
-              <div className="w-8 h-8 rounded-full bg-[#23262F] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center">
                 <div className="flex space-x-1">
                   <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
                   <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -784,7 +787,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 </div>
               </div>
             ) : (
-              <span className="text-3xl">{displaySymbol ? displaySymbol[0] : "🟠"}</span>
+              <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">{displaySymbol ? displaySymbol[0] : "?"}</span>
+              </div>
             )}
             <div>
               <div className="text-white font-semibold text-base flex items-center gap-2">
@@ -813,7 +818,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         </div>
 
         {/* Social Sentiment */}
-        <div className="mt-2">
+        <div className="mt-2 flex flex-col flex-1 overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[#A259FF] font-semibold">Social Sentiment</div>
             <div className="flex items-center gap-2">
@@ -867,7 +872,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
               </div>
             </div>
           ) : expandedIndex === null ? (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-full">
               {displayTweets.map((tweet, idx) => (
                 <div
                   key={idx}
@@ -1246,16 +1251,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 )}
               </div>
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-[#A259FF] text-base font-semibold mb-2">Price Chart</div>
-                <div className="text-[#666] text-sm">
-                  Chart area - ready for integration
-                </div>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

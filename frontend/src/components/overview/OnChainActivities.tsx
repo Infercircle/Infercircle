@@ -96,8 +96,34 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [totalScore, setTotalScore] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [loadingLogos, setLoadingLogos] = useState<Set<string>>(new Set());
+      const [selectedChain, setSelectedChain] = useState<string>('all');
+    const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
+
+  // Calculate chain summaries
+  const chainSummaries = React.useMemo(() => {
+    const chainMap = new Map<string, { totalValue: number; assetCount: number; chainName: string }>();
+    
+    assets.forEach(asset => {
+      const chain = asset.chain.toLowerCase();
+      const current = chainMap.get(chain) || { totalValue: 0, assetCount: 0, chainName: asset.chain };
+      current.totalValue += asset.value || 0;
+      current.assetCount += 1;
+      chainMap.set(chain, current);
+    });
+    
+    return Array.from(chainMap.entries()).map(([chain, data]) => ({
+      chain,
+      ...data
+    })).sort((a, b) => b.totalValue - a.totalValue);
+  }, [assets]);
+
+  // Filter assets by selected chain
+  const chainFilteredAssets = React.useMemo(() => {
+    if (selectedChain === 'all') return assets;
+    return assets.filter(asset => asset.chain.toLowerCase() === selectedChain);
+  }, [assets, selectedChain]);
 
   // Helper function to check if wallets are actually populated
   const hasValidWallets = () => {
@@ -336,11 +362,29 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     }));
   }, [sentimentCache]);
 
-  // Update filtered assets when showAllAssets or assets change
+  // Update filtered assets when showAllAssets, assets, or selectedChain change
   useEffect(() => {
-    const filtered = showAllAssets ? assets : assets.filter(asset => (asset.value || 0) >= 1);
+    const filtered = showAllAssets ? chainFilteredAssets : chainFilteredAssets.filter(asset => (asset.value || 0) >= 1);
     setFilteredAssets(filtered);
-  }, [showAllAssets, assets]);
+  }, [showAllAssets, chainFilteredAssets]);
+
+  // Close chain dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.chain-dropdown-container')) {
+        setIsChainDropdownOpen(false);
+      }
+    };
+
+    if (isChainDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isChainDropdownOpen]);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
@@ -371,7 +415,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
               <div className="flex items-center justify-between mb-2">
         <div className="text-base font-semibold text-white">Portfolio Overview</div>
         <button 
@@ -382,7 +426,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
         </button>
       </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
+        <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
           <table className="w-full text-sm text-left align-middle table-fixed">
             <thead className="sticky -top-px z-40 bg-[#181A20]">
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
@@ -444,9 +488,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[320px] relative">
-      {/* Preloader overlay - only covers table area */}
-      <div className={`absolute top-[60px] left-0 right-0 bottom-0 flex items-center justify-center bg-[#181A20] rounded-b-2xl transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
+              {/* Preloader overlay - covers entire component */}
+        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-50 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -454,9 +498,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         </div>
       </div>
       
-      {/* Error overlay */}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#181A20] z-20">
+              {/* Error overlay */}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#181A20] z-50">
           <div className="text-center">
             <div className="text-red-400 text-lg font-semibold mb-2">Error Loading Assets</div>
             <div className="text-[#666] text-sm">{error}</div>
@@ -470,17 +514,117 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         </div>
       )}
       
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-base font-semibold text-white">Portfolio Overview</div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
+          <div className="text-base font-semibold text-white">Portfolio Overview</div>
+                  <div className="flex items-center gap-2">
+            {/* Chain Filter Dropdown */}
+            <div className="relative chain-dropdown-container">
+                          <button 
+                onClick={() => setIsChainDropdownOpen(!isChainDropdownOpen)}
+                className="text-[#A3A3A3] text-sm bg-transparent px-3 py-1 rounded-lg flex items-center gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
+              >
+              {selectedChain === 'all' ? (
+                <span>All Chains</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    // Find a representative asset for the selected chain to get its icon
+                    const representativeAsset = assets.find(asset => asset.chain.toLowerCase() === selectedChain.toLowerCase());
+                    return (
+                      <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                        {loadingLogos.has(representativeAsset?.symbol?.toLowerCase() || '') ? (
+                          <div className="flex space-x-0.5">
+                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
+                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          </div>
+                        ) : representativeAsset?.icon && representativeAsset.icon.includes("https") ? (
+                          <img src={representativeAsset.icon} alt={selectedChain} className="w-4 h-4 rounded-full object-contain" />
+                        ) : (
+                          <span className="text-white text-xs font-bold">{chainSummaries.find(c => c.chain === selectedChain)?.chainName?.charAt(0) || selectedChain.charAt(0)}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <span>{chainSummaries.find(c => c.chain === selectedChain)?.chainName || selectedChain}</span>
+                </div>
+              )}
+              <span className={`transition-transform ${isChainDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            
+                         {isChainDropdownOpen && (
+               <div className="absolute top-full right-0 mt-1 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded-lg shadow-lg z-50 min-w-[200px] max-h-60 overflow-y-auto sm:right-0 right-auto left-0">
+                <div className="sticky top-0 bg-[rgba(24,26,32,1)] z-10">
+                                  <button
+                    onClick={() => {
+                      setSelectedChain('all');
+                      setIsChainDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#23262F] transition-colors first:rounded-t-lg flex items-center justify-between border-b border-[#2a2e35] cursor-pointer ${
+                      selectedChain === 'all' ? 'text-[#A259FF]' : 'text-[#A3A3A3]'
+                    }`}
+                  >
+                  <div className="flex items-center justify-between w-full">
+                    <span>All Chains</span>
+                    <span className="bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{chainSummaries.length}</span>
+                  </div>
+                </button>
+                </div>
+                {chainSummaries.map((chain) => (
+                  <button
+                    key={chain.chain}
+                    onClick={() => {
+                      setSelectedChain(chain.chain);
+                      setIsChainDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#23262F] transition-colors flex items-center justify-between cursor-pointer ${
+                      selectedChain === chain.chain ? 'text-[#A259FF]' : 'text-[#A3A3A3]'
+                    } ${chain.chain === chainSummaries[chainSummaries.length - 1].chain ? 'last:rounded-b-lg' : ''}`}
+                  >
+                                          <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            // Find a representative asset for this chain to get its icon
+                            const representativeAsset = assets.find(asset => asset.chain.toLowerCase() === chain.chain.toLowerCase());
+                            return (
+                              <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                                {loadingLogos.has(representativeAsset?.symbol?.toLowerCase() || '') ? (
+                                  <div className="flex space-x-0.5">
+                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
+                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                  </div>
+                                ) : representativeAsset?.icon && representativeAsset.icon.includes("https") ? (
+                                  <img src={representativeAsset.icon} alt={chain.chainName} className="w-5 h-5 rounded-full object-contain" />
+                                ) : (
+                                  <span className="text-white text-xs font-bold">{chain.chainName.charAt(0)}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          <div className="flex flex-col">
+                            <span>{chain.chainName}</span>
+                            <span className="text-xs text-[#666]">${chain.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                        <span className="bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{chain.assetCount}</span>
+                      </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
           className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
           {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
-          <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{assets.length}</span>
+            <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{filteredAssets.length}</span>
         </button>
+        </div>
       </div>
-      <div className="overflow-x-auto overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1 relative">
+      <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
         <table className="w-full text-sm text-left align-middle table-fixed">
           <thead className="sticky -top-px z-40 bg-[#181A20]">
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
@@ -567,7 +711,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   }`}>
                     <div className="flex items-center gap-2 justify-start min-w-0">
                     {loadingLogos.has(asset.symbol.toLowerCase()) ? (
-                      <div className="w-6 h-6 rounded-full bg-[#23262F] flex items-center justify-center flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
                         <div className="flex space-x-0.5">
                           <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
                           <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -575,9 +719,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                         </div>
                       </div>
                     ) : asset.icon && asset.icon.includes("https") ? (
-                        <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain flex-shrink-0" />
+                        <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                          <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain" />
+                        </div>
                       ) : (
-                        <span className="text-2xl flex-shrink-0">{asset.symbol ? asset.symbol[0] : '?'}</span>
+                        <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-xs font-bold">{asset.symbol ? asset.symbol[0] : '?'}</span>
+                        </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="text-white font-medium">{asset.name}</div>
