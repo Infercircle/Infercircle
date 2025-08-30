@@ -544,3 +544,26 @@ min-height: 2px;
   font-size: 12px !important;
   font-weight: 500 !important;
 }
+
+/* Tweet animations */
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+    background-color: rgba(162, 89, 255, 0.2);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(0);
+    background-color: rgba(162, 89, 255, 0.15);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    background-color: rgba(162, 89, 255, 0.1);
+  }
+}
+
+.animate-slideInFromTop {
+  animation: slideInFromTop 2s ease-out forwards;
+}

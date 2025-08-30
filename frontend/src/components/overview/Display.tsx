@@ -59,111 +59,8 @@ interface Tweet {
   followers: string;
   tweetUrl: string;
   text: string;
-  rawTimestamp?: number;
-}
-
-// Priority Queue implementation for tweets (max-heap based on timestamp)
-class TweetPriorityQueue {
-  private heap: Tweet[] = [];
-
-  // Add a tweet to the priority queue
-  enqueue(tweet: Tweet): void {
-    this.heap.push(tweet);
-    this.bubbleUp(this.heap.length - 1);
-  }
-
-  // Remove and return the tweet with the latest timestamp
-  dequeue(): Tweet | null {
-    if (this.heap.length === 0) return null;
-    if (this.heap.length === 1) return this.heap.pop()!;
-
-    const latest = this.heap[0];
-    this.heap[0] = this.heap.pop()!;
-    this.bubbleDown(0);
-    return latest;
-  }
-
-  // Add multiple tweets at once
-  enqueueBatch(tweets: Tweet[]): void {
-    tweets.forEach(tweet => this.enqueue(tweet));
-  }
-
-  // Get all tweets sorted by timestamp (latest first) without removing them
-  getAllSorted(): Tweet[] {
-    return [...this.heap].sort((a, b) => {
-      const aTime = a.rawTimestamp || new Date().getTime();
-      const bTime = b.rawTimestamp || new Date().getTime();
-      return bTime - aTime; // Latest first
-    });
-  }
-
-  // Get the latest tweet without removing it
-  peek(): Tweet | null {
-    return this.heap.length > 0 ? this.heap[0] : null;
-  }
-
-  // Get current size
-  size(): number {
-    return this.heap.length;
-  }
-
-  // Check if empty
-  isEmpty(): boolean {
-    return this.heap.length === 0;
-  }
-
-  // Clear all tweets
-  clear(): void {
-    this.heap = [];
-  }
-
-  // Get top N latest tweets without removing them
-  getTopN(n: number): Tweet[] {
-    return this.getAllSorted().slice(0, n);
-  }
-
-  private bubbleUp(index: number): void {
-    while (index > 0) {
-      const parentIndex = Math.floor((index - 1) / 2);
-      const currentTime = this.heap[index].rawTimestamp || 0;
-      const parentTime = this.heap[parentIndex].rawTimestamp || 0;
-
-      if (currentTime <= parentTime) break;
-
-      [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
-      index = parentIndex;
-    }
-  }
-
-  private bubbleDown(index: number): void {
-    while (true) {
-      const leftChild = 2 * index + 1;
-      const rightChild = 2 * index + 2;
-      let largest = index;
-
-      const currentTime = this.heap[index].rawTimestamp || 0;
-      
-      if (leftChild < this.heap.length) {
-        const leftTime = this.heap[leftChild].rawTimestamp || 0;
-        if (leftTime > currentTime) {
-          largest = leftChild;
-        }
-      }
-
-      if (rightChild < this.heap.length) {
-        const rightTime = this.heap[rightChild].rawTimestamp || 0;
-        const largestTime = this.heap[largest].rawTimestamp || 0;
-        if (rightTime > largestTime) {
-          largest = rightChild;
-        }
-      }
-
-      if (largest === index) break;
-
-      [this.heap[index], this.heap[largest]] = [this.heap[largest], this.heap[index]];
-      index = largest;
-    }
-  }
+  rawTimestamp: number;
+  id: string; // Add unique ID for React keys
 }
 
 const sentimentIcon = (sentiment: string) => {
@@ -296,67 +193,112 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance'>(chartType as 'price' | 'balance');
+  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment'>(chartType as 'price' | 'balance' | 'sentiment');
   const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
   const [loadingLogo, setLoadingLogo] = useState(false);
   
-  // Replace tweets state with two priority queues
-  const [tweets] = useState<TweetPriorityQueue>(() => new TweetPriorityQueue());
-  const [eliteTweets] = useState<TweetPriorityQueue>(() => new TweetPriorityQueue());
-  const [displayTweetsArray, setDisplayTweetsArray] = useState<Tweet[]>([]);
+  // Replace priority queues with simple sorted arrays
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [eliteTweets, setEliteTweets] = useState<Tweet[]>([]);
+  const [newTweetIds, setNewTweetIds] = useState<Set<string>>(new Set());
   
-  const [tweetBuffer, setTweetBuffer] = useState<Tweet[]>([]);
-  const [newTweetIndex, setNewTweetIndex] = useState<number | null>(null);
-  const [tweetQueue, setTweetQueue] = useState<Tweet[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [activeFilter, setActiveFilter] = useState(CHART_FILTERS[5]);
   const [isCurated, setIsCurated] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-  // Helper function to update display array from priority queues
-  const updateDisplayTweets = useCallback(() => {
-    const currentQueue = isCurated ? eliteTweets : tweets;
-    const topTweets = currentQueue.getTopN(20); // Get top 20 latest tweets
-    setDisplayTweetsArray(topTweets);
-  }, [tweets, eliteTweets, isCurated]);
+  // Function to create a unique content hash for duplicate detection
+  const createTweetHash = useCallback((tweet: Tweet): string => {
+    // Create a hash based on content, author, and approximate time
+    const contentHash = `${tweet.handle}-${tweet.text.substring(0, 50)}-${tweet.name}`;
+    return contentHash.toLowerCase().replace(/\s+/g, '');
+  }, []);
 
-  // Update display when elite feed toggle changes
-  useEffect(() => {
-    updateDisplayTweets();
-  }, [isCurated, updateDisplayTweets]);
+  // Function to insert tweet in correct chronological position
+  const insertTweetInOrder = useCallback((newTweet: Tweet, isElite: boolean = false) => {
+    const setterFunction = isElite ? setEliteTweets : setTweets;
+    
+    setterFunction(prevTweets => {
+      // Create content hash for duplicate detection
+      const newTweetHash = createTweetHash(newTweet);
+      
+      // Check if tweet already exists (prevent duplicates by content)
+      const isDuplicate = prevTweets.some(tweet => {
+        const existingHash = createTweetHash(tweet);
+        return existingHash === newTweetHash || tweet.id === newTweet.id;
+      });
+      
+      if (isDuplicate) {
+        console.log('🚫 Duplicate tweet detected, skipping:', newTweet.text.substring(0, 30));
+        return prevTweets;
+      }
 
+      // console.log('✅ Adding new tweet:', newTweet.text.substring(0, 30));
 
+      // Find the correct insertion position based on rawTimestamp (newest first)
+      let insertIndex = 0;
+      for (let i = 0; i < prevTweets.length; i++) {
+        if (newTweet.rawTimestamp > prevTweets[i].rawTimestamp) {
+          insertIndex = i;
+          break;
+        }
+        insertIndex = i + 1;
+      }
+
+      // Create new array with tweet inserted at correct position
+      const newTweets = [...prevTweets];
+      newTweets.splice(insertIndex, 0, newTweet);
+      
+      // Limit to 50 tweets to prevent memory issues
+      return newTweets;
+    });
+
+    // Mark as new tweet for animation
+    setNewTweetIds(prev => new Set(prev).add(newTweet.id));
+    
+    // Remove new tweet marker after animation
+    setTimeout(() => {
+      setNewTweetIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(newTweet.id);
+        return newSet;
+      });
+    }, 2000);
+  }, [createTweetHash]);
+
+  // Function to generate proper timestamp from API data
+  const generateTimestamp = useCallback((tweet: any, index: number = 0): number => {
+    // Try to parse actual timestamp if available
+    if (tweet.rawTimestamp && typeof tweet.rawTimestamp === 'number') {
+      return tweet.rawTimestamp;
+    }
+    
+    if (tweet.timestamp && tweet.timestamp !== 'now') {
+      // Try to parse relative time like "5m", "2h", etc.
+      const match = tweet.timestamp.match(/(\d+)([smhd])/);
+      if (match) {
+        const value = parseInt(match[1], 10);
+        const unit = match[2];
+        const now = Date.now();
+        
+        let offset = 0;
+        if (unit === "s") offset = value * 1000;
+        if (unit === "m") offset = value * 60 * 1000;
+        if (unit === "h") offset = value * 60 * 60 * 1000;
+        if (unit === "d") offset = value * 24 * 60 * 60 * 1000;
+        
+        return now - offset;
+      }
+    }
+
+    // Fallback: use current time with small offset based on order
+    return Date.now() - (index * 1000); // 1 second apart
+  }, []);
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
-    setCurrentChartType(chartType as 'price' | 'balance');
+    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment');
   }, [chartType]);
-
-  // Animate tweets from queue to display
-  useEffect(() => {
-    if (tweetQueue.length > 0 && !isAnimating && expandedIndex === null) {
-      setIsAnimating(true);
-      const newTweet = tweetQueue[0];
-      
-      // Add new tweet to the appropriate priority queue
-      tweets.enqueue(newTweet);
-      updateDisplayTweets();
-      
-      setNewTweetIndex(0);
-      setTweetQueue(prev => prev.slice(1));
-      
-      let time = 100;
-      if(newTweetIndex == null){
-        time = 5000;
-      }
-      setTimeout(() => {
-        setNewTweetIndex(null);
-        setIsAnimating(false);
-      }, time);
-    }
-  }, [tweetQueue, isAnimating, expandedIndex, tweets, updateDisplayTweets, newTweetIndex]);
 
   // Fetch tweets for selected asset with async batch optimization
   const fetchTweets = useCallback(async (assetName: string, assetSymbol: string, chain?: string) => {
@@ -364,7 +306,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
     
     try {
       const batchSize = 5;
-      const totalLimit = 10;
+      const totalLimit = 80;
       const batches = Math.ceil(totalLimit / batchSize);
       
       // Three-step search strategy for more precise results
@@ -380,6 +322,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
       
       // Step 3: Symbol with $ prefix (fallback)
       searchQueries.push(`$${assetSymbol}`);
+
+      // searchQueries.push(assetName);
       
       // Create all fetch promises at once
       const fetchPromises: Promise<void>[] = [];
@@ -408,23 +352,35 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
               if (response.ok) {
                 const data = await response.json();
-                console.log(`✅ Tweets received for "${query}" (batch ${i + 1}):`, data.data?.length || 0);
+                // console.log(`✅ Tweets received for "${query}" (batch ${i + 1}):`, data.data?.length || 0);
                 
                 if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-                  const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-                    sentiment: tweet.sentiment || 'neutral',
-                    avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-                    name: tweet.name || 'Unknown',
-                    handle: tweet.handle || '@unknown',
-                    timestamp: tweet.timestamp || 'now',
-                    followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-                    tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-                    text: tweet.text || '',
-                    rawTimestamp: new Date(tweet.timestamp || new Date()).getTime()
-                  }));
-                  
-                  // Add tweets to queue immediately as they arrive
-                  setTweetQueue(prev => [...prev, ...transformedTweets]);
+                  data.data.forEach((tweet: any, index: number) => {
+                    const rawTimestamp = generateTimestamp(tweet, index);
+                    
+                    // Create a more robust unique ID based on content
+                    const contentHash = `${tweet.handle || 'unknown'}-${tweet.text?.substring(0, 20) || 'notext'}-${tweet.name || 'unknown'}`.replace(/\s+/g, '').toLowerCase();
+                    const uniqueId = `${contentHash}-${rawTimestamp}`;
+                    
+                    const transformedTweet: Tweet = {
+                      sentiment: tweet.sentiment || 'neutral',
+                      avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
+                      name: tweet.name || 'Unknown',
+                      handle: tweet.handle || '@unknown',
+                      timestamp: tweet.timestamp || formatRelativeTime(rawTimestamp),
+                      followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
+                      tweetUrl: tweet.tweetUrl || 'https://twitter.com',
+                      text: tweet.text || '',
+                      rawTimestamp,
+                      id: uniqueId // More unique ID based on content
+                    };
+                    
+                    // Only add if the tweet content is meaningful
+                    if (transformedTweet.text.length > 10 && transformedTweet.name !== 'Unknown') {
+                      // console.log(`📝 Processing tweet from ${query}:`, transformedTweet.text.substring(0, 30));
+                      insertTweetInOrder(transformedTweet, false);
+                    }
+                  });
                 }
               } else {
                 console.log(`❌ API call failed for "${query}" (batch ${i + 1}):`, response.status);
@@ -443,7 +399,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
       Promise.allSettled(fetchPromises).then((results) => {
         const successful = results.filter(result => result.status === 'fulfilled').length;
         const failed = results.filter(result => result.status === 'rejected').length;
-        console.log(`🏁 Tweet fetching completed: ${successful} successful, ${failed} failed`);
+        // console.log(`🏁 Tweet fetching completed: ${successful} successful, ${failed} failed`);
       });
       
     } catch (error) {
@@ -499,7 +455,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
     return nameMatches || symbolMatches || specialMatch;
   }, []);
 
-  // Filter curated tweets based on selected asset and populate eliteTweets queue
+  // Filter curated tweets based on selected asset
   const filteredCuratedTweets = useMemo(() => {
     if (!curatedTweets || !selectedAsset) return [];
     
@@ -508,33 +464,43 @@ const Display: React.FC<DisplayProps> = React.memo(({
       return isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol);
     });
 
-    // Transform and add to eliteTweets priority queue
+    // Clear existing elite tweets and add new ones
+    setEliteTweets([]);
+    
     if (filtered.length > 0) {
-      eliteTweets.clear(); // Clear existing elite tweets
-      const transformedTweets = filtered.map((tweet: any) => ({
-        sentiment: tweet.sentiment || 'neutral',
-        avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
-        name: tweet.raw_data?.user?.displayname || 'Unknown',
-        handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
-        timestamp: formatRelativeTime(tweet.timestamp || tweet.date || new Date()),
-        followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
-        tweetUrl: tweet.url || 'https://twitter.com',
-        text: tweet.content || tweet.text || '',
-        rawTimestamp: new Date(tweet.timestamp || tweet.date || new Date()).getTime()
-      }));
-      
-      eliteTweets.enqueueBatch(transformedTweets);
+      filtered.forEach((tweet: any, index: number) => {
+        let actualTimestamp: number;
+        
+        if (tweet.timestamp || tweet.date) {
+          const tweetDate = new Date(tweet.timestamp || tweet.date);
+          actualTimestamp = isNaN(tweetDate.getTime()) ? Date.now() - (index * 60000) : tweetDate.getTime();
+        } else {
+          actualTimestamp = Date.now() - (index * 60000);
+        }
+        
+        const transformedTweet: Tweet = {
+          sentiment: tweet.sentiment || 'neutral',
+          avatar: tweet.raw_data?.user?.profileImageUrl || 'https://randomuser.me/api/portraits/men/1.jpg',
+          name: tweet.raw_data?.user?.displayname || 'Unknown',
+          handle: tweet.raw_data?.user?.username ? `@${tweet.raw_data.user.username}` : '@unknown',
+          timestamp: formatRelativeTime(actualTimestamp),
+          followers: tweet.raw_data?.user?.followersCount ? `${(tweet.raw_data.user.followersCount / 1000).toFixed(1)}K` : '0',
+          tweetUrl: tweet.url || 'https://twitter.com',
+          text: tweet.content || tweet.text || '',
+          rawTimestamp: actualTimestamp,
+          id: `elite-${tweet.raw_data?.user?.username || 'unknown'}-${actualTimestamp}-${index}` // More unique ID
+        };
+        
+        // Only add meaningful elite tweets
+        if (transformedTweet.text.length > 10 && transformedTweet.name !== 'Unknown') {
+          // console.log(`👑 Processing elite tweet:`, transformedTweet.text.substring(0, 30));
+          insertTweetInOrder(transformedTweet, true);
+        }
+      });
     }
     
     return filtered;
-  }, [curatedTweets, selectedAsset, isAssetRelated, eliteTweets]);
-
-  // Update display when filtered curated tweets change
-  useEffect(() => {
-    if (isCurated) {
-      updateDisplayTweets();
-    }
-  }, [filteredCuratedTweets, isCurated, updateDisplayTweets]);
+  }, [curatedTweets, selectedAsset, isAssetRelated, insertTweetInOrder]);
 
   // Fetch logo for selected asset if it doesn't have one
   useEffect(() => {
@@ -727,83 +693,19 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
 
 
-  // Fetch tweets for selected asset with batch optimization
-  // const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
-  //   if (!assetName) return;
-    
-  //   try {
-  //     const batchSize = 5;
-  //     const totalLimit = 10;
-  //     const batches = Math.ceil(totalLimit / batchSize);
-  //     const allTweets: Tweet[] = [];
-      
-  //     // Create chain-specific search queries
-  //     const searchQueries = generateChainSpecificQueries(assetName, chain);
-      
-  //     for (const query of searchQueries) {
-  //       for (let i = 0; i < batches; i++) {
-  //         const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
-          
-  //         const response = await fetch(`${API_BASE}/twitter/stream`, {
-  //           method: 'POST',
-  //           headers: { 'Content-Type': 'application/json' },
-  //           body: JSON.stringify({ 
-  //             query: query, 
-  //             limit: currentLimit, 
-  //             product: 'Latest',
-  //             offset: i * batchSize 
-  //           })
-  //         });
-
-  //         if (response.ok) {
-  //           const data = await response.json();
-  //           if (data.data && Array.isArray(data.data)) {
-  //             const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-  //               sentiment: tweet.sentiment || 'neutral',
-  //               avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-  //               name: tweet.name || 'Unknown',
-  //               handle: tweet.handle || '@unknown',
-  //               timestamp: formatRelativeTime(tweet.timestamp || new Date()),
-  //               followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-  //               tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-  //               text: tweet.text || ''
-  //             }));
-              
-  //             allTweets.push(...transformedTweets);
-  //           }
-  //         }
-          
-  //         if (i < batches - 1) {
-  //           await new Promise(resolve => setTimeout(resolve, 500));
-  //         }
-  //       }
-  //     }
-      
-  //     if (allTweets.length > 0) {
-  //       setTweetQueue(prev => [...prev, ...allTweets]);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching tweets:', error);
-  //   }
-  // }, [API_BASE]);
-
-  // Fetch tweets when selected asset changes
+  // Clear tweets when asset changes
   useEffect(() => {
     if (selectedAsset?.name && selectedAsset?.symbol) {
-      tweets.clear();
-      eliteTweets.clear();
-      setDisplayTweetsArray([]);
-      setTweetQueue([]);
-      setTweetBuffer([]);
+      setTweets([]);
+      setEliteTweets([]);
+      setNewTweetIds(new Set());
       fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
     } else {
-      tweets.clear();
-      eliteTweets.clear();
-      setDisplayTweetsArray([]);
-      setTweetQueue([]);
-      setTweetBuffer([]);
+      setTweets([]);
+      setEliteTweets([]);
+      setNewTweetIds(new Set());
     }
-  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets, tweets, eliteTweets]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets]);
 
   // Poll for new tweets every 60 seconds when an asset is selected
   useEffect(() => {
@@ -816,27 +718,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
     return () => clearInterval(interval);
   }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets]);
 
-  // Handle expanded state - buffer new tweets
-  useEffect(() => {
-    if (expandedIndex !== null && tweetQueue.length > 0) {
-      setTweetBuffer(prev => [...tweetQueue, ...prev].slice(0, 20));
-      setTweetQueue([]);
-    }
-  }, [expandedIndex, tweetQueue]);
-
-  // When expandedIndex goes from not-null to null, flush buffer
-  useEffect(() => {
-    if (expandedIndex === null && tweetBuffer.length > 0) {
-      // Add buffered tweets to the appropriate priority queue
-      tweets.enqueueBatch(tweetBuffer);
-      updateDisplayTweets();
-      
-      setNewTweetIndex(tweetBuffer.length - 1);
-      setTimeout(() => setNewTweetIndex(null), 1200);
-      setTweetBuffer([]);
-    }
-  }, [expandedIndex, tweetBuffer, tweets, updateDisplayTweets]);
-
   // Use selected asset data if available, otherwise show loading state
   const displayName = selectedAsset ? selectedAsset.name : "Loading...";
   const displaySymbol = selectedAsset ? selectedAsset.symbol : "";
@@ -848,11 +729,10 @@ const Display: React.FC<DisplayProps> = React.memo(({
                      null;
   const displayRank = rank !== null ? `#${rank}` : null;
 
-  // Memoized tweets to display based on elite filter with asset filtering
+  // Get display tweets based on current mode
   const displayTweets = useMemo(() => {
-    // Simply return the displayTweetsArray which is already properly managed by the priority queues
-    return displayTweetsArray;
-  }, [displayTweetsArray]);
+    return isCurated ? eliteTweets : tweets;
+  }, [tweets, eliteTweets, isCurated]);
 
   // Show message if no wallets are connected
   if (connectedWallets === 0) {
@@ -987,10 +867,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
             // </div>
           ) : expandedIndex === null ? (
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-              {displayTweets.map((tweet, idx) => (
+              {displayTweets.map((tweet: Tweet, idx: number) => (
                 <div
-                  key={idx}
-                  className={`flex items-start gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 border border-transparent bg-[rgba(36,37,42,0.25)] hover:bg-[rgba(50,52,60,0.95)]${expandedIndex === idx ? " shadow-lg" : ""} ${idx === newTweetIndex ? "animate-slideInFromTop" : ""}`}
+                  key={tweet.id} // Use proper unique ID
+                  className={`flex items-start gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all duration-200 border border-transparent bg-[rgba(36,37,42,0.25)] hover:bg-[rgba(50,52,60,0.95)] ${
+                    newTweetIds.has(tweet.id) ? "animate-slideInFromTop border-[#A259FF]/50 bg-[rgba(162,89,255,0.1)]" : ""
+                  }`}
                   style={{ minHeight: 80, maxHeight: 80, overflow: "hidden" }}
                   onClick={() => setExpandedIndex(idx)}
                 >
