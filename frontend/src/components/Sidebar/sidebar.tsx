@@ -8,6 +8,7 @@ import { FiChevronDown } from "react-icons/fi";
 import { BsLayoutSidebarInset, BsLayoutSidebarInsetReverse } from "react-icons/bs";
 import { SiGitbook } from "react-icons/si";
 import { FiLogOut } from "react-icons/fi";
+import { FaTelegram } from "react-icons/fa";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 
@@ -292,21 +293,29 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             </Tippy>
           ) : (
             <div className="flex justify-center gap-4 py-1">
-                              <a
-                  href="https://x.com/infercircle"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
-                >
-                  <span className="text-base">𝕏</span>
-                </a>
+              <a
+                href="https://x.com/infercircle"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+              >
+                <span className="text-base">𝕏</span>
+              </a>
+              <a
+                href="https://t.me/infercircle"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+              >
+                <FaTelegram className="w-4 h-4" />
+              </a>
               <a
                 href="https://docs.infercircle.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                                  className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
+                className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-all duration-200 hover:bg-[rgba(42,46,53,0.35)] hover:backdrop-blur-md text-[#ffffff99] hover:text-white"
               >
-                                  <SiGitbook className="w-4 h-4" />
+                <SiGitbook className="w-4 h-4" />
               </a>
             </div>
           )}

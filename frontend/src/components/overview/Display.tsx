@@ -798,9 +798,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
               </div>
             </div>
           </div>
-          <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
+          {/* <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
             View Asset
-          </button>
+          </button> */}
         </div>
 
         {/* Price and change */}

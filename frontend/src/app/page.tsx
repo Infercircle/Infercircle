@@ -4,7 +4,7 @@ import { InviteCodeModal } from "@/components/InviteCodeModal";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { User } from "@prisma/client";
-import { FaGoogle, FaTwitter, FaRocket, FaChartLine, FaShieldAlt, FaUsers, FaUser } from "react-icons/fa";
+import { FaGoogle, FaTwitter, FaChartLine, FaShieldAlt, FaUsers, FaUser } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { BsTwitterX } from "react-icons/bs";
 import Link from "next/link";
@@ -169,16 +169,7 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* CTA Button */}
-              <div className="mt-8 lg:mt-10 xl:mt-12">
-                <Button 
-                  size="lg"
-                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-5 lg:px-6 xl:px-8 py-2.5 lg:py-3 xl:py-4 text-sm lg:text-base xl:text-lg font-semibold rounded-xl shadow-2xl hover:shadow-violet-500/25 transition-all duration-300"
-                >
-                  <FaRocket className="mr-2" />
-                  Get Early Access
-                </Button>
-              </div>
+
             </div>
           </div>
         </div>
