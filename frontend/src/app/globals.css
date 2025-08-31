@@ -79,6 +79,8 @@ min-height: 2px;
   100% { transform: translateX(0); }
 }
 
+
+
 /* ApexCharts Toolbar Styling for Dark Theme */
 .apexcharts-toolbar {
   background: rgba(35, 38, 47, 0.9) !important;

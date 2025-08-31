@@ -484,15 +484,96 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   if (connectedWallets === 0) {
     return (
       <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
-              <div className="flex items-center justify-between mb-2">
-        <div className="text-base font-semibold text-white">Portfolio Overview</div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
+          <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
+                  <div className="flex items-center gap-2 justify-center lg:justify-start">
+            {/* Chain Filter Dropdown */}
+            <div className="relative chain-dropdown-container">
+                          <button 
+                onClick={() => setIsChainDropdownOpen(!isChainDropdownOpen)}
+                className="text-[#A3A3A3] text-sm bg-transparent px-3 py-1 rounded-lg flex items-center gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
+              >
+              {selectedChain === 'all' ? (
+                <span>All Chains</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const selectedChainData = chainSummaries.find(c => c.chain === selectedChain);
+                    return (
+                      <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                        {selectedChainData?.iconUrl && selectedChainData.iconUrl.includes("https") ? (
+                          <img src={selectedChainData.iconUrl} alt={selectedChain} className="w-4 h-4 rounded-full object-contain" />
+                        ) : (
+                          <span className="text-white text-xs font-bold">{selectedChainData?.chainName?.charAt(0) || selectedChain.charAt(0)}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <span>{chainSummaries.find(c => c.chain === selectedChain)?.chainName || selectedChain}</span>
+                </div>
+              )}
+              <span className={`transition-transform ${isChainDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            
+                         {isChainDropdownOpen && (
+               <div className="absolute top-full right-0 mt-1 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded-lg shadow-lg z-50 min-w-[200px] max-h-60 overflow-y-auto sm:right-0 right-auto left-0">
+                <div className="sticky top-0 bg-[rgba(24,26,32,1)] z-10">
+                                  <button
+                    onClick={() => {
+                      setSelectedChain('all');
+                      setIsChainDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#23262F] transition-colors first:rounded-t-lg flex items-center justify-between border-b border-[#2a2e35] cursor-pointer ${
+                      selectedChain === 'all' ? 'text-[#A259FF]' : 'text-[#A3A3A3]'
+                    }`}
+                  >
+                  <div className="flex items-center justify-between w-full">
+                    <span>All Chains</span>
+                    <span className="bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{chainSummaries.length}</span>
+                  </div>
+                </button>
+                </div>
+                {chainSummaries.map((chain) => (
+                  <button
+                    key={chain.chain}
+                    onClick={() => {
+                      setSelectedChain(chain.chain);
+                      setIsChainDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#23262F] transition-colors flex items-center justify-between cursor-pointer ${
+                      selectedChain === chain.chain ? 'text-[#A259FF]' : 'text-[#A3A3A3]'
+                    } ${chain.chain === chainSummaries[chainSummaries.length - 1].chain ? 'last:rounded-b-lg' : ''}`}
+                  >
+                                          <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                            {chain.iconUrl && chain.iconUrl.includes("https") ? (
+                              <img src={chain.iconUrl} alt={chain.chainName} className="w-5 h-5 rounded-full object-contain" />
+                            ) : (
+                              <span className="text-white text-xs font-bold">{chain.chainName.charAt(0)}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span>{chain.chainName}</span>
+                            <span className="text-xs text-[#666]">${chain.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                        <span className="bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{chain.assetCount}</span>
+                      </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
           className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
-          {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
+          {showAllAssets ? 'Hide Zero Assets' : 'View All Assets'}
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
         </button>
+        </div>
       </div>
         <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
           <table className="w-full text-sm text-left align-middle table-fixed">
@@ -558,7 +639,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
               {/* Preloader overlay - covers entire component */}
-        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-50 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -668,7 +749,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           onClick={() => setShowAllAssets(!showAllAssets)}
           className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
-          {showAllAssets ? 'Hide Small Assets' : 'View All Assets'}
+          {showAllAssets ? 'Hide Zero Assets' : 'View All Assets'}
             <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{filteredAssets.length}</span>
         </button>
         </div>
