@@ -48,6 +48,14 @@ interface DashboardProps {
     tron: string[];
     ton: string[];
   };
+  // Shared portfolio data from Dashboard Layout
+  sharedPortfolioData?: {
+    [walletAddress: string]: {
+      portfolio: any;
+      chains: any;
+      positionsChainsDistribution: any;
+    };
+  };
 }
 
 interface SelectedAsset {
@@ -64,7 +72,7 @@ interface SelectedAsset {
   icon: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets, sharedPortfolioData }) => {
   const { data: session, status } = useSession();
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
@@ -267,6 +275,7 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
         connectedWallets={connectedWallets}
         onLogoCacheUpdate={handleLogoCacheUpdate}
         wallets={wallets}
+        sharedPortfolioData={sharedPortfolioData}
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">

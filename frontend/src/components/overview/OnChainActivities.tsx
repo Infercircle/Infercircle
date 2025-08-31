@@ -51,7 +51,6 @@ interface Asset {
   balance: number;
   value: number;
   priceChange: number;
-  balanceChange?: number;
   sentimentChange?: number;
   sentiment?: number;
   mindShare?: number;
@@ -78,13 +77,21 @@ interface OnChainActivitiesProps {
     tron: string[];
     ton: string[];
   };
+  // Shared portfolio data from Dashboard Layout
+  sharedPortfolioData?: {
+    [walletAddress: string]: {
+      portfolio: any;
+      chains: any;
+      positionsChainsDistribution: any;
+    };
+  };
 }
 
 type AssetSentimentArrayMap = {
   [symbol: string]: AssetSentiMentScore[];
 };
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets, sharedPortfolioData }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -101,29 +108,25 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
-  // Calculate chain summaries
-  const chainSummaries = React.useMemo(() => {
-    const chainMap = new Map<string, { totalValue: number; assetCount: number; chainName: string }>();
-    
-    assets.forEach(asset => {
-      const chain = asset.chain.toLowerCase();
-      const current = chainMap.get(chain) || { totalValue: 0, assetCount: 0, chainName: asset.chain };
-      current.totalValue += asset.value || 0;
-      current.assetCount += 1;
-      chainMap.set(chain, current);
-    });
-    
-    return Array.from(chainMap.entries()).map(([chain, data]) => ({
-      chain,
-      ...data
-    })).sort((a, b) => b.totalValue - a.totalValue);
-  }, [assets]);
+  // Chain summaries from Zerion portfolio data
+  const [chainSummaries, setChainSummaries] = useState<Array<{
+    chain: string;
+    totalValue: number;
+    assetCount: number;
+    chainName: string;
+    iconUrl?: string;
+  }>>([]);
 
   // Filter assets by selected chain
   const chainFilteredAssets = React.useMemo(() => {
     if (selectedChain === 'all') return assets;
-    return assets.filter(asset => asset.chain.toLowerCase() === selectedChain);
-  }, [assets, selectedChain]);
+    
+    // Find the selected chain data to get the proper chain name
+    const selectedChainData = chainSummaries.find(c => c.chain === selectedChain);
+    if (!selectedChainData) return assets;
+    
+    return assets.filter(asset => asset.chain.toLowerCase() === selectedChainData.chainName.toLowerCase());
+  }, [assets, selectedChain, chainSummaries]);
 
   // Helper function to check if wallets are actually populated
   const hasValidWallets = () => {
@@ -157,7 +160,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
     let retryInterval: NodeJS.Timeout | null = null;
     
-    // Fetch balances immediately without waiting for sentiment data
+    // Fetch balances and chain data from Zerion
     const fetchBalances = async () => {
       try {
         setLoading(true);
@@ -172,9 +175,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           ...wallets.ton.map(walletAddress => ({ walletAddress, chain: 'ton' })),
         ];
         
-        // Fetch balances for all wallets
+        // Fetch positions data for all wallets (portfolio data comes from shared data)
         let allTokens: Asset[] = [];
         let uniqueSymbols = new Set<string>();
+        let aggregatedChainData: { [chainId: string]: { totalValue: number; assetCount: number; chainName: string; iconUrl?: string } } = {};
         
         for (const w of allWallets) {
           if (!w.walletAddress || w.walletAddress.trim() === '') {
@@ -182,41 +186,89 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           }
           
           try {
-            const balancesRes = await axios.get(`${API_BASE}/balances/address/${w.walletAddress}`);
-            const balances = (balancesRes.data as any).balances;
+            // Use shared portfolio data instead of fetching it
+            const portfolioData = sharedPortfolioData?.[w.walletAddress]?.portfolio;
             
-            for (const chain in balances) {
-              for (const token of balances[chain]) {
-                let assetObj = {
-                  name: token.name,
-                  symbol: token.symbol,
-                  chain: chain.charAt(0).toUpperCase() + chain.slice(1),
-                  price: token.price,
-                  balance: token.balance,
-                  value: token.usd,
-                  priceChange: token.priceChange24hPercent,
-                  balanceChange: token.balanceChange24h !== undefined ? token.balanceChange24h : undefined,
-                  sentimentChange: token.sentimentChange24h !== undefined ? token.sentimentChange24h : undefined,
-                  sentiment: token.sentiment !== undefined ? token.sentiment : undefined,
-                  mindShare: token.mindShare !== undefined ? token.mindShare : undefined,
-                  icon: '', // Will be filled progressively
-                };
-                
-                allTokens.push(assetObj);
-                if (token.symbol) uniqueSymbols.add(token.symbol.toLowerCase());
+            // Fetch positions data for detailed asset information
+            const positionsRes = await axios.get(`${API_BASE}/balances/positions/${w.walletAddress}`);
+            const positionsData = (positionsRes.data as any).data;
+            
+            // Aggregate chain data across all wallets using shared portfolio data
+            if (portfolioData?.chains && portfolioData?.positionsChainsDistribution) {
+              for (const [chainId, chainValue] of Object.entries(portfolioData.positionsChainsDistribution)) {
+                const chainInfo = portfolioData.chains[chainId];
+                const numericChainValue = Number(chainValue);
+                if (chainInfo && numericChainValue > 0) {
+                  if (!aggregatedChainData[chainId]) {
+                    aggregatedChainData[chainId] = {
+                      totalValue: 0,
+                      assetCount: 0,
+                      chainName: chainInfo.name,
+                      iconUrl: chainInfo.iconUrl
+                    };
+                  }
+                  aggregatedChainData[chainId].totalValue += numericChainValue;
+                }
+              }
+            }
+            
+            // Process positions data
+            if (positionsData && Array.isArray(positionsData)) {
+              for (const position of positionsData) {
+                if (position.isDisplayable && position.value > 0) {
+                  const asset = position.asset;
+                  const chain = position.chain;
+                  
+                  // Calculate balance from quantity and decimals
+                  const decimals = asset.implementations?.[chain.id]?.decimals || 18;
+                  const balance = parseFloat(position.quantity) / Math.pow(10, decimals);
+                  
+                  let assetObj = {
+                    name: asset.name,
+                    symbol: asset.symbol,
+                    chain: chain.name,
+                    price: asset.price?.value || 0,
+                    balance: balance,
+                    value: position.value || 0,
+                    priceChange: asset.price?.relativeChange24h ? asset.price.relativeChange24h : 0,
+                    sentimentChange: undefined, // Will be populated by our sentiment API
+                    sentiment: undefined, // Will be populated by our sentiment API
+                    mindShare: undefined, // Will be populated by our sentiment API
+                    icon: asset.iconUrl || '',
+                  };
+                  
+
+                  
+                  allTokens.push(assetObj);
+                  if (asset.symbol) uniqueSymbols.add(asset.symbol.toLowerCase());
+                  
+                  // Update asset count for chain
+                  if (aggregatedChainData[chain.id]) {
+                    aggregatedChainData[chain.id].assetCount += 1;
+                  }
+                }
               }
             }
           } catch (error) {
+            console.error(`Error fetching data for wallet ${w.walletAddress}:`, error);
             // Continue with other wallets even if one fails
           }
         }
+        
+        // Convert aggregated chain data to array format
+        const chainSummariesArray = Object.entries(aggregatedChainData).map(([chainId, data]) => ({
+          chain: chainId,
+          ...data
+        })).sort((a, b) => b.totalValue - a.totalValue);
+        
+        setChainSummaries(chainSummariesArray);
         
         // Display balances immediately
         allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
         setAssets(allTokens);
         
-        // Add all assets to loading state for logos
-        const loadingSymbols = new Set(allTokens.map(token => token.symbol.toLowerCase()));
+        // Add only assets without icons to loading state for logos
+        const loadingSymbols = new Set(allTokens.filter(token => !token.icon || token.icon === '').map(token => token.symbol.toLowerCase()));
         setLoadingLogos(loadingSymbols);
         
         setLoading(false);
@@ -242,7 +294,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         const sentimentResponse = await fetch("/api/sentiments");
         
         if (!sentimentResponse.ok) {
-          return; // Keep existing tokens without sentiment data
+          // Keep existing tokens without sentiment data, but remove from loading state
+          setLoadingLogos(new Set());
+          return;
         }
         
         const data = await sentimentResponse.json();
@@ -261,7 +315,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             for(const asset of allAssets) {
               if(asset.name.toLowerCase() == token.name.toLowerCase()){
                 const SentimentIndex = (asset.positiveTweets - asset.negativeTweets) / (asset.positiveTweets + asset.neutralTweets + asset.negativeTweets);
-                updatedToken.icon = asset.image || "";
+                // Only use database icon if Zerion doesn't have one
+                if (!updatedToken.icon || updatedToken.icon === '') {
+                  updatedToken.icon = asset.image || "";
+                }
                 updatedToken.sentiment = parseFloat(asset.sentiment);
                 updatedToken.mindShare = parseFloat(((SentimentIndex*50) + 50).toFixed(2));
                 break;
@@ -269,11 +326,21 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             }
           }
           
-          // If still no sentiment data, try to fetch it
-          if(updatedToken.icon == '' || updatedToken.sentiment === undefined) {
-            fetchMissingSentimentData(updatedToken, totalScore);
+          // If sentiment data is missing, try to fetch it (but preserve Zerion icon)
+          if(updatedToken.sentiment === undefined) {
+            // Only fetch if we don't have a Zerion icon, to avoid overwriting it
+            if(!updatedToken.icon || updatedToken.icon === '') {
+              fetchMissingSentimentData(updatedToken, totalScore);
+            } else {
+              // Remove from loading state if we have Zerion icon but no sentiment
+              setLoadingLogos(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(token.symbol.toLowerCase());
+                return newSet;
+              });
+            }
           } else {
-            // Remove from loading state if we got a logo
+            // Remove from loading state if we got sentiment data
             setLoadingLogos(prev => {
               const newSet = new Set(prev);
               newSet.delete(token.symbol.toLowerCase());
@@ -324,7 +391,8 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   let SentimentIndex = (res.positiveTweets - res.negativeTweets) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
                   return {
                     ...asset,
-                    icon: res.image || "",
+                    // Only use fallback icon if Zerion doesn't have one
+                    icon: (res.image && res.image !== '') ? res.image : (asset.icon || ""),
                     sentiment: parseFloat(res.sentiment),
                     mindShare: parseFloat(((SentimentIndex*50) + 50).toFixed(2))
                   };
@@ -352,7 +420,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
-  }, [twitterId, refreshKey, wallets]);
+  }, [twitterId, refreshKey, wallets, sharedPortfolioData]);
 
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
@@ -515,8 +583,8 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       )}
       
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
-          <div className="text-base font-semibold text-white">Portfolio Overview</div>
-                  <div className="flex items-center gap-2">
+          <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
+                  <div className="flex items-center gap-2 justify-center lg:justify-start">
             {/* Chain Filter Dropdown */}
             <div className="relative chain-dropdown-container">
                           <button 
@@ -528,20 +596,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
               ) : (
                 <div className="flex items-center gap-2">
                   {(() => {
-                    // Find a representative asset for the selected chain to get its icon
-                    const representativeAsset = assets.find(asset => asset.chain.toLowerCase() === selectedChain.toLowerCase());
+                    const selectedChainData = chainSummaries.find(c => c.chain === selectedChain);
                     return (
                       <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                        {loadingLogos.has(representativeAsset?.symbol?.toLowerCase() || '') ? (
-                          <div className="flex space-x-0.5">
-                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
-                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                          </div>
-                        ) : representativeAsset?.icon && representativeAsset.icon.includes("https") ? (
-                          <img src={representativeAsset.icon} alt={selectedChain} className="w-4 h-4 rounded-full object-contain" />
+                        {selectedChainData?.iconUrl && selectedChainData.iconUrl.includes("https") ? (
+                          <img src={selectedChainData.iconUrl} alt={selectedChain} className="w-4 h-4 rounded-full object-contain" />
                         ) : (
-                          <span className="text-white text-xs font-bold">{chainSummaries.find(c => c.chain === selectedChain)?.chainName?.charAt(0) || selectedChain.charAt(0)}</span>
+                          <span className="text-white text-xs font-bold">{selectedChainData?.chainName?.charAt(0) || selectedChain.charAt(0)}</span>
                         )}
                       </div>
                     );
@@ -583,25 +644,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   >
                                           <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-2">
-                          {(() => {
-                            // Find a representative asset for this chain to get its icon
-                            const representativeAsset = assets.find(asset => asset.chain.toLowerCase() === chain.chain.toLowerCase());
-                            return (
-                              <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                                {loadingLogos.has(representativeAsset?.symbol?.toLowerCase() || '') ? (
-                                  <div className="flex space-x-0.5">
-                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
-                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                                    <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                                  </div>
-                                ) : representativeAsset?.icon && representativeAsset.icon.includes("https") ? (
-                                  <img src={representativeAsset.icon} alt={chain.chainName} className="w-5 h-5 rounded-full object-contain" />
-                                ) : (
-                                  <span className="text-white text-xs font-bold">{chain.chainName.charAt(0)}</span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                            {chain.iconUrl && chain.iconUrl.includes("https") ? (
+                              <img src={chain.iconUrl} alt={chain.chainName} className="w-5 h-5 rounded-full object-contain" />
+                            ) : (
+                              <span className="text-white text-xs font-bold">{chain.chainName.charAt(0)}</span>
+                            )}
+                          </div>
                           <div className="flex flex-col">
                             <span>{chain.chainName}</span>
                             <span className="text-xs text-[#666]">${chain.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -791,7 +840,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-white text-[10px] font-bold z-0">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}%` : '--'}</span>
+                      <span className="text-white text-[10px] font-bold z-0">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}` : '--'}</span>
                     </div>
                   </td>
                 </tr>
