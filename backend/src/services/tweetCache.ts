@@ -33,6 +33,7 @@ export class TweetCacheService {
   private readonly REDIS_TTL = 3600; // 1 hour in seconds
   private readonly MEMORY_TTL = 300; // 5 minutes in seconds
   private readonly MAX_MEMORY_KEYS = 1000; // Maximum keys in memory
+  private total_elite_keys = 0;
   private redisConnected = false;
 
   constructor() {
@@ -91,8 +92,8 @@ export class TweetCacheService {
     return `tweets:${Buffer.from(normalizedQuery).toString('base64')}:${limit}:${offset}`;
   }
 
-  async getCachedTweets(query: string, limit: number, offset: number = 0): Promise<CacheResponse | null> {
-    const key = this.generateCacheKey(query, limit, offset);
+  async getCachedTweets(query: string, limit: number, offset: number = 0, isElite: boolean = false): Promise<CacheResponse | null> {
+    const key = isElite ? query : this.generateCacheKey(query, limit, offset);
 
     try {
       // First check memory cache (fastest)
@@ -132,9 +133,11 @@ export class TweetCacheService {
     }
   }
 
-  async cacheTweets(query: string, limit: number, tweets: any[], offset: number = 0): Promise<void> {
-    const key = this.generateCacheKey(query, limit, offset);
-    
+  async cacheTweets(query: string, limit: number, tweets: any[], offset: number = 0, isElite: boolean = false): Promise<void> {
+    const key = isElite ? query : this.generateCacheKey(query, limit, offset);
+    if(this.total_elite_keys > 100){
+      return;
+    }
     try {
       const cachedTweets: CachedTweet[] = tweets.map(tweet => ({
         id: tweet.id,
@@ -152,6 +155,10 @@ export class TweetCacheService {
         replies: tweet.replies || 0,
         cachedAt: Date.now()
       }));
+
+      if(isElite){
+        this.total_elite_keys++;
+      }
 
       const cacheData: CacheResponse = {
         status: "success",

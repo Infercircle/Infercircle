@@ -86,53 +86,92 @@ const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 
     fetchEliteUsers();
   }, []);
 
-  useEffect(()=> {
-    const  BATCH_SIZE = 10;
-    async function processInBatches(usernames: string[]) {
-      const results = [];
+useEffect(()=> {
+  const BATCH_SIZE = 10;
+  async function processInBatches(usernames: string[]) {
+    const results = [];
 
-      for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
-        const batch = usernames.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
+      const batch = usernames.slice(i, i + BATCH_SIZE);
 
-        // Process each batch concurrently
-        const batchResults = await Promise.all(
-          batch.map(async (username) => {
-            try {
-              const res = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user/tweets`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, limit: 10 }),
-              });
-              const data = await res.json();
-              return data.tweets || [];
-            } catch (error) {
-              console.error(`Error fetching tweets for ${username}:`, error);
+      // Process each batch concurrently
+      const batchResults = await Promise.all(
+        batch.map(async (username) => {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/twitter/elite/tweets`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ username, limit: 10 }),
+            });
+            
+            if (!res.ok) {
+              console.warn(`Failed to fetch tweets for ${username}: ${res.status}`);
               return [];
             }
-          })
-        );
+            
+            const data = await res.json();
+            const tweets = data.data || [];
+            
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`📊 Fetched ${tweets.length} tweets for @${username}`);
+            }
+            
+            return tweets;
+          } catch (error) {
+            console.error(`Error fetching tweets for ${username}:`, error);
+            return [];
+          }
+        })
+      );
 
-        setTimeout(() => {}, 1000); // Small delay to avoid rate limiting
+      setTimeout(() => {}, 1000); // Small delay to avoid rate limiting
 
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
         console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(usernames.length / BATCH_SIZE)}`);
-        
-        const flattenedBatchResults = batchResults.flat();
-        results.push(...flattenedBatchResults);
-        
-        // Update curatedTweets immediately after each batch for real-time UI updates
-        setCuratedTweets(prev => [...prev, ...flattenedBatchResults]);
-        
-        console.log(`Added ${flattenedBatchResults.length} tweets from current batch`);
       }
+      
+      const flattenedBatchResults = batchResults.flat();
+      results.push(...flattenedBatchResults);
+      
+      // Update curatedTweets immediately after each batch for real-time UI updates
+      setCuratedTweets(prev => {
+        const newTweets = [...prev, ...flattenedBatchResults];
+        
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Updated curatedTweets: ${newTweets.length} total tweets`);
+        }
+        
+        return newTweets;
+      });
+    }
+    
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🏁 Finished processing all batches. Total tweets: ${results.length}`);
+    }
+  }
+  
+  if(allElites.size > 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Starting to process ${allElites.size} elite users`);
+    }
+    const usernames = Array.from(allElites);
+    processInBatches(usernames);
+  }
+}, [allElites]);
 
+  // Debug effect to monitor curatedTweets changes
+  useEffect(() => {
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 curatedTweets updated: ${curatedTweets.length} tweets`);
     }
-    if(allElites.size > 0) {
-      const usernames = Array.from(allElites);
-      processInBatches(usernames);
-    }
-  }, [allElites]);
+  }, [curatedTweets]);
 
   // Background processing for elite curators on login (only once per session)
   useEffect(() => {
