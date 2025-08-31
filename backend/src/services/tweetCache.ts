@@ -55,11 +55,17 @@ export class TweetCacheService {
   private async initRedis() {
     try {
       const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      this.redis = new Redis(redisUrl, {
+      this.redis = process.env.EXTERNAL_REDIS== "EXTERNAL" ? new Redis({
+        username: process.env.REDIS_SERVICE_NAME as string,
+        host: process.env.REDIS_HOST as string,
+        password: process.env.REDIS_PASSWORD as string,
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        tls: true
+      }) : new Redis(redisUrl, {
         retryDelayOnFailover: 100,
         enableReadyCheck: false,
         maxRetriesPerRequest: 3,
-        lazyConnect: true
+        lazyConnect: true,
       });
 
       this.redis.on('connect', () => {
