@@ -6,6 +6,17 @@ import { tweetCacheService } from "../services/tweetCache";
 
 const router = Router();
 
+// Helper: format relative time like "2m ago"
+export function getRelativeTime(timestamp: string) {
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diff = (now.getTime() - then.getTime()) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
+}
+
 // Health check
 router.get("/", (req: Request, res: Response) => {
   res.send("Helper Twitter API Server 🚀");
@@ -64,16 +75,6 @@ router.post("/stream", asyncHandler(async (req: Request, res: Response) => {
     // The API may return { data: [...] } or just an array
     const tweets = Array.isArray(helperData) ? helperData : helperData.data || helperData.tweets || helperData.results || [];
 
-    // Helper: format relative time like "2m ago"
-    function getRelativeTime(timestamp: string) {
-      const now = new Date();
-      const then = new Date(timestamp);
-      const diff = (now.getTime() - then.getTime()) / 1000;
-      if (diff < 60) return `${Math.floor(diff)}s`;
-      if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-      return `${Math.floor(diff / 86400)}d`;
-    }
 
     // Normalize tweets (handle both array and object response)
     const normalizedTweets = (tweets.length ? tweets : (helperData.results || [])).map((tweet: any) => {
@@ -283,6 +284,72 @@ router.get("/followers", asyncHandler(async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching followers:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+}));
+
+router.post("/elite/tweets", asyncHandler(async (req: Request, res: Response) => {
+  const { username, limit } = req.body;
+  if (!username || !limit) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  try {
+    const cachedResult = await tweetCacheService.getCachedTweets(username, limit, 0, true);
+    if (cachedResult) {
+      return res.status(200).json(cachedResult);
+    }
+    const response = await fetch(`${process.env.HELPER_APIS_URL}/twitter/user/tweets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, limit: 10 }),
+    });
+    const data = await response.json();
+    const tweets = data.tweets || [];
+
+    // Normalize tweets (handle both array and object response)
+    const normalizedTweets = (tweets.length ? tweets : (data.results || [])).map((tweet: any) => {
+      const text = tweet.content || tweet.raw_data?.rawContent || tweet.raw_data?.content || tweet.text || "";
+      const user = tweet.raw_data?.user || {};
+      const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
+      let sentimentLabel = "neutral";
+      if (sentiment.compound >= 0.05) sentimentLabel = "positive";
+      else if (sentiment.compound <= -0.05) sentimentLabel = "negative";
+
+      // Format timestamp as relative time
+      let rawTimestamp = tweet.date || tweet.raw_data?.date || new Date().toISOString();
+      let formattedTimestamp = getRelativeTime(rawTimestamp);
+      return {
+        id: tweet.id,
+        name: user.displayname || tweet.username || user.username || "Unknown",
+        handle: user.username ? `@${user.username}` : (tweet.username ? `@${tweet.username}` : ""),
+        avatar: user.profileImageUrl || user.profile_image_url || null,
+        followers: user.followersCount || user.followers_count || 0,
+        tweetUrl: tweet.url || tweet.raw_data?.url || tweet.raw_data?.url || "",
+        text,
+        timestamp: formattedTimestamp,
+        sentiment: sentimentLabel,
+        sentimentScore: sentiment.compound,
+        likes: tweet.likes || tweet.raw_data?.likeCount || 0,
+        retweets: tweet.retweets || tweet.raw_data?.retweetCount || 0,
+        replies: tweet.replies || tweet.raw_data?.replyCount || 0,
+      };
+    });
+
+    if (normalizedTweets.length > 0) {
+      await tweetCacheService.cacheTweets(username, limit, normalizedTweets, 0, true);
+    }
+
+    res.status(200).json({
+      status: "success",
+      count: normalizedTweets.length,
+      data: normalizedTweets,
+      username,
+      cached: false
+    });
+  } catch (error) {
+    console.error(`Error fetching tweets for ${username}:`, error);
+    return [];
   }
 }));
 

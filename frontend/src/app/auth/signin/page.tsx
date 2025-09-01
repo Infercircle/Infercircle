@@ -158,7 +158,7 @@ const SignInPage: React.FC = () => {
             {/* Additional Info */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
-                Need an invite code? Contact us on X:{" "}
+                Questions? Contact us on X:{" "}
                 <a href="https://twitter.com/infercircle" className="text-violet-400 hover:text-violet-300">
                   @infercircle
                 </a>
