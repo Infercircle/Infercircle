@@ -535,12 +535,17 @@ const Display: React.FC<DisplayProps> = React.memo(({
             if (res.ok) {
               const data = await res.json();
               console.log('Sentiment data fetched:', data);
-              if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+              if (data.data && Array.isArray(data.data) && data.data.length >= 3) {
                 setSentimentChartData({ sentimentData: data.data });
+              } else if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
               } else {
                 throw new Error("No sentiment data available for this time period");
               }
             } else {
+              if(res.status === 404){
+                throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
+              }
               throw new Error("Failed to fetch sentiment data - data might not be available yet");
             }
             return;
@@ -571,7 +576,11 @@ const Display: React.FC<DisplayProps> = React.memo(({
           }
         } catch (error) {
           console.error("Error fetching chart data:", error);
-          setChartError(error.message || "Failed to load chart data");
+          setChartError(
+            typeof error === "object" && error !== null && "message" in error
+              ? (error as { message?: string }).message || "Failed to load chart data"
+              : "Failed to load chart data"
+          );
         } finally {
           setLoadingChart(false);
         }
@@ -969,7 +978,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
           ) : chartError ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-red-400 text-base font-semibold mb-2">Chart Error</div>
+                <div className="text-red-400 text-base font-semibold mb-2">{chartError.toLowerCase().includes("not enough data") ? "Not Enough Data" : "Chart Error"}</div>
                 <div className="text-[#666] text-sm">{chartError}</div>
               </div>
             </div>
@@ -988,12 +997,11 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 ))}
               </div>}
               <div className="h-full overflow-hidden">
-                {typeof window !== 'undefined' && 
-                 ((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length > 0) ||
+                {((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length >= 3) ||
                   (currentChartType !== 'sentiment' && chartData?.prices && chartData.prices.length > 0)) ? (
                   currentChartType === 'sentiment' && sentimentChartData ? (
                     <div className="flex flex-col h-full">
-                      <h2 className="text-white text-lg font-bold mb-6 text-center">Historical Sentiment Score</h2>
+                      <h2 className="text-white text-lg font-bold mb-6 text-center">Historical Sentiment Score of {chartAsset.name}</h2>
                       <div className="flex-1 flex items-center justify-center">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-2xl">
                           {/* Historical sentiment cards */}
