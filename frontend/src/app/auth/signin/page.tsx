@@ -2,7 +2,7 @@
 import React from "react";
 import { signIn, getProviders } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { FaRocket, FaChartLine, FaShieldAlt, FaUsers, FaUser } from "react-icons/fa";
+import { FaChartLine, FaShieldAlt, FaUsers, FaUser } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { BsTwitterX } from "react-icons/bs";
 import Link from "next/link";
@@ -92,16 +92,7 @@ const SignInPage: React.FC = () => {
                 </div>
               </div>
               
-              {/* CTA Button */}
-              <div className="mt-8">
-                <Button 
-                  size="lg"
-                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-violet-500/25 transition-all duration-300"
-                >
-                  <FaRocket className="mr-2" />
-                  Get Early Access
-                </Button>
-              </div>
+
             </div>
           </div>
         </div>

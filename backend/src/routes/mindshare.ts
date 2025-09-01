@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { asyncHandler } from "../lib/helper";
 import * as vader from "vader-sentiment";
 import { getSentiment } from "../lib/worker";
-
+import axios from "axios";
 const router = Router();
 
 
@@ -63,15 +63,22 @@ router.post("/addAsset", asyncHandler(async(req: Request, res: Response) => {
                 image: asset.image,
               };
             } catch (error) {
-            const logoRes = await axios.get(`${process.env.BASE_URL}/tokens/cmc?symbol=${asset.symbol}`);
-            if (logoRes.data && (logoRes.data as any).logo) {
-              return {
-                id: asset.id,
-                name: asset.name,
-                symbol: asset.symbol,
-                image: (logoRes.data as any).logo,
-              };
-            }
+              // Try fallback CMC endpoint, but don't fail if it doesn't work
+              try {
+                const logoRes = await axios.get(`${process.env.BASE_URL}/tokens/cmc?symbol=${asset.symbol}`);
+                if (logoRes.data && (logoRes.data as any).logo) {
+                  return {
+                    id: asset.id,
+                    name: asset.name,
+                    symbol: asset.symbol,
+                    image: (logoRes.data as any).logo,
+                  };
+                }
+              } catch (cmcError) {
+                console.warn(`Failed to fetch logo from CMC for ${asset.symbol}:`, cmcError.message);
+              }
+              
+              // Return asset with empty image as fallback
               return {
                 id: asset.id,
                 name: asset.name,

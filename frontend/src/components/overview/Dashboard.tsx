@@ -48,6 +48,14 @@ interface DashboardProps {
     tron: string[];
     ton: string[];
   };
+  // Shared portfolio data from Dashboard Layout
+  sharedPortfolioData?: {
+    [walletAddress: string]: {
+      portfolio: any;
+      chains: any;
+      positionsChainsDistribution: any;
+    };
+  };
 }
 
 interface SelectedAsset {
@@ -64,7 +72,7 @@ interface SelectedAsset {
   icon: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets }) => {
+const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets, sharedPortfolioData }) => {
   const { data: session, status } = useSession();
   const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
@@ -114,11 +122,6 @@ useEffect(()=> {
             const data = await res.json();
             const tweets = data.data || [];
             
-            // Only log in development
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`📊 Fetched ${tweets.length} tweets for @${username}`);
-            }
-            
             return tweets;
           } catch (error) {
             console.error(`Error fetching tweets for ${username}:`, error);
@@ -128,11 +131,6 @@ useEffect(()=> {
       );
 
       setTimeout(() => {}, 1000); // Small delay to avoid rate limiting
-
-      // Only log in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(usernames.length / BATCH_SIZE)}`);
-      }
       
       const flattenedBatchResults = batchResults.flat();
       results.push(...flattenedBatchResults);
@@ -140,38 +138,16 @@ useEffect(()=> {
       // Update curatedTweets immediately after each batch for real-time UI updates
       setCuratedTweets(prev => {
         const newTweets = [...prev, ...flattenedBatchResults];
-        
-        // Only log in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Updated curatedTweets: ${newTweets.length} total tweets`);
-        }
-        
         return newTweets;
       });
-    }
-    
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🏁 Finished processing all batches. Total tweets: ${results.length}`);
     }
   }
   
   if(allElites.size > 0) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Starting to process ${allElites.size} elite users`);
-    }
     const usernames = Array.from(allElites);
     processInBatches(usernames);
   }
 }, [allElites]);
-
-  // Debug effect to monitor curatedTweets changes
-  useEffect(() => {
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔍 curatedTweets updated: ${curatedTweets.length} tweets`);
-    }
-  }, [curatedTweets]);
 
   // Background processing for elite curators on login (only once per session)
   useEffect(() => {
@@ -313,6 +289,7 @@ useEffect(()=> {
         connectedWallets={connectedWallets}
         onLogoCacheUpdate={handleLogoCacheUpdate}
         wallets={wallets}
+        sharedPortfolioData={sharedPortfolioData}
       />
     </div>
     <div className="col-span-12 md:col-span-5 flex flex-col">

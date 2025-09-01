@@ -110,16 +110,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [totalPriceChange, setTotalPriceChange] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loadingNetWorth, setLoadingNetWorth] = useState(true);
+  
+  // Shared portfolio data state (for OnChainActivities)
+  const [sharedPortfolioData, setSharedPortfolioData] = useState<{
+    [walletAddress: string]: {
+      portfolio: any;
+      chains: any;
+      positionsChainsDistribution: any;
+    };
+  }>({});
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
 
-  // Helper to fetch and sum balances for all wallets and calculate net worth price change
+  // Helper to fetch portfolio data from Zerion for all wallets and calculate net worth
   const fetchAndSumBalances = async () => {
     setLoadingNetWorth(true);
-    let total = 0;
-    let total24hAgo = 0;
+    let totalValue = 0;
+    let weightedPriceChange = 0;
     const allWallets = [
       ...wallets.eth.map(walletAddress => ({ addr: walletAddress, chain: 'eth' })),
       ...wallets.sol.map(walletAddress => ({ addr: walletAddress, chain: 'sol' })),
@@ -128,6 +137,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       ...wallets.ton.map(walletAddress => ({ addr: walletAddress, chain: 'ton' })),
     ];
     
+    const newSharedPortfolioData: { [walletAddress: string]: any } = {};
+    
     for (const { addr } of allWallets) {
       // Skip if addr is undefined or empty
       if (!addr || addr.trim() === '') {
@@ -135,48 +146,61 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       }
       
       try {
-        const res = await axios.get(`${API_BASE}/balances/address/${addr}`);
+        // Use Zerion portfolio endpoint to get total value and 24h change
+        const res = await axios.get(`${API_BASE}/balances/portfolio/${addr}`);
         const data = res.data as any;
-        if (data.totalBalance && data.totalBalance24hAgo) {
-          // Sum all chains for this wallet
-          const walletTotal = Object.values(data.totalBalance).reduce((a: number, b: any) => a + Number(b || 0), 0);
-          const walletTotal24hAgo = Object.values(data.totalBalance24hAgo).reduce((a: number, b: any) => a + Number(b || 0), 0);
-          total += walletTotal;
-          total24hAgo += walletTotal24hAgo;
-        } else {
+        if (data.data && data.data.totalValue !== undefined) {
+          const walletValue = data.data.totalValue;
+          totalValue += walletValue;
+          
+          // Store portfolio data for OnChainActivities
+          newSharedPortfolioData[addr] = {
+            portfolio: data.data,
+            chains: data.data.chains,
+            positionsChainsDistribution: data.data.positionsChainsDistribution
+          };
+          
+          // Calculate weighted price change (wallet value * relative change)
+          if (data.data.change24h && data.data.change24h.relative !== undefined) {
+            // relative is already a percentage (e.g., -1.229 for -122.9%)
+            weightedPriceChange += walletValue * data.data.change24h.relative;
+          }
         }
       } catch (error) {
+        console.error(`Error fetching portfolio for ${addr}:`, error);
       }
     }
     
-    setNetWorth(total);
-    // Calculate price change percentage
-    let priceChange = 0;
-    if (total24hAgo > 0) {
-      priceChange = ((total - total24hAgo) / total24hAgo) * 100;
+    // Update shared portfolio data
+    setSharedPortfolioData(newSharedPortfolioData);
+    
+    setNetWorth(totalValue);
+    
+    // Calculate weighted average price change using the formula: (Σ(Vi × ri)) / Σ(Vi)
+    let aggregatePriceChange = 0;
+    if (totalValue > 0) {
+      aggregatePriceChange = weightedPriceChange / totalValue; // Already in percentage
     }
-    setTotalPriceChange(priceChange);
+    setTotalPriceChange(aggregatePriceChange);
     setLoadingNetWorth(false);
   };
 
-  // Add this callback to handle instant balance fetch and net worth update
+  // Add this callback to handle instant portfolio fetch and net worth update
   const handleWalletAdded = async (addr: string, chain: string) => {
     // Skip if addr is undefined or empty
     if (!addr || addr.trim() === '') {
       return;
     }
     try {
-      // proxy for balance fetch
-      const res = await axios.get(`${API_BASE}/balances/address/${addr}`);
-      const balances = (res.data as any).balances;
-      let walletTotal = 0;
-      for (const chainKey in balances) {
-        for (const token of balances[chainKey]) {
-          walletTotal += Number(token.usd || 0);
-        }
+      // Use Zerion portfolio endpoint for instant net worth update
+      const res = await axios.get(`${API_BASE}/balances/portfolio/${addr}`);
+      const data = res.data as any;
+      if (data.data && data.data.totalValue !== undefined) {
+        setNetWorth(prev => prev + data.data.totalValue);
       }
-      setNetWorth(prev => prev + walletTotal);
-    } catch {}
+    } catch (error) {
+      console.error(`Error fetching portfolio for newly added wallet ${addr}:`, error);
+    }
   };
 
   // Fetch wallets from backend on mount and when user logs in
@@ -258,7 +282,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           refreshKey,
           loadingNetWorth,
           connectedWallets,
-          wallets
+          wallets,
+          sharedPortfolioData
         }}>
           <ToastProvider>
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />

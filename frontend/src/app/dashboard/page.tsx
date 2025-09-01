@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { DashboardContext } from './layout';
 
 export default function DashboardPage() {
-  const { netWorth, totalPriceChange, refreshKey, loadingNetWorth, connectedWallets, wallets } = useContext(DashboardContext);
+  const { netWorth, totalPriceChange, refreshKey, loadingNetWorth, connectedWallets, wallets, sharedPortfolioData } = useContext(DashboardContext);
   return (
     <Dashboard
       netWorth={netWorth}
@@ -15,6 +15,7 @@ export default function DashboardPage() {
       loadingNetWorth={loadingNetWorth}
       connectedWallets={connectedWallets}
       wallets={wallets}
+      sharedPortfolioData={sharedPortfolioData}
     />
   );
 }

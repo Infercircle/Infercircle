@@ -151,8 +151,8 @@ const IcoIdo = () => {
   }, [selectedFilter])
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
-      {/* Preloader overlay - only covers table area */}
-      <div className={`absolute top-[60px] left-0 right-0 bottom-0 flex items-center justify-center bg-[#181A20] rounded-b-2xl transition-opacity duration-500 z-20 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      {/* Preloader overlay - covers entire component */}
+      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-50 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -160,28 +160,14 @@ const IcoIdo = () => {
         </div>
       </div>
       <div className="flex items-center justify-between mb-2">
-        <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
+                <Link href="/dashboard/token-sales" className="flex items-center gap-2 text-[#A3A3A3] text-xs font-semibold cursor-pointer hover:text-gray-300 hover:underline transition-colors">
           <div className="text-base font-semibold text-white">ICO / IDO</div>
           <FiExternalLink />
         </Link>
-        <div className="flex items-center gap-3">
-          {/* Status Legend */}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-xs text-[#A3A3A3]">Active</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-xs text-[#A3A3A3]">Upcoming</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-            <span className="text-xs text-[#A3A3A3]">Past</span>
-          </div>
-          <div className="relative dropdown-container">
+        <div className="relative dropdown-container">
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="text-[#A3A3A3] text-xs bg-[#23262F] px-2 py-1 rounded-lg flex items-center gap-2 hover:bg-[#2A2E37] transition-colors"
+              className="text-[#A3A3A3] text-sm bg-transparent px-3 py-1 rounded-lg flex items-center gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
             >
               <div className={`w-2 h-2 rounded-full ${getStatusColors(selectedFilter).dot}`}></div>
               {selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)} 
@@ -189,7 +175,7 @@ const IcoIdo = () => {
             </button>
             
             {isDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-[#23262F] border border-[#3A3E47] rounded-lg shadow-lg z-10 min-w-[100px]">
+              <div className="absolute top-full right-0 mt-1 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded-lg shadow-lg z-50 min-w-[100px]">
                 {(['upcoming', 'active', 'past'] as const).map((option) => (
                   <button
                     key={option}
@@ -197,7 +183,7 @@ const IcoIdo = () => {
                       setSelectedFilter(option);
                       setIsDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[#2A2E37] transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#23262F] transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center gap-2 cursor-pointer ${
                       selectedFilter === option ? 'text-[#A259FF]' : 'text-[#A3A3A3]'
                     }`}
                   >
@@ -209,7 +195,6 @@ const IcoIdo = () => {
             )}
           </div>
         </div>
-      </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent">
         {!loading && (
           <table className="min-w-full text-xs text-left">
