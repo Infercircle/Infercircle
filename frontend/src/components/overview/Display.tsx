@@ -518,11 +518,16 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [rankRetryCount, selectedAsset?.symbol, API_BASE, getApiSymbol]);
 
   // Fetch chart data when chart view is active or filter changes (background processing)
+
   useEffect(() => {
     if (showPriceChart && chartAsset?.symbol) {
       const fetchChartData = async () => {
         setLoadingChart(true);
         setChartError(null);
+        // Clear both chart data types when starting a new fetch
+        setChartData(null);
+        setSentimentChartData(null);
+        
         try {
           if (currentChartType === 'sentiment') {
             // Fetch sentiment data
@@ -530,8 +535,11 @@ const Display: React.FC<DisplayProps> = React.memo(({
             if (res.ok) {
               const data = await res.json();
               console.log('Sentiment data fetched:', data);
-              setSentimentChartData({ sentimentData: data.data });
-              setChartData(null); // Clear price chart data
+              if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                setSentimentChartData({ sentimentData: data.data });
+              } else {
+                throw new Error("No sentiment data available for this time period");
+              }
             } else {
               throw new Error("Failed to fetch sentiment data - data might not be available yet");
             }
@@ -558,13 +566,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
             } else {
               setChartData(data);
             }
-            setSentimentChartData(null); // Clear sentiment chart data
           } else {
             throw new Error("Failed to fetch chart data");
           }
         } catch (error) {
           console.error("Error fetching chart data:", error);
-          setChartError("Failed to load chart data");
+          setChartError(error.message || "Failed to load chart data");
         } finally {
           setLoadingChart(false);
         }
