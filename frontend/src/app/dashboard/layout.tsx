@@ -51,7 +51,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (session && session.user) {
       const user = session.user as User;
-      if (user && !user.inviteAccepted) {
+      if (!user) {
         router.push("/");
       }
     } else if (status === "unauthenticated") {
@@ -76,7 +76,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if(user){
       getUserById(user.id).then((dbUser) => {
-        if (dbUser && dbUser.inviteAccepted) {
+        if (dbUser) {
           router.push('/');
         }
         setDbUser(dbUser);
@@ -249,7 +249,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       )}
       <div 
         className={`${((!user || !user.username || user.username.length < 0 || !user.email) 
-          || !(session && session.user && (session.user as User).inviteAccepted))  && addX == true
+          || !(session && session.user && (session.user as User)))  && addX == true
           ? "blur": ""}`}
       >
         <DashboardContext.Provider value={{

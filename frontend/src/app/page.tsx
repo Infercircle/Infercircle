@@ -1,6 +1,5 @@
 "use client";
 import Navbar from "@/components/Navbar";
-import { InviteCodeModal } from "@/components/InviteCodeModal";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { User } from "@prisma/client";
@@ -33,7 +32,7 @@ export default function Home() {
     if (session?.user && 'id' in session.user) {
       const fetchedUser = session.user as User;
       setUser(fetchedUser);
-      if (fetchedUser && fetchedUser.inviteAccepted) {
+      if (fetchedUser) {
         if(fetchedUser.username && fetchedUser.username.length >0) {
           router.push(`/dashboard`);
         } else {
@@ -78,11 +77,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#0a0a0a]">
         <Navbar showAuthButtons={true} showConnectWallet={false} showSearch={false} />
-        {(user && !user.inviteAccepted) ? (
-          <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
-            <InviteCodeModal inviteCode={inviteCode} setInviteCode={setInviteCode} addX={!user.email || !user.username} />
-          </div>
-        ):(
+        {(
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4">
             <Card className="w-full max-w-md bg-gray-800/50 border-gray-700 backdrop-blur-sm">
               <CardHeader className="text-center">
@@ -244,7 +239,7 @@ export default function Home() {
             {/* Additional Info */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
-                Need an invite code? Contact us on X:{" "}
+                Questions? Contact us on X:{" "}
                 <a href="https://twitter.com/infercircle" className="text-violet-400 hover:text-violet-300">
                   @infercircle
                 </a>

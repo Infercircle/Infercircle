@@ -93,7 +93,7 @@ const { data: session, status } = useSession();
             <>
               {(session && status === "authenticated")  ?
               (<Link href="/dashboard">
-                {(session.user as User).inviteAccepted && <Button variant="outline">Dashboard</Button>}
+                {(session.user as User) && <Button variant="outline">Dashboard</Button>}
               </Link>): (
                 <Link href="/auth/signin">
                 <Button variant="outline">Sign In</Button>
