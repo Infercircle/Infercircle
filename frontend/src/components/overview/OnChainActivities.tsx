@@ -368,7 +368,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           id: token.symbol,
           name: token.name,
           symbol: token.symbol,
-          image: '',
+          image: token.icon || '',
           blockchain: token.chain.toLowerCase(),
           address: '',
         }];
