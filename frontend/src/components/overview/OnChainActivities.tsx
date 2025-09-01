@@ -329,16 +329,16 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           // If sentiment data is missing, try to fetch it (but preserve Zerion icon)
           if(updatedToken.sentiment === undefined) {
             // Only fetch if we don't have a Zerion icon, to avoid overwriting it
-            if(!updatedToken.icon || updatedToken.icon === '') {
+            // if(!updatedToken.icon || updatedToken.icon === '') {
               fetchMissingSentimentData(updatedToken, totalScore);
-            } else {
-              // Remove from loading state if we have Zerion icon but no sentiment
-              setLoadingLogos(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(token.symbol.toLowerCase());
-                return newSet;
-              });
-            }
+            // } else {
+            //   // Remove from loading state if we have Zerion icon but no sentiment
+            //   setLoadingLogos(prev => {
+            //     const newSet = new Set(prev);
+            //     newSet.delete(token.symbol.toLowerCase());
+            //     return newSet;
+            //   });
+            // }
           } else {
             // Remove from loading state if we got sentiment data
             setLoadingLogos(prev => {
