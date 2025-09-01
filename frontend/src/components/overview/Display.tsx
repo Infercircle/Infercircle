@@ -269,7 +269,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
               if (response.ok) {
                 const data = await response.json();
-                console.log(`✅ Tweets received for "${query}" (batch ${i + 1}):`, data.data?.length || 0);
                 
                 if (data.data && Array.isArray(data.data) && data.data.length > 0) {
                   const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
