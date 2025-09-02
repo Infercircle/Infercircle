@@ -440,7 +440,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
         </div>
 
         {/* Bitcoin Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
+        {/* <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">Bitcoin wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingBtc(true)} aria-label="Add Bitcoin address">
@@ -503,10 +503,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
               </div>
             )}
           </div>
-        </div>
+        </div> */}
 
         {/* TRON Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
+        {/* <div className="border border-[#23272b] rounded-xl p-4 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">TRON wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingTron(true)} aria-label="Add TRON address">
@@ -569,10 +569,10 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
               </div>
             )}
           </div>
-        </div>
+        </div> */}
 
         {/* TON Wallet */}
-        <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
+        {/* <div className="border border-[#23272b] rounded-xl p-3 bg-[#181A20]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-gray-400 text-sm">TON wallet</span>
             <button className="ml-1 p-1 rounded hover:bg-[#23272b] cursor-pointer" onClick={() => setAddingTon(true)} aria-label="Add TON address">
@@ -635,7 +635,7 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
               </div>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
