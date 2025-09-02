@@ -579,8 +579,8 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           <table className="w-full text-sm text-left align-middle table-fixed">
             <thead className="sticky -top-px z-40 bg-[#181A20]">
               <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-                  <th className="py-2 px-2 font-medium text-left w-[200px] sticky -left-px bg-[#181A20] z-50">Asset</th>
-                  <th className="py-2 px-2 font-medium text-left w-[100px]">
+                  <th className="py-2 px-2 font-medium text-left w-[160px] sticky -left-px bg-[#181A20] z-50">Asset</th>
+                  <th className="py-2 px-2 font-medium text-left w-[140px]">
                     <div className="flex items-center gap-1">
                       Price
                       <Tippy
@@ -598,10 +598,10 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       </Tippy>
                     </div>
                   </th>
-                  <th className="py-2 px-2 font-medium text-left w-[150px]">
+                  <th className="py-2 px-2 font-medium text-left w-[130px]">
                       Balance
                   </th>
-                  <th className="py-2 px-2 font-medium text-left w-[100px]">
+                  <th className="py-2 px-2 font-medium text-left w-[90px]">
                     <div className="flex items-center gap-1">
                       Value
                       <Tippy
@@ -619,15 +619,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       </Tippy>
                     </div>
                   </th>
-                  <th className="py-2 px-2 font-medium text-left w-[100px]">Value</th>
-                  <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
-                  <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-                  <th className="py-2 px-2 font-medium text-center w-[150px]">Sentiment Score</th>
+                  <th className="py-2 px-2 font-medium text-center w-[90px]">Sentiment</th>
+                  <th className="py-2 px-2 font-medium text-center w-[140px]">Sentiment Score</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500 italic">Add a wallet to get started</td>
+                <td colSpan={4} className="py-8 text-center text-gray-500 italic">Add a wallet to get started</td>
               </tr>
             </tbody>
           </table>
@@ -758,49 +756,49 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         <table className="w-full text-sm text-left align-middle table-fixed">
           <thead className="sticky -top-px z-40 bg-[#181A20]">
             <tr className="text-[#A3A3A3] border-b border-[#23262F]">
-              <th className="py-2 px-2 font-medium text-left w-[180px] sticky -left-px bg-[#181A20] z-50">Asset</th>
-              <th className="py-2 px-2 font-medium text-left w-[110px]">
-                <div className="flex items-center gap-1">
-                  Price
-                  <Tippy
-                    content={
-                      <div className="text-xs">
-                        <div>Current token price in USD</div>
-                        <div className="text-[#A259FF]">Click to view price chart</div>
-                      </div>
-                    }
-                    placement="top"
-                    arrow={true}
-                    theme="custom"
-                  >
-                    <IoInformationCircle className="w-4 h-4 text-[#666]" />
-                  </Tippy>
-                </div>
-              </th>
-              <th className="py-2 px-2 font-medium text-left w-[150px]">
-                  Balance
-              </th>
-              <th className="py-2 px-2 font-medium text-left w-[100px]">
-                <div className="flex items-center gap-1">
-                  Value
-                  <Tippy
-                    content={
-                      <div className="text-xs">
-                        <div>Value of your current holdings</div>
-                        <div className="text-[#A259FF]">Click to view balance chart</div>
-                      </div>
-                    }
-                    placement="top"
-                    arrow={true}
-                    theme="custom"
-                  >
-                    <IoInformationCircle className="w-4 h-4 text-[#666]" />
-                  </Tippy>
-                </div>
-              </th>
-              <th className="py-2 px-2 font-medium text-center w-[80px]">Price</th>
-              <th className="py-2 px-2 font-medium text-center w-[80px]">Sentiment</th>
-              <th className="py-2 px-2 font-medium text-center w-[135px]">
+              <th className="py-2 px-2 font-medium text-left w-[160px] sticky -left-px bg-[#181A20] z-50">Asset</th>
+              <th className="py-2 px-2 font-medium text-left w-[160px]">
+                    <div className="flex items-center gap-1">
+                      Price
+                      <Tippy
+                        content={
+                          <div className="text-xs">
+                            <div>Current token price in USD with 24h change</div>
+                            <div className="text-[#A259FF]">Click to view price chart</div>
+                          </div>
+                        }
+                        placement="top"
+                        arrow={true}
+                        theme="custom"
+                      >
+                        <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                      </Tippy>
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 font-medium text-left w-[130px]">
+                      Balance
+                  </th>
+                  <th className="py-2 px-2 font-medium text-left w-[90px]">
+                    <div className="flex items-center gap-1">
+                      Value
+                      <Tippy
+                        content={
+                          <div className="text-xs">
+                            <div>Value of your current holdings</div>
+                            <div className="text-[#A259FF]">Click to view balance chart</div>
+                          </div>
+                        }
+                        placement="top"
+                        arrow={true}
+                        theme="custom"
+                      >
+                        <IoInformationCircle className="w-4 h-4 text-[#666]" />
+                      </Tippy>
+                    </div>
+                  </th>
+
+                  <th className="py-2 px-2 font-medium text-center w-[90px]">Sentiment</th>
+                  <th className="py-2 px-2 font-medium text-center w-[140px]">
                 <div className="flex items-center justify-center gap-1">
                   Sentiment Score
                   <Tippy
@@ -823,7 +821,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           <tbody>
             {filteredAssets.length === 0 && !loading ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500 italic">
+                <td colSpan={4} className="py-8 text-center text-gray-500 italic">
                   {hasValidWallets() ? "No assets found in your wallets" : "No wallets connected"}
                 </td>
               </tr>
@@ -834,51 +832,86 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                   className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition-colors duration-150 cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
                   onClick={() => handleAssetClick(asset)}
                 >
-                  <td className={`py-2 px-2 w-[200px] sticky -left-px z-20 transition-colors duration-150 ${
+                  <td className={`py-2 px-2 w-[160px] sticky -left-px z-20 transition-colors duration-150 ${
                     selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain 
                       ? 'bg-[#23262F]' 
                       : 'bg-[#181A20] group-hover:bg-[#23262F]'
                   }`}>
                     <div className="flex items-center gap-2 justify-start min-w-0">
-                    {loadingLogos.has(asset.symbol.toLowerCase()) ? (
-                      <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                        <div className="flex space-x-0.5">
-                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
-                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="relative flex-shrink-0">
+                        {loadingLogos.has(asset.symbol.toLowerCase()) ? (
+                          <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center">
+                            <div className="flex space-x-0.5">
+                              <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce"></div>
+                              <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                              <div className="w-0.5 h-0.5 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            </div>
+                          </div>
+                        ) : asset.icon && asset.icon.includes("https") ? (
+                          <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center">
+                            <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">{asset.symbol ? asset.symbol[0] : '?'}</span>
+                          </div>
+                        )}
+                        {/* Chain icon overlay */}
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-black border border-[#23272b] flex items-center justify-center">
+                          {(() => {
+                            // Try to find chain by exact name match first, then by partial match
+                            let selectedChainData = chainSummaries.find(c => c.chainName?.toLowerCase() === asset.chain.toLowerCase());
+                            if (!selectedChainData) {
+                              selectedChainData = chainSummaries.find(c => 
+                                c.chainName?.toLowerCase().includes(asset.chain.toLowerCase()) || 
+                                asset.chain.toLowerCase().includes(c.chainName?.toLowerCase() || '')
+                              );
+                            }
+                            return (
+                              <>
+                                {selectedChainData?.iconUrl && selectedChainData.iconUrl.includes("https") ? (
+                                  <img src={selectedChainData.iconUrl} alt={asset.chain} className="w-2.5 h-2.5 rounded-full object-contain" />
+                                ) : (
+                                  <span className="text-white text-[8px] font-bold">{asset.chain.charAt(0).toUpperCase()}</span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
-                    ) : asset.icon && asset.icon.includes("https") ? (
-                        <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                          <img src={asset.icon} alt={asset.symbol} className="w-6 h-6 rounded-full object-contain" />
-                        </div>
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-xs font-bold">{asset.symbol ? asset.symbol[0] : '?'}</span>
-                        </div>
-                      )}
                       <div className="min-w-0 flex-1">
                         <div className="text-white font-medium">{asset.name}</div>
-                        <div className="text-xs text-[#A3A3A3]">{asset.symbol} <span className="text-[#666]">({asset.chain})</span></div>
+                        <div className="text-xs text-[#A3A3A3]">{asset.symbol}</div>
                       </div>
                     </div>
                   </td>
                   <td 
-                    className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                    className={`py-2 px-2 w-[160px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                       activeChartType === 'price' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'text-[#A259FF]' 
                         : 'text-white'
                     }`}
                     onClick={(e) => handlePriceClick(asset, e)}
                   >
-                    {asset.price !== undefined ? `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}` : '--'}
+                    {asset.price !== undefined ? (
+                      <span className="flex items-baseline gap-1">
+                        <span className="text-base font-medium">
+                          ${Number(asset.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {asset.priceChange !== undefined && (
+                          <span className={`text-[10px] font-medium ${asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {asset.priceChange >= 0 ? '+' : ''}{Number(asset.priceChange).toFixed(2)}%
+                          </span>
+                        )}
+                      </span>
+                    ) : '--'}
                   </td>
-                  <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
+                  <td className="py-2 px-2 w-[130px] text-white text-left align-middle">
                     {asset.balance !== undefined && asset.symbol ? formatBalance(Number(asset.balance), asset.symbol) : '--'}
                   </td>
-                  <td className="py-2 px-2 w-[100px] text-white text-left align-middle">
+                  <td className="py-2 px-2 w-[90px] text-white text-left align-middle">
                     <div                         
-                      className={`py-2 px-2 w-[100px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                      className={`py-2 px-2 w-[90px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
                         activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                           ? 'text-[#A259FF]' 
                           : 'text-white'
@@ -887,18 +920,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                       {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
                     </div>
                   </td>
-                  <td className={`py-2 px-2 w-[80px] font-semibold text-center align-middle ${asset.priceChange !== undefined && asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    <div>
-                      {asset.priceChange !== undefined ? `${asset.priceChange >= 0 ? '+' : ''}${Number(asset.priceChange).toFixed(2)}%` : '--'}
-                    </div>
-                  </td>
-                  <td className={`py-2 px-2 w-[80px] font-semibold text-center align-middle ${asset.sentiment !== undefined && asset.sentiment > 0 ? 'text-green-400' : asset.sentiment !== undefined && asset.sentiment < 0 ? 'text-red-400' : ''}`}>
+
+                  <td className={`py-2 px-2 w-[90px] font-semibold text-center align-middle ${asset.sentiment !== undefined && asset.sentiment > 0 ? 'text-green-400' : asset.sentiment !== undefined && asset.sentiment < 0 ? 'text-red-400' : ''}`}>
                     <div>
                       {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
                     </div>
                   </td>
                   <td 
-                    className={`py-2 px-2 w-[120px] text-center align-middle cursor-pointer hover:opacity-80 transition-opacity ${
+                    className={`py-2 px-2 w-[140px] text-center align-middle cursor-pointer hover:opacity-80 transition-opacity ${
                       activeChartType === 'sentiment' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
                         ? 'opacity-80' 
                         : ''
