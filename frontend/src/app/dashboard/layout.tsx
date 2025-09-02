@@ -31,7 +31,8 @@ function SearchParamsHandler({ onAddXChange }: { onAddXChange: (addX: boolean) =
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
-  const contentMarginClass = collapsed ? "ml-14 md:ml-14" : "ml-0 md:ml-56";
+  const contentMarginClass = collapsed ? "ml-0 md:ml-14" : "ml-0 md:ml-56";
+
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
   const isOverviewPage = pathname === "/dashboard";
