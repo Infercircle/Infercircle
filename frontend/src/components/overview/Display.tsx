@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import dynamic from 'next/dynamic';
 import Tippy from '@tippyjs/react';
 import { IoFilter } from "react-icons/io5";
+import { Asset } from "./Dashboard";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
@@ -16,20 +17,6 @@ const Chart = dynamic(() => import('react-apexcharts'), {
     </div>
   </div>
 }) as any;
-
-interface SelectedAsset {
-  name: string;
-  symbol: string;
-  chain: string;
-  price: number;
-  balance: number;
-  value: number;
-  priceChange: number;
-  balanceChange?: number;
-  sentimentChange?: number;
-  sentiment?: number;
-  icon: string;
-}
 
 interface ChartData {
   prices: Array<{
@@ -127,11 +114,11 @@ const TweetSkeleton = () => (
 );
 
 interface DisplayProps {
-  selectedAsset?: SelectedAsset | null;
+  selectedAsset?: Asset | null;
   showPriceChart?: boolean;
-  chartAsset?: SelectedAsset | null;
+  chartAsset?: Asset | null;
   onCloseChart?: () => void;
-  chartType?: 'price' | 'balance' | 'sentiment';
+  chartType?: 'price' | 'balance' | 'sentiment' | 'combined';
   connectedWallets?: number;
   sharedLogoCache?: Record<string, string>;
   curatedTweets?: any[];
@@ -224,7 +211,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [sentimentChartData, setSentimentChartData] = useState<SentimentChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment'>(chartType as 'price' | 'balance' | 'sentiment');
+  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment' | 'combined'>(chartType as 'price' | 'balance' | 'sentiment' | 'combined');
   const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
   const [loadingLogo, setLoadingLogo] = useState(false);
   const [rank, setRank] = useState<number | null>(null);
@@ -254,7 +241,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
 
   // Function to get cache key for an asset
-  const getCacheKey = useCallback((asset: SelectedAsset): string => {
+  const getCacheKey = useCallback((asset: Asset): string => {
     return Buffer.from(`${asset.symbol.toLowerCase()}-${asset.name.toLowerCase()}-${asset.chain.toLowerCase()}`).toString('base64');
   }, []);
 
@@ -265,7 +252,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [TWEET_CACHE_DURATION]);
 
   // Function to load tweets from cache
-  const loadFromCache = useCallback((asset: SelectedAsset): boolean => {
+  const loadFromCache = useCallback((asset: Asset): boolean => {
     const cacheKey = getCacheKey(asset);
     const cacheEntry = tweetCache[cacheKey];
     
@@ -284,7 +271,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [tweetCache, getCacheKey, isCacheFresh]);
 
   // Function to save tweets to cache
-  const saveToCache = useCallback((asset: SelectedAsset, tweetsData: Tweet[]) => {
+  const saveToCache = useCallback((asset: Asset, tweetsData: Tweet[]) => {
     const cacheKey = getCacheKey(asset);
     const cacheEntry = {
       tweets: tweetsData,
@@ -319,7 +306,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
-    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment');
+    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment' | 'combined');
+    
+    // Set active filter to 1W when chart type is combined
+    if (chartType === 'combined') {
+      const oneWeekFilter = CHART_FILTERS.find(filter => filter.label === '1W');
+      if (oneWeekFilter) {
+        setActiveFilter(oneWeekFilter);
+      }
+    }
   }, [chartType]);
 
   // Simplified fetch tweets function
@@ -772,7 +767,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         try {
           if (currentChartType === 'sentiment') {
             // Fetch sentiment data
-            const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.name.toLowerCase()}?days=${activeFilter.days}`);
+            const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=${activeFilter.days}`);
             if (res.ok) {
               const data = await res.json();
               console.log('Sentiment data fetched:', data);
@@ -788,6 +783,39 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
               }
               throw new Error("Failed to fetch sentiment data - data might not be available yet");
+            }
+            return;
+          }
+          
+          if (currentChartType === 'combined') {
+            // Fetch both price and sentiment data for combined chart
+            const [priceRes, sentimentRes] = await Promise.all([
+              fetch(`${API_BASE}/tokens/chart?symbol=${chartAsset.symbol}&days=${activeFilter.days}`),
+              fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=${activeFilter.days}`)
+            ]);
+            
+            if (priceRes.ok && sentimentRes.ok) {
+              const [priceData, sentimentData] = await Promise.all([
+                priceRes.json(),
+                sentimentRes.json()
+              ]);
+              
+              console.log('Combined data fetched - Price:', priceData, 'Sentiment:', sentimentData);
+              
+              if (priceData && sentimentData.data && Array.isArray(sentimentData.data) && sentimentData.data.length >= 3) {
+                setChartData(priceData);
+                setSentimentChartData({ sentimentData: sentimentData.data });
+              } else {
+                throw new Error("Insufficient data for combined chart");
+              }
+            } else {
+              if (sentimentRes.status === 404) {
+                throw new Error("Not enough sentiment data for "+chartAsset.name.toLowerCase());
+              }
+              if(priceRes.status === 404){
+                throw new Error("Not enough price data for "+chartAsset.name.toLowerCase());
+              }
+              throw new Error("Failed to fetch combined chart data");
             }
             return;
           }
@@ -813,6 +841,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
               setChartData(data);
             }
           } else {
+            if(res.status === 404){
+              throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
+            }
             throw new Error("Failed to fetch chart data");
           }
         } catch (error) {
@@ -829,67 +860,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setTimeout(() => fetchChartData(), 100);
     }
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
-
-
-  // Fetch tweets for selected asset with batch optimization
-  // const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
-  //   if (!assetName) return;
-    
-  //   try {
-  //     const batchSize = 5;
-  //     const totalLimit = 10;
-  //     const batches = Math.ceil(totalLimit / batchSize);
-  //     const allTweets: Tweet[] = [];
-      
-  //     // Create chain-specific search queries
-  //     const searchQueries = generateChainSpecificQueries(assetName, chain);
-      
-  //     for (const query of searchQueries) {
-  //       for (let i = 0; i < batches; i++) {
-  //         const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
-          
-  //         const response = await fetch(`${API_BASE}/twitter/stream`, {
-  //           method: 'POST',
-  //           headers: { 'Content-Type': 'application/json' },
-  //           body: JSON.stringify({ 
-  //             query: query, 
-  //             limit: currentLimit, 
-  //             product: 'Latest',
-  //             offset: i * batchSize 
-  //           })
-  //         });
-
-  //         if (response.ok) {
-  //           const data = await response.json();
-  //           if (data.data && Array.isArray(data.data)) {
-  //             const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-  //               sentiment: tweet.sentiment || 'neutral',
-  //               avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-  //               name: tweet.name || 'Unknown',
-  //               handle: tweet.handle || '@unknown',
-  //               timestamp: formatRelativeTime(tweet.timestamp || new Date()),
-  //               followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-  //               tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-  //               text: tweet.text || ''
-  //             }));
-              
-  //             allTweets.push(...transformedTweets);
-  //           }
-  //         }
-          
-  //         if (i < batches - 1) {
-  //           await new Promise(resolve => setTimeout(resolve, 500));
-  //         }
-  //       }
-  //     }
-      
-  //     if (allTweets.length > 0) {
-  //       setTweetQueue(prev => [...prev, ...allTweets]);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching tweets:', error);
-  //   }
-  // }, [API_BASE]);
 
 
 
@@ -1075,9 +1045,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
           <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
             View Asset
           </button>
-          {/* <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
-            View Asset
-          </button> */}
         </div>
 
         {/* Price and change */}
@@ -1259,8 +1226,14 @@ const Display: React.FC<DisplayProps> = React.memo(({
           ) : (chartData && chartAsset) || (sentimentChartData && chartAsset) ? (
             <div className="h-full p-2 sm:p-4 relative overflow-hidden">
               {/* Chart Filter Tabs */}
+              {chartType === 'combined' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Price vs Social Sentiment of {chartAsset.symbol}</h2>}
+              {chartType === 'price' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Price Chart of {chartAsset.symbol}</h2>}
+              {chartType === 'balance' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Your Holding Value Chart of {chartAsset.symbol}</h2>}
               {currentChartType !== 'sentiment' && <div className="flex gap-1 sm:gap-2 mb-4 justify-end">
-                {CHART_FILTERS.map((filter) => (
+                {(currentChartType === 'combined' 
+                  ? CHART_FILTERS.filter(filter => filter.label === '1W')
+                  : CHART_FILTERS
+                ).map((filter) => (
                   <button
                     key={filter.label}
                     className={`px-2 sm:px-3 py-1.5 sm:py-1 rounded text-xs sm:text-xs font-semibold transition-colors ${activeFilter.label === filter.label ? 'bg-[#A259FF] text-white' : 'bg-[#23262F] text-[#A3A3A3] hover:bg-[#333]'}`}
@@ -1272,7 +1245,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
               </div>}
               <div className="h-full overflow-hidden">
                 {((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length >= 3) ||
-                  (currentChartType !== 'sentiment' && chartData?.prices && chartData.prices.length > 0)) ? (
+                  (currentChartType === 'combined' && chartData?.prices && sentimentChartData?.sentimentData && chartData.prices.length > 0 && sentimentChartData.sentimentData.length >= 3) ||
+                  (currentChartType !== 'sentiment' && currentChartType !== 'combined' && chartData?.prices && chartData.prices.length > 0)) ? (
                   currentChartType === 'sentiment' && sentimentChartData ? (
                     <div className="flex flex-col h-full">
                       <h2 className="text-white text-lg font-bold mb-6 text-center">Historical Sentiment Score of {chartAsset.name}</h2>
@@ -1376,6 +1350,181 @@ const Display: React.FC<DisplayProps> = React.memo(({
                         </div>
                       </div>
                     </div>
+                  ) : currentChartType === 'combined' && chartData && sentimentChartData ? (
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'line',
+                          background: 'transparent',
+                          toolbar: {
+                            show: true,
+                            tools: {
+                              download: false,
+                              selection: true,
+                              zoom: true,
+                              zoomin: true,
+                              zoomout: true,
+                              pan: true,
+                              reset: true
+                            },
+                            autoSelected: 'zoom'
+                          },
+                          zoom: {
+                            enabled: true,
+                            type: 'x',
+                            autoScaleYaxis: true
+                          },
+                          pan: {
+                            enabled: true,
+                            type: 'x'
+                          },
+                          animations: {
+                            enabled: true,
+                            speed: 800
+                          },
+                          height: '100%'
+                        },
+                        dataLabels: {
+                          enabled: false
+                        },
+                        xaxis: {
+                          type: 'datetime',
+                          labels: {
+                            show: true,
+                            style: {
+                              colors: '#A3A3A3',
+                              fontSize: '10px'
+                            },
+                            datetimeFormatter: {
+                              year: 'yyyy',
+                              month: 'MMM \'yy',
+                              day: 'dd MMM',
+                              hour: 'HH:mm'
+                            }
+                          },
+                          axisBorder: {
+                            color: '#23262F'
+                          },
+                          axisTicks: {
+                            color: '#23262F'
+                          }
+                        },
+                        yaxis: [
+                          {
+                            seriesName: 'Price',
+                            title: {
+                              text: 'Price (USD)',
+                              style: {
+                                color: '#A259FF'
+                              }
+                            },
+                            labels: {
+                              style: {
+                                colors: '#A259FF',
+                                fontSize: '10px'
+                              },
+                              formatter: function(val: number) {
+                                return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                              }
+                            },
+                            axisBorder: {
+                              show: true,
+                              color: '#A259FF'
+                            }
+                          },
+                          {
+                            seriesName: 'Sentiment',
+                            opposite: true,
+                            title: {
+                              text: 'Sentiment Score',
+                              style: {
+                                color: '#F59E0B'
+                              }
+                            },
+                            labels: {
+                              style: {
+                                colors: '#F59E0B',
+                                fontSize: '10px'
+                              },
+                              formatter: function(val: number) {
+                                return val.toFixed(1);
+                              }
+                            },
+                            axisBorder: {
+                              show: true,
+                              color: '#F59E0B'
+                            },
+                            min: 0,
+                            max: 100
+                          }
+                        ],
+                        stroke: {
+                          curve: 'smooth',
+                          width: [3, 2],
+                          colors: ['#A259FF', '#F59E0B']
+                        },
+                        grid: {
+                          borderColor: '#23262F',
+                          strokeDashArray: 3
+                        },
+                        theme: {
+                          mode: 'dark'
+                        },
+                        tooltip: {
+                          enabled: true,
+                          theme: 'dark',
+                          style: {
+                            fontSize: '12px'
+                          },
+                          x: {
+                            format: 'dd MMM yyyy HH:mm'
+                          },
+                          y: [
+                            {
+                              formatter: function(val: number) {
+                                return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                              }
+                            },
+                            {
+                              formatter: function(val: number) {
+                                return val.toFixed(1) + ' pts';
+                              }
+                            }
+                          ]
+                        },
+                        legend: {
+                          show: true,
+                          position: 'top',
+                          horizontalAlign: 'center',
+                          labels: {
+                            colors: '#A3A3A3'
+                          },
+                          markers: {
+                            fillColors: ['#A259FF', '#F59E0B']
+                          }
+                        }
+                      }}
+                      series={[
+                        {
+                          name: 'Price',
+                          type: 'area',
+                          data: chartData.prices.map((item: { timestamp: number; price: number }) => [
+                            item.timestamp, 
+                            item.price
+                          ])
+                        },
+                        {
+                          name: 'Sentiment',
+                          type: 'line',
+                          data: sentimentChartData.sentimentData.map((item: { date: string; sentimentScore: number }) => [
+                            new Date(item.date).getTime(), 
+                            item.sentimentScore
+                          ])
+                        }
+                      ]}
+                      type="line"
+                      height="100%"
+                    />
                   ) : chartData ? (
                     <Chart
                       options={{
