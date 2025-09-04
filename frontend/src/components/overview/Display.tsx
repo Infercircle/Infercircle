@@ -790,8 +790,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
           if (currentChartType === 'combined') {
             // Fetch both price and sentiment data for combined chart
             const [priceRes, sentimentRes] = await Promise.all([
-              fetch(`${API_BASE}/tokens/chart?symbol=${chartAsset.symbol}&days=${activeFilter.days}`),
-              fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=${activeFilter.days}`)
+              fetch(`${API_BASE}/tokens/chart?symbol=${chartAsset.symbol}&days=7`),
+              fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=7`)
             ]);
             
             if (priceRes.ok && sentimentRes.ok) {
@@ -1472,25 +1472,49 @@ const Display: React.FC<DisplayProps> = React.memo(({
                         },
                         tooltip: {
                           enabled: true,
+                          shared: true,
+                          intersect: false,
                           theme: 'dark',
                           style: {
                             fontSize: '12px'
                           },
-                          x: {
-                            format: 'dd MMM yyyy HH:mm'
-                          },
-                          y: [
-                            {
-                              formatter: function(val: number) {
-                                return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 4 });
-                              }
-                            },
-                            {
-                              formatter: function(val: number) {
-                                return val.toFixed(1) + ' pts';
-                              }
-                            }
-                          ]
+                          custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+                            const date = new Date(w.globals.seriesX[seriesIndex][dataPointIndex]);
+                            const formattedDate = date.toLocaleDateString('en-US', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) + ', ' + date.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: true 
+                            });
+                            
+                            let tooltipContent = `<div class="bg-gray-800 border border-gray-600 rounded p-3 text-white">
+                              <div class="text-xs text-gray-300 mb-2">${formattedDate}</div>`;
+                            
+                            // Always show both series if they have data at this point
+                            // if (series[0] && series[0][dataPointIndex] !== undefined) {
+                              const priceValue = series[0][dataPointIndex];
+                              tooltipContent += `<div class="flex items-center mb-1">
+                                <div class="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                                <span class="text-xs">Price:</span>
+                                <span class="ml-2 font-semibold">$${priceValue.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                              </div>`;
+                            // }
+                            
+                            // if (series[1] && series[1][dataPointIndex] !== undefined) {
+                              const sentimentValue = series[1][dataPointIndex];
+                              tooltipContent += `<div class="flex items-center">
+                                <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                                <span class="text-xs">Sentiment:</span>
+                                <span class="ml-2 font-semibold">${sentimentValue.toFixed(1)}pts</span>
+                              </div>`;
+                            // }
+                            
+                            tooltipContent += '</div>';
+                            return tooltipContent;
+                          }
                         },
                         legend: {
                           show: true,
