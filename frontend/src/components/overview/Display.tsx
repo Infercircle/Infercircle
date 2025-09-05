@@ -1048,9 +1048,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
       {/* Main Content */}
-      <div className={`transition-opacity duration-500 overflow-y-auto ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`transition-opacity duration-500 flex flex-col flex-1 min-h-0 ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         {/* Fixed Header Section */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0 flex-shrink-0">
           <div className="flex items-center gap-3">
             {displayLogo ? (
               <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
@@ -1081,7 +1081,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         </div>
 
         {/* Price and change */}
-        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4 flex-shrink-0">
           <div className="text-2xl font-bold text-white">
             {displayPrice !== null ? `$${displayPrice.toLocaleString(undefined, { maximumFractionDigits: 9 })}` : "N/A"}
           </div>
@@ -1095,8 +1095,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
         </div>
 
         {/* Social Sentiment */}
-        <div className="mt-2">
-          <div className="flex items-center justify-between mb-2">
+        <div className="mt-2 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <div className="text-[#A259FF] font-semibold">Social Sentiment</div>
             <div className="flex items-center gap-2">
               {/* Cache indicator with tweet count */}
@@ -1137,7 +1137,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
           </div>
 
           {showTweetSkeleton ? (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-full">
               {Array.from({ length: 3 }).map((_, idx) => (
                 <TweetSkeleton key={`skeleton-${idx}`} />
               ))}
@@ -1196,7 +1196,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
             </div>
           ) : (
             // Tweet list view
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-full">
               {displayTweets.map((tweet: Tweet) => (
                 <div
                   key={tweet.id}

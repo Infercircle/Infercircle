@@ -483,7 +483,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
           <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
                   <div className="flex items-center gap-2 justify-center lg:justify-start">
@@ -635,7 +635,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
               {/* Preloader overlay - covers entire component */}
         <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
@@ -830,6 +830,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 <tr 
                   key={asset.symbol + asset.chain + idx} 
                   className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition-colors duration-150 cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
+                  style={{ minHeight: '60px', maxHeight: '60px' }}
                   onClick={() => handleAssetClick(asset)}
                 >
                   <td className={`py-2 px-2 w-[160px] sticky -left-px z-20 transition-colors duration-150 ${
