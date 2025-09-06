@@ -58,7 +58,7 @@ interface DashboardProps {
   };
 }
 
-interface SelectedAsset {
+export interface Asset {
   name: string;
   symbol: string;
   chain: string;
@@ -69,15 +69,17 @@ interface SelectedAsset {
   balanceChange?: number;
   sentimentChange?: number;
   sentiment?: number;
+  mindShare?: number;
   icon: string;
+  id: string;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets, sharedPortfolioData }) => {
   const { data: session, status } = useSession();
-  const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [showPriceChart, setShowPriceChart] = useState(false);
-  const [chartAsset, setChartAsset] = useState<SelectedAsset | null>(null);
-  const [chartType, setChartType] = useState<'price' | 'balance' | 'sentiment'>('price');
+  const [chartAsset, setChartAsset] = useState<Asset | null>(null);
+  const [chartType, setChartType] = useState<'price' | 'balance' | 'sentiment' | 'combined'>('price');
   const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
   const [allElites, setAllElites] = useState<Set<string>>(new Set());
   const [curatedTweets, setCuratedTweets] = useState<any[]>([]);
@@ -226,33 +228,39 @@ useEffect(()=> {
 
   const user = session.user;
 
-  const handleAssetSelect = (asset: SelectedAsset) => {
+  const handleAssetSelect = (asset: Asset) => {
     setSelectedAsset(asset);
     setShowPriceChart(false); // Close chart view when selecting new asset
   };
 
-  const handleFirstAssetLoad = (firstAsset: SelectedAsset) => {
+  const handleFirstAssetLoad = (firstAsset: Asset) => {
     // Only set the first asset if no asset is currently selected
     if (!selectedAsset) {
       setSelectedAsset(firstAsset);
     }
   };
 
-  const handlePriceChartRequest = (asset: SelectedAsset) => {
+  const handlePriceChartRequest = (asset: Asset) => {
     setChartAsset(asset);
     setChartType('price');
     setShowPriceChart(true);
   };
 
-  const handleBalanceChartRequest = (asset: SelectedAsset) => {
+  const handleBalanceChartRequest = (asset: Asset) => {
     setChartAsset(asset);
     setChartType('balance');
     setShowPriceChart(true);
   };
 
-  const handleSentimentChartRequest = (asset: SelectedAsset) => {
+  const handleSentimentChartRequest = (asset: Asset) => {
     setChartAsset(asset);
     setChartType('sentiment');
+    setShowPriceChart(true);
+  };
+
+  const handleCombinedChartRequest = (asset: Asset) => {
+    setChartAsset(asset);
+    setChartType('combined');
     setShowPriceChart(true);
   };
 
@@ -284,6 +292,7 @@ useEffect(()=> {
         onPriceChartRequest={handlePriceChartRequest}
         onBalanceChartRequest={handleBalanceChartRequest}
         onSentimentChartRequest={handleSentimentChartRequest}
+        onCombinedChartRequest={handleCombinedChartRequest}
         activeChartType={showPriceChart ? chartType : null}
         activeChartAsset={showPriceChart ? chartAsset : null}
         connectedWallets={connectedWallets}
