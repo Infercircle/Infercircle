@@ -1531,7 +1531,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
                       series={[
                         {
                           name: 'Price',
-                          type: 'area',
+                          type: 'line',
                           data: chartData.prices.map((item: { timestamp: number; price: number }) => [
                             item.timestamp, 
                             item.price
