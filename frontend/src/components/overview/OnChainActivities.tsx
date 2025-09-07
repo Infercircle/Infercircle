@@ -6,6 +6,7 @@ import { getAllAssetSentimentScores } from "@/actions/queries";
 import { IoInformationCircle } from "react-icons/io5";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
+import { Asset } from "./Dashboard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -43,20 +44,6 @@ function getMindShareColor(mindShare: number): string {
   }
 }
 
-interface Asset {
-  name: string;
-  symbol: string;
-  chain: string;
-  price: number;
-  balance: number;
-  value: number;
-  priceChange: number;
-  sentimentChange?: number;
-  sentiment?: number;
-  mindShare?: number;
-  icon: string;
-}
-
 interface OnChainActivitiesProps { 
   refreshKey?: number; 
   onAssetSelect?: (asset: Asset) => void;
@@ -65,7 +52,8 @@ interface OnChainActivitiesProps {
   onPriceChartRequest?: (asset: Asset) => void;
   onBalanceChartRequest?: (asset: Asset) => void;
   onSentimentChartRequest?: (asset: Asset) => void;
-  activeChartType?: 'price' | 'balance' | 'sentiment' | null;
+  onCombinedChartRequest?: (asset: Asset) => void;
+  activeChartType?: 'price' | 'balance' | 'sentiment' | 'combined' | null;
   activeChartAsset?: Asset | null;
   connectedWallets?: number;
   onLogoCacheUpdate?: (logoCache: Record<string, string>) => void;
@@ -91,7 +79,7 @@ type AssetSentimentArrayMap = {
   [symbol: string]: AssetSentiMentScore[];
 };
 
-const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets, sharedPortfolioData }) => {
+const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, onCombinedChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets, sharedPortfolioData }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -260,6 +248,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                     sentiment: undefined, // Will be populated by our sentiment API
                     mindShare: undefined, // Will be populated by our sentiment API
                     icon: asset.iconUrl || '',
+                    id: asset.name,
                   };
                   
 
@@ -346,6 +335,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 }
                 updatedToken.sentiment = parseFloat(asset.sentiment);
                 updatedToken.mindShare = parseFloat(((SentimentIndex*50) + 50).toFixed(2));
+                updatedToken.id = asset.id;
                 break;
               }
             }
@@ -519,9 +509,16 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     }
   };
 
+  const handleCombinedClick = (asset: Asset, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row selection
+    if (onCombinedChartRequest) {
+      onCombinedChartRequest(asset);
+    }
+  };
+
   if (connectedWallets === 0) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
           <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
                   <div className="flex items-center gap-2 justify-center lg:justify-start">
@@ -673,7 +670,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   }
 
   return (
-    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
               {/* Preloader overlay - covers entire component */}
         <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading && !hasPersistedData ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
@@ -835,7 +832,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                     </div>
                   </th>
 
-                  <th className="py-2 px-2 font-medium text-center w-[90px]">Sentiment</th>
+                  <th className="py-2 px-2 font-medium text-center w-[90px]">Sentiment%</th>
                   <th className="py-2 px-2 font-medium text-center w-[140px]">
                 <div className="flex items-center justify-center gap-1">
                   Sentiment Score
@@ -868,6 +865,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                 <tr 
                   key={asset.symbol + asset.chain + idx} 
                   className={`border-b border-[#23262F] last:border-0 hover:bg-[#23262F] transition-colors duration-150 cursor-pointer group ${selectedAsset?.symbol === asset.symbol && selectedAsset?.chain === asset.chain ? 'bg-[#23262F]' : ''}`}
+                  style={{ minHeight: '60px', maxHeight: '60px' }}
                   onClick={() => handleAssetClick(asset)}
                 >
                   <td className={`py-2 px-2 w-[160px] sticky -left-px z-20 transition-colors duration-150 ${
@@ -931,38 +929,46 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                     }`}
                     onClick={(e) => handlePriceClick(asset, e)}
                   >
-                    {asset.price !== undefined ? (
-                      <span className="flex items-baseline gap-1">
-                        <span className="text-base font-medium">
-                          ${Number(asset.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        {asset.priceChange !== undefined && (
-                          <span className={`text-[10px] font-medium ${asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {asset.priceChange >= 0 ? '+' : ''}{Number(asset.priceChange).toFixed(2)}%
+                    <Tippy content="Click to view the Price chart" theme="dark" placement="top">
+                      <div>
+                        {asset.price !== undefined ? (
+                          <span className="flex items-baseline gap-1">
+                            <span className="text-base font-medium">
+                              ${Number(asset.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            {asset.priceChange !== undefined && (
+                              <span className={`text-[10px] font-medium ${asset.priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {asset.priceChange >= 0 ? '+' : ''}{Number(asset.priceChange).toFixed(2)}%
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </span>
-                    ) : '--'}
+                        ) : '--'}
+                      </div>
+                    </Tippy>
                   </td>
                   <td className="py-2 px-2 w-[130px] text-white text-left align-middle">
                     {asset.balance !== undefined && asset.symbol ? formatBalance(Number(asset.balance), asset.symbol) : '--'}
                   </td>
                   <td className="py-2 px-2 w-[90px] text-white text-left align-middle">
-                    <div                         
-                      className={`py-2 px-2 w-[90px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
-                        activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
-                          ? 'text-[#A259FF]' 
-                          : 'text-white'
-                      }`}
-                      onClick={(e) => handleBalanceClick(asset, e)}>
-                      {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
-                    </div>
+                    <Tippy content="Click to view the your balance value chart" theme="dark" placement="top">
+                      <div                         
+                        className={`py-2 px-2 w-[90px] text-left align-middle cursor-pointer hover:text-[#A259FF] transition-colors ${
+                          activeChartType === 'balance' && activeChartAsset?.symbol === asset.symbol && activeChartAsset?.chain === asset.chain 
+                            ? 'text-[#A259FF]' 
+                            : 'text-white'
+                        }`}
+                        onClick={(e) => handleBalanceClick(asset, e)}>
+                        {asset.value !== undefined ? `$${Number(asset.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
+                      </div>
+                    </Tippy>
                   </td>
 
                   <td className={`py-2 px-2 w-[90px] font-semibold text-center align-middle ${asset.sentiment !== undefined && asset.sentiment > 0 ? 'text-green-400' : asset.sentiment !== undefined && asset.sentiment < 0 ? 'text-red-400' : ''}`}>
-                    <div>
-                      {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
-                    </div>
+                    <Tippy content="Click to view combined Price and Sentiment chart" theme="dark" placement="top">
+                      <div onClick={(e) => handleCombinedClick(asset, e)} className="cursor-pointer hover:opacity-80 transition-opacity">
+                        {asset.sentiment !== undefined ? `${asset.sentiment >= 0 ? '+' : ''}${asset.sentiment.toFixed(2)}%` : '--'}
+                      </div>
+                    </Tippy>
                   </td>
                   <td 
                     className={`py-2 px-2 w-[140px] text-center align-middle cursor-pointer hover:opacity-80 transition-opacity ${
@@ -972,24 +978,26 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
                     }`}
                     onClick={(e) => handleSentimentClick(asset, e)}
                   >
-                    {/* Placeholder for circular progress */}
-                    <div className="relative w-10 h-10 flex items-center justify-center m-auto">
-                      <svg className="absolute top-0 left-0" width="40" height="40">
-                        <circle cx="20" cy="20" r="18" stroke="#23262F" strokeWidth="4" fill="none" />
-                        <circle
-                          cx="20"
-                          cy="20"
-                          r="18"
-                          stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
-                          strokeWidth="4"
-                          fill="none"
-                          strokeDasharray={113}
-                          strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare/100) * 113 : 113}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <span className="text-white text-[10px] font-bold z-0">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}` : '--'}</span>
-                    </div>
+                    <Tippy content="Click to view historical sentiment data" theme="dark" placement="top">
+                      {/* Placeholder for circular progress */}
+                      <div className="relative w-10 h-10 flex items-center justify-center m-auto">
+                        <svg className="absolute top-0 left-0" width="40" height="40">
+                          <circle cx="20" cy="20" r="18" stroke="#23262F" strokeWidth="4" fill="none" />
+                          <circle
+                            cx="20"
+                            cy="20"
+                            r="18"
+                            stroke={asset.mindShare !== undefined ? getMindShareColor(asset.mindShare) : '#666666'}
+                            strokeWidth="4"
+                            fill="none"
+                            strokeDasharray={113}
+                            strokeDashoffset={asset.mindShare !== undefined ? 113 - (asset.mindShare/100) * 113 : 113}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="text-white text-[10px] font-bold z-0">{asset.mindShare !== undefined ? `${asset.mindShare.toFixed(1)}` : '--'}</span>
+                      </div>
+                    </Tippy>
                   </td>
                 </tr>
               ))

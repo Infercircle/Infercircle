@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import dynamic from 'next/dynamic';
 import Tippy from '@tippyjs/react';
 import { IoFilter } from "react-icons/io5";
+import { Asset } from "./Dashboard";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
@@ -16,20 +17,6 @@ const Chart = dynamic(() => import('react-apexcharts'), {
     </div>
   </div>
 }) as any;
-
-interface SelectedAsset {
-  name: string;
-  symbol: string;
-  chain: string;
-  price: number;
-  balance: number;
-  value: number;
-  priceChange: number;
-  balanceChange?: number;
-  sentimentChange?: number;
-  sentiment?: number;
-  icon: string;
-}
 
 interface ChartData {
   prices: Array<{
@@ -127,11 +114,11 @@ const TweetSkeleton = () => (
 );
 
 interface DisplayProps {
-  selectedAsset?: SelectedAsset | null;
+  selectedAsset?: Asset | null;
   showPriceChart?: boolean;
-  chartAsset?: SelectedAsset | null;
+  chartAsset?: Asset | null;
   onCloseChart?: () => void;
-  chartType?: 'price' | 'balance' | 'sentiment';
+  chartType?: 'price' | 'balance' | 'sentiment' | 'combined';
   connectedWallets?: number;
   sharedLogoCache?: Record<string, string>;
   curatedTweets?: any[];
@@ -224,7 +211,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [sentimentChartData, setSentimentChartData] = useState<SentimentChartData | null>(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment'>(chartType as 'price' | 'balance' | 'sentiment');
+  const [currentChartType, setCurrentChartType] = useState<'price' | 'balance' | 'sentiment' | 'combined'>(chartType as 'price' | 'balance' | 'sentiment' | 'combined');
   const [localLogoCache, setLocalLogoCache] = useState<Record<string, string>>({});
   const [loadingLogo, setLoadingLogo] = useState(false);
   const [rank, setRank] = useState<number | null>(null);
@@ -284,7 +271,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
 
   // Function to get cache key for an asset
-  const getCacheKey = useCallback((asset: SelectedAsset): string => {
+  const getCacheKey = useCallback((asset: Asset): string => {
     return Buffer.from(`${asset.symbol.toLowerCase()}-${asset.name.toLowerCase()}-${asset.chain.toLowerCase()}`).toString('base64');
   }, []);
 
@@ -295,7 +282,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [TWEET_CACHE_DURATION]);
 
   // Function to load tweets from cache
-  const loadFromCache = useCallback((asset: SelectedAsset): boolean => {
+  const loadFromCache = useCallback((asset: Asset): boolean => {
     const cacheKey = getCacheKey(asset);
     const cacheEntry = tweetCache[cacheKey];
     
@@ -314,7 +301,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   }, [tweetCache, getCacheKey, isCacheFresh]);
 
   // Function to save tweets to cache
-  const saveToCache = useCallback((asset: SelectedAsset, tweetsData: Tweet[]) => {
+  const saveToCache = useCallback((asset: Asset, tweetsData: Tweet[]) => {
     const cacheKey = getCacheKey(asset);
     const cacheEntry = {
       tweets: tweetsData,
@@ -349,7 +336,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Update currentChartType when chartType prop changes
   useEffect(() => {
-    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment');
+    setCurrentChartType(chartType as 'price' | 'balance' | 'sentiment' | 'combined');
+    
+    // Set active filter to 1W when chart type is combined
+    if (chartType === 'combined') {
+      const oneWeekFilter = CHART_FILTERS.find(filter => filter.label === '1W');
+      if (oneWeekFilter) {
+        setActiveFilter(oneWeekFilter);
+      }
+    }
   }, [chartType]);
 
   // Simplified fetch tweets function
@@ -802,7 +797,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         try {
           if (currentChartType === 'sentiment') {
             // Fetch sentiment data
-            const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.name.toLowerCase()}?days=${activeFilter.days}`);
+            const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=${activeFilter.days}`);
             if (res.ok) {
               const data = await res.json();
               console.log('Sentiment data fetched:', data);
@@ -818,6 +813,39 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
               }
               throw new Error("Failed to fetch sentiment data - data might not be available yet");
+            }
+            return;
+          }
+          
+          if (currentChartType === 'combined') {
+            // Fetch both price and sentiment data for combined chart
+            const [priceRes, sentimentRes] = await Promise.all([
+              fetch(`${API_BASE}/tokens/chart?symbol=${chartAsset.symbol}&days=7`),
+              fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=7`)
+            ]);
+            
+            if (priceRes.ok && sentimentRes.ok) {
+              const [priceData, sentimentData] = await Promise.all([
+                priceRes.json(),
+                sentimentRes.json()
+              ]);
+              
+              console.log('Combined data fetched - Price:', priceData, 'Sentiment:', sentimentData);
+              
+              if (priceData && sentimentData.data && Array.isArray(sentimentData.data) && sentimentData.data.length >= 3) {
+                setChartData(priceData);
+                setSentimentChartData({ sentimentData: sentimentData.data });
+              } else {
+                throw new Error("Insufficient data for combined chart");
+              }
+            } else {
+              if (sentimentRes.status === 404) {
+                throw new Error("Not enough sentiment data for "+chartAsset.name.toLowerCase());
+              }
+              if(priceRes.status === 404){
+                throw new Error("Not enough price data for "+chartAsset.name.toLowerCase());
+              }
+              throw new Error("Failed to fetch combined chart data");
             }
             return;
           }
@@ -843,6 +871,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
               setChartData(data);
             }
           } else {
+            if(res.status === 404){
+              throw new Error("Not enough data for "+chartAsset.name.toLowerCase());
+            }
             throw new Error("Failed to fetch chart data");
           }
         } catch (error) {
@@ -859,67 +890,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setTimeout(() => fetchChartData(), 100);
     }
   }, [showPriceChart, chartAsset?.symbol, chartAsset?.balance, API_BASE, activeFilter, currentChartType]);
-
-
-  // Fetch tweets for selected asset with batch optimization
-  // const fetchTweets = useCallback(async (assetName: string, chain?: string) => {
-  //   if (!assetName) return;
-    
-  //   try {
-  //     const batchSize = 5;
-  //     const totalLimit = 10;
-  //     const batches = Math.ceil(totalLimit / batchSize);
-  //     const allTweets: Tweet[] = [];
-      
-  //     // Create chain-specific search queries
-  //     const searchQueries = generateChainSpecificQueries(assetName, chain);
-      
-  //     for (const query of searchQueries) {
-  //       for (let i = 0; i < batches; i++) {
-  //         const currentLimit = Math.min(batchSize, totalLimit - (i * batchSize));
-          
-  //         const response = await fetch(`${API_BASE}/twitter/stream`, {
-  //           method: 'POST',
-  //           headers: { 'Content-Type': 'application/json' },
-  //           body: JSON.stringify({ 
-  //             query: query, 
-  //             limit: currentLimit, 
-  //             product: 'Latest',
-  //             offset: i * batchSize 
-  //           })
-  //         });
-
-  //         if (response.ok) {
-  //           const data = await response.json();
-  //           if (data.data && Array.isArray(data.data)) {
-  //             const transformedTweets: Tweet[] = data.data.map((tweet: any) => ({
-  //               sentiment: tweet.sentiment || 'neutral',
-  //               avatar: tweet.avatar || 'https://randomuser.me/api/portraits/men/1.jpg',
-  //               name: tweet.name || 'Unknown',
-  //               handle: tweet.handle || '@unknown',
-  //               timestamp: formatRelativeTime(tweet.timestamp || new Date()),
-  //               followers: tweet.followers ? `${(tweet.followers / 1000).toFixed(1)}K` : '0',
-  //               tweetUrl: tweet.tweetUrl || 'https://twitter.com',
-  //               text: tweet.text || ''
-  //             }));
-              
-  //             allTweets.push(...transformedTweets);
-  //           }
-  //         }
-          
-  //         if (i < batches - 1) {
-  //           await new Promise(resolve => setTimeout(resolve, 500));
-  //         }
-  //       }
-  //     }
-      
-  //     if (allTweets.length > 0) {
-  //       setTweetQueue(prev => [...prev, ...allTweets]);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching tweets:', error);
-  //   }
-  // }, [API_BASE]);
 
 
 
@@ -1078,9 +1048,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
       {/* Main Content */}
-      <div className={`transition-opacity duration-500 overflow-y-auto ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`transition-opacity duration-500 flex flex-col flex-1 min-h-0 ${showPriceChart ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         {/* Fixed Header Section */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-2 lg:gap-0 flex-shrink-0">
           <div className="flex items-center gap-3">
             {displayLogo ? (
               <img src={displayLogo} alt={displaySymbol} width={32} height={32} className="rounded-full" />
@@ -1105,13 +1075,10 @@ const Display: React.FC<DisplayProps> = React.memo(({
           <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
             View Asset
           </button>
-          {/* <button className="text-[#A3A3A3] cursor-pointer text-xs bg-[#23262F] px-3 py-1 rounded-lg mt-2 sm:mt-0" onClick={() => {}}>
-            View Asset
-          </button> */}
         </div>
 
         {/* Price and change */}
-        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 mb-4 flex-shrink-0">
           <div className="text-2xl font-bold text-white">
             {displayPrice !== null ? `$${displayPrice.toLocaleString(undefined, { maximumFractionDigits: 9 })}` : "N/A"}
           </div>
@@ -1125,8 +1092,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
         </div>
 
         {/* Social Sentiment */}
-        <div className="mt-2">
-          <div className="flex items-center justify-between mb-2">
+        <div className="mt-2 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <div className="text-[#A259FF] font-semibold">Social Sentiment</div>
             <div className="flex items-center gap-2">
               {/* Cache indicator with tweet count */}
@@ -1167,7 +1134,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
           </div>
 
           {showTweetSkeleton ? (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-full">
               {Array.from({ length: 3 }).map((_, idx) => (
                 <TweetSkeleton key={`skeleton-${idx}`} />
               ))}
@@ -1226,7 +1193,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
             </div>
           ) : (
             // Tweet list view
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-full">
               {displayTweets.map((tweet: Tweet) => (
                 <div
                   key={tweet.id}
@@ -1289,8 +1256,14 @@ const Display: React.FC<DisplayProps> = React.memo(({
           ) : (chartData && chartAsset) || (sentimentChartData && chartAsset) ? (
             <div className="h-full p-2 sm:p-4 relative overflow-hidden">
               {/* Chart Filter Tabs */}
+              {chartType === 'combined' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Price vs Social Sentiment of {chartAsset.symbol}</h2>}
+              {chartType === 'price' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Price Chart of {chartAsset.symbol}</h2>}
+              {chartType === 'balance' && <h2 className="absolute text-purple-400 text-lg font-bold text-center">Your Holding Value Chart of {chartAsset.symbol}</h2>}
               {currentChartType !== 'sentiment' && <div className="flex gap-1 sm:gap-2 mb-4 justify-end">
-                {CHART_FILTERS.map((filter) => (
+                {(currentChartType === 'combined' 
+                  ? CHART_FILTERS.filter(filter => filter.label === '1W')
+                  : CHART_FILTERS
+                ).map((filter) => (
                   <button
                     key={filter.label}
                     className={`px-2 sm:px-3 py-1.5 sm:py-1 rounded text-xs sm:text-xs font-semibold transition-colors ${activeFilter.label === filter.label ? 'bg-[#A259FF] text-white' : 'bg-[#23262F] text-[#A3A3A3] hover:bg-[#333]'}`}
@@ -1302,7 +1275,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
               </div>}
               <div className="h-full overflow-hidden">
                 {((currentChartType === 'sentiment' && sentimentChartData?.sentimentData && sentimentChartData.sentimentData.length >= 3) ||
-                  (currentChartType !== 'sentiment' && chartData?.prices && chartData.prices.length > 0)) ? (
+                  (currentChartType === 'combined' && chartData?.prices && sentimentChartData?.sentimentData && chartData.prices.length > 0 && sentimentChartData.sentimentData.length >= 3) ||
+                  (currentChartType !== 'sentiment' && currentChartType !== 'combined' && chartData?.prices && chartData.prices.length > 0)) ? (
                   currentChartType === 'sentiment' && sentimentChartData ? (
                     <div className="flex flex-col h-full">
                       <h2 className="text-white text-lg font-bold mb-6 text-center">Historical Sentiment Score of {chartAsset.name}</h2>
@@ -1406,6 +1380,205 @@ const Display: React.FC<DisplayProps> = React.memo(({
                         </div>
                       </div>
                     </div>
+                  ) : currentChartType === 'combined' && chartData && sentimentChartData ? (
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'line',
+                          background: 'transparent',
+                          toolbar: {
+                            show: true,
+                            tools: {
+                              download: false,
+                              selection: true,
+                              zoom: true,
+                              zoomin: true,
+                              zoomout: true,
+                              pan: true,
+                              reset: true
+                            },
+                            autoSelected: 'zoom'
+                          },
+                          zoom: {
+                            enabled: true,
+                            type: 'x',
+                            autoScaleYaxis: true
+                          },
+                          pan: {
+                            enabled: true,
+                            type: 'x'
+                          },
+                          animations: {
+                            enabled: true,
+                            speed: 800
+                          },
+                          height: '100%'
+                        },
+                        dataLabels: {
+                          enabled: false
+                        },
+                        xaxis: {
+                          type: 'datetime',
+                          labels: {
+                            show: true,
+                            style: {
+                              colors: '#A3A3A3',
+                              fontSize: '10px'
+                            },
+                            datetimeFormatter: {
+                              year: 'yyyy',
+                              month: 'MMM \'yy',
+                              day: 'dd MMM',
+                              hour: 'HH:mm'
+                            }
+                          },
+                          axisBorder: {
+                            color: '#23262F'
+                          },
+                          axisTicks: {
+                            color: '#23262F'
+                          }
+                        },
+                        yaxis: [
+                          {
+                            seriesName: 'Price',
+                            title: {
+                              text: 'Price (USD)',
+                              style: {
+                                color: '#A259FF'
+                              }
+                            },
+                            labels: {
+                              style: {
+                                colors: '#A259FF',
+                                fontSize: '10px'
+                              },
+                              formatter: function(val: number) {
+                                return '$' + val.toLocaleString(undefined, { maximumFractionDigits: 4 });
+                              }
+                            },
+                            axisBorder: {
+                              show: true,
+                              color: '#A259FF'
+                            }
+                          },
+                          {
+                            seriesName: 'Sentiment',
+                            opposite: true,
+                            title: {
+                              text: 'Sentiment Score',
+                              style: {
+                                color: '#F59E0B'
+                              }
+                            },
+                            labels: {
+                              style: {
+                                colors: '#F59E0B',
+                                fontSize: '10px'
+                              },
+                              formatter: function(val: number) {
+                                return val.toFixed(1);
+                              }
+                            },
+                            axisBorder: {
+                              show: true,
+                              color: '#F59E0B'
+                            },
+                            min: 0,
+                            max: 100
+                          }
+                        ],
+                        stroke: {
+                          curve: 'smooth',
+                          width: [3, 2],
+                          colors: ['#A259FF', '#F59E0B']
+                        },
+                        grid: {
+                          borderColor: '#23262F',
+                          strokeDashArray: 3
+                        },
+                        theme: {
+                          mode: 'dark'
+                        },
+                        tooltip: {
+                          enabled: true,
+                          shared: true,
+                          intersect: false,
+                          theme: 'dark',
+                          style: {
+                            fontSize: '12px'
+                          },
+                          custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+                            const date = new Date(w.globals.seriesX[seriesIndex][dataPointIndex]);
+                            const formattedDate = date.toLocaleDateString('en-US', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) + ', ' + date.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: true 
+                            });
+                            
+                            let tooltipContent = `<div class="bg-gray-800 border border-gray-600 rounded p-3 text-white">
+                              <div class="text-xs text-gray-300 mb-2">${formattedDate}</div>`;
+                            
+                            // Always show both series if they have data at this point
+                            // if (series[0] && series[0][dataPointIndex] !== undefined) {
+                              const priceValue = series[0][dataPointIndex];
+                              tooltipContent += `<div class="flex items-center mb-1">
+                                <div class="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                                <span class="text-xs">Price:</span>
+                                <span class="ml-2 font-semibold">$${priceValue.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                              </div>`;
+                            // }
+                            
+                            // if (series[1] && series[1][dataPointIndex] !== undefined) {
+                              const sentimentValue = series[1][dataPointIndex];
+                              tooltipContent += `<div class="flex items-center">
+                                <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                                <span class="text-xs">Sentiment:</span>
+                                <span class="ml-2 font-semibold">${sentimentValue.toFixed(1)}pts</span>
+                              </div>`;
+                            // }
+                            
+                            tooltipContent += '</div>';
+                            return tooltipContent;
+                          }
+                        },
+                        legend: {
+                          show: true,
+                          position: 'top',
+                          horizontalAlign: 'center',
+                          labels: {
+                            colors: '#A3A3A3'
+                          },
+                          markers: {
+                            fillColors: ['#A259FF', '#F59E0B']
+                          }
+                        }
+                      }}
+                      series={[
+                        {
+                          name: 'Price',
+                          type: 'line',
+                          data: chartData.prices.map((item: { timestamp: number; price: number }) => [
+                            item.timestamp, 
+                            item.price
+                          ])
+                        },
+                        {
+                          name: 'Sentiment',
+                          type: 'line',
+                          data: sentimentChartData.sentimentData.map((item: { date: string; sentimentScore: number }) => [
+                            new Date(item.date).getTime(), 
+                            item.sentimentScore
+                          ])
+                        }
+                      ]}
+                      type="line"
+                      height="100%"
+                    />
                   ) : chartData ? (
                     <Chart
                       options={{
