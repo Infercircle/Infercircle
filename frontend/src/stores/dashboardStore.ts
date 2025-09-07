@@ -61,7 +61,7 @@ interface DashboardState {
   selectedAsset: Asset | null;
   showPriceChart: boolean;
   chartAsset: Asset | null;
-  chartType: 'price' | 'balance' | 'sentiment' | 'combined' | null;
+  chartType: 'price' | 'balance' | 'sentiment' | 'combined';
   
   // Logo cache
   sharedLogoCache: Record<string, string>;
@@ -87,7 +87,7 @@ interface DashboardState {
   setSelectedAsset: (asset: Asset | null) => void;
   setShowPriceChart: (show: boolean) => void;
   setChartAsset: (asset: Asset | null) => void;
-  setChartType: (type: 'price' | 'balance' | 'sentiment' | 'combined' | null) => void;
+  setChartType: (type: 'price' | 'balance' | 'sentiment' | 'combined') => void;
   updateLogoCache: (logos: Record<string, string>) => void;
   setAllElites: (elites: Set<string>) => void;
   setCuratedTweets: (tweets: any[]) => void;
