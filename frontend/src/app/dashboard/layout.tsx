@@ -14,6 +14,7 @@ import { AddXModal } from "@/components/AddXModal";
 import { useRouter } from "next/navigation";
 import { getUserById } from "@/actions/queries";
 import { User } from "@prisma/client";
+import { useDashboardStore } from "@/stores/dashboardStore";
 
 export const DashboardContext = createContext<any>(null);
 
@@ -45,6 +46,26 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [addX, setAddX] = useState<boolean>(false);
   const [dbUser, setDbUser] = useState<User | null>(user);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Use Zustand store instead of local state
+  const {
+    netWorth,
+    totalPriceChange,
+    loadingNetWorth,
+    wallets,
+    walletsLoaded,
+    connectedWallets,
+    sharedPortfolioData,
+    refreshKey,
+    setNetWorth,
+    setTotalPriceChange,
+    setLoadingNetWorth,
+    setWallets,
+    setWalletsLoaded,
+    setSharedPortfolioData,
+    incrementRefreshKey,
+    resetDashboardState
+  } = useDashboardStore();
   
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -84,42 +105,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       });
     }
   },[user]);
+  
   // Wallet modal state
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const openWalletModal = () => setWalletModalOpen(true);
   const closeWalletModal = () => setWalletModalOpen(false);
-  // Wallets state (object for eth and sol)
-  const [wallets, setWallets] = useState<{
-    eth: string[];
-    sol: string[];
-    btc: string[];
-    tron: string[];
-    ton: string[];
-  }>({ eth: [], sol: [], btc: [], tron: [], ton: [] });
-  const [walletsLoaded, setWalletsLoaded] = useState(false);
-  // Compute connectedWallets directly from wallets
-  const connectedWallets =
-    wallets.eth.length +
-    wallets.sol.length +
-    wallets.btc.length +
-    wallets.tron.length +
-    wallets.ton.length;
-  const shouldShowFocusEffect = isOverviewPage && walletsLoaded && connectedWallets === 0 && status === "authenticated";
-  // Net worth state
-  const [netWorth, setNetWorth] = useState(0);
-  // Total price change state
-  const [totalPriceChange, setTotalPriceChange] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [loadingNetWorth, setLoadingNetWorth] = useState(true);
   
-  // Shared portfolio data state (for OnChainActivities)
-  const [sharedPortfolioData, setSharedPortfolioData] = useState<{
-    [walletAddress: string]: {
-      portfolio: any;
-      chains: any;
-      positionsChainsDistribution: any;
-    };
-  }>({});
+  const shouldShowFocusEffect = isOverviewPage && walletsLoaded && connectedWallets === 0 && status === "authenticated";
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -197,7 +189,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       const res = await axios.get(`${API_BASE}/balances/portfolio/${addr}`);
       const data = res.data as any;
       if (data.data && data.data.totalValue !== undefined) {
-        setNetWorth(prev => prev + data.data.totalValue);
+        setNetWorth(netWorth + data.data.totalValue);
       }
     } catch (error) {
       console.error(`Error fetching portfolio for newly added wallet ${addr}:`, error);
@@ -246,6 +238,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       refreshWallets();
     } else if (status === "unauthenticated") {
       setWalletsLoaded(true); // Set to true for unauthenticated users
+      resetDashboardState(); // Clear dashboard state when user logs out
     }
     // eslint-disable-next-line
   }, [twitterId, status, user?.id]);
@@ -311,10 +304,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 btc={wallets.btc}
                 tron={wallets.tron}
                 ton={wallets.ton}
-                setWallets={setWallets}
+                setWallets={setWallets as any}
                 onWalletAdded={handleWalletAdded}
                 refreshWallets={refreshWallets}
-                onWalletsChanged={() => setRefreshKey(k => k + 1)}
+                onWalletsChanged={incrementRefreshKey}
               />
             </Modal>
             

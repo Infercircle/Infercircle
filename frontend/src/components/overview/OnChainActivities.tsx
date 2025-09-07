@@ -103,8 +103,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [totalScore, setTotalScore] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [loadingLogos, setLoadingLogos] = useState<Set<string>>(new Set());
-      const [selectedChain, setSelectedChain] = useState<string>('all');
-    const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [selectedChain, setSelectedChain] = useState<string>('all');
+  const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [hasPersistedData, setHasPersistedData] = useState(false);
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
@@ -156,6 +157,30 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       setFilteredAssets([]);
       setLoading(false);
       return;
+    }
+
+    // Check for cached data first
+    const sessionKey = `dashboard_assets_${twitterId}`;
+    const persistedData = sessionStorage.getItem(sessionKey);
+    
+    if (persistedData) {
+      try {
+        const { assets: cachedAssets, chainSummaries: cachedChainSummaries, timestamp } = JSON.parse(persistedData);
+        // Check if data is still fresh (less than 5 minutes old)
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          setAssets(cachedAssets);
+          setChainSummaries(cachedChainSummaries);
+          setHasPersistedData(true);
+          setLoading(false);
+          
+          if (cachedAssets.length > 0 && onFirstAssetLoad) {
+            onFirstAssetLoad(cachedAssets[0]);
+          }
+          return; // Skip API call
+        }
+      } catch (error) {
+        console.error('Error loading persisted OnChainActivities data:', error);
+      }
     }
 
     let retryInterval: NodeJS.Timeout | null = null;
@@ -422,6 +447,19 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     // eslint-disable-next-line
   }, [twitterId, refreshKey, wallets, sharedPortfolioData]);
 
+  // Save assets to session storage when they change
+  useEffect(() => {
+    if (assets.length > 0 && twitterId) {
+      const sessionKey = `dashboard_assets_${twitterId}`;
+      const dataToStore = {
+        assets,
+        chainSummaries,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+    }
+  }, [assets, chainSummaries, twitterId]);
+
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
     setAssets(prevAssets => prevAssets.map(asset => {
@@ -637,7 +675,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-[500px] flex flex-col relative">
               {/* Preloader overlay - covers entire component */}
-        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading && !hasPersistedData ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>

@@ -252,6 +252,36 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const MAX_CACHE_ENTRIES = 10; // Limit cache size
   const MAX_TWEET_MAP_SIZE = 200; // Limit tweet map size
 
+  // Load tweet cache from session storage on mount
+  useEffect(() => {
+    const sessionKey = 'display_tweet_cache';
+    const persistedCache = sessionStorage.getItem(sessionKey);
+    
+    if (persistedCache) {
+      try {
+        const { cache: cachedData, timestamp } = JSON.parse(persistedCache);
+        // Check if cache is still fresh (less than 5 minutes old)
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          setTweetCache(cachedData);
+        }
+      } catch (error) {
+        console.error('Error loading persisted tweet cache:', error);
+      }
+    }
+  }, []);
+
+  // Save tweet cache to session storage when it changes
+  useEffect(() => {
+    if (Object.keys(tweetCache).length > 0) {
+      const sessionKey = 'display_tweet_cache';
+      const dataToStore = {
+        cache: tweetCache,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+    }
+  }, [tweetCache]);
+
 
   // Function to get cache key for an asset
   const getCacheKey = useCallback((asset: SelectedAsset): string => {

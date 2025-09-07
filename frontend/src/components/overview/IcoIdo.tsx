@@ -25,6 +25,7 @@ const IcoIdo = () => {
   const [selectedFilter, setSelectedFilter] = useState<'upcoming' | 'active' | 'past'>('upcoming');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasPersistedData, setHasPersistedData] = useState(false);
 
   // Function to get status color classes
   const getStatusColors = (filterType: string) => {
@@ -132,27 +133,61 @@ const IcoIdo = () => {
   }, [isDropdownOpen]);
 
   useEffect(() => {
-    // Simulate fetching data from an API
+    // Check for cached data first
+    const sessionKey = `ico_ido_data_${selectedFilter}`;
+    const persistedData = sessionStorage.getItem(sessionKey);
+    
+    if (persistedData) {
+      try {
+        const { data: cachedData, timestamp } = JSON.parse(persistedData);
+        // Check if data is still fresh (less than 10 minutes old)
+        if (Date.now() - timestamp < 10 * 60 * 1000) {
+          setIcoIdoData(cachedData);
+          setHasPersistedData(true);
+          setLoading(false);
+          return; // Skip API call
+        }
+      } catch (error) {
+        console.error('Error loading persisted ICO/IDO data:', error);
+      }
+    }
+
+    // Fetch data from API if no valid cache
     const fetchIcoIdoData = async() => {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/${selectedFilter}`,{
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
-      // console.log(data);
+      setHasPersistedData(false);
+      
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/${selectedFilter}`,{
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await response.json();
 
-      setIcoIdoData(data.data);
-      setLoading(false);
+        setIcoIdoData(data.data);
+        
+        // Save to session storage
+        const dataToStore = {
+          data: data.data,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+        
+      } catch (error) {
+        console.error('Error fetching ICO/IDO data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
+    
     fetchIcoIdoData();
   }, [selectedFilter])
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full h-full flex flex-col min-h-[180px] max-h-80">
       {/* Preloader overlay - covers entire component */}
-      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-50 ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-50 ${loading && !hasPersistedData ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
