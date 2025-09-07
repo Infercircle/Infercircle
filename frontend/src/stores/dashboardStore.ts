@@ -1,3 +1,4 @@
+import { Asset } from '@/components/overview/Dashboard';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -28,21 +29,6 @@ const getCachedLogos = (): Record<string, string> => {
   }
 };
 
-// Types for the store
-interface SelectedAsset {
-  name: string;
-  symbol: string;
-  chain: string;
-  price: number;
-  balance: number;
-  value: number;
-  priceChange: number;
-  balanceChange?: number;
-  sentimentChange?: number;
-  sentiment?: number;
-  icon: string;
-}
-
 interface WalletData {
   eth: string[];
   sol: string[];
@@ -72,10 +58,10 @@ interface DashboardState {
   sharedPortfolioData: SharedPortfolioData;
   
   // UI state for dashboard
-  selectedAsset: SelectedAsset | null;
+  selectedAsset: Asset | null;
   showPriceChart: boolean;
-  chartAsset: SelectedAsset | null;
-  chartType: 'price' | 'balance' | 'sentiment';
+  chartAsset: Asset | null;
+  chartType: 'price' | 'balance' | 'sentiment' | 'combined' | null;
   
   // Logo cache
   sharedLogoCache: Record<string, string>;
@@ -98,10 +84,10 @@ interface DashboardState {
   setWallets: (wallets: WalletData) => void;
   setWalletsLoaded: (loaded: boolean) => void;
   setSharedPortfolioData: (data: SharedPortfolioData) => void;
-  setSelectedAsset: (asset: SelectedAsset | null) => void;
+  setSelectedAsset: (asset: Asset | null) => void;
   setShowPriceChart: (show: boolean) => void;
-  setChartAsset: (asset: SelectedAsset | null) => void;
-  setChartType: (type: 'price' | 'balance' | 'sentiment') => void;
+  setChartAsset: (asset: Asset | null) => void;
+  setChartType: (type: 'price' | 'balance' | 'sentiment' | 'combined' | null) => void;
   updateLogoCache: (logos: Record<string, string>) => void;
   setAllElites: (elites: Set<string>) => void;
   setCuratedTweets: (tweets: any[]) => void;
