@@ -76,7 +76,7 @@ export default function Home() {
   if (session) {
     return (
       <div className="min-h-screen bg-[#0a0a0a]">
-        <Navbar showAuthButtons={true} showConnectWallet={false} showSearch={false} />
+        <Navbar showAuthButtons={true} showConnectWallet={false} />
         {(
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4">
             <Card className="w-full max-w-md bg-gray-800/50 border-gray-700 backdrop-blur-sm">
@@ -111,7 +111,7 @@ export default function Home() {
   // Modern split-screen landing page for unauthenticated users
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      <Navbar showAuthButtons={false} showConnectWallet={false} showSearch={false} />
+      <Navbar showAuthButtons={false} showConnectWallet={false} />
       
       {/* Split Screen Layout */}
       <div className="flex min-h-[calc(100vh-80px)]">
