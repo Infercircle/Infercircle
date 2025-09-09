@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { getUserById } from "@/actions/queries";
 import { User } from "@prisma/client";
 import { useDashboardStore } from "@/stores/dashboardStore";
+import { useWebWorkers } from "@/hooks/useWebWorkers";
 
 export const DashboardContext = createContext<any>(null);
 
@@ -66,6 +67,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     incrementRefreshKey,
     resetDashboardState
   } = useDashboardStore();
+  
+  // Initialize Web Workers for background data fetching
+  const { startPortfolioSync, isInitialized } = useWebWorkers();
   
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -253,6 +257,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
     // eslint-disable-next-line
   }, [wallets, refreshKey]);
+
+  // Start Web Workers background sync when wallets are loaded and workers are initialized
+  React.useEffect(() => {
+    if (isInitialized && walletsLoaded && connectedWallets > 0 && twitterId) {
+      // Convert wallets to format expected by Web Worker
+      const allWalletAddresses = [
+        ...wallets.eth,
+        ...wallets.sol,
+        ...wallets.btc,
+        ...wallets.tron,
+        ...wallets.ton
+      ].filter(addr => addr && addr.trim() !== '');
+
+      if (allWalletAddresses.length > 0) {
+        console.log('🚀 Starting Web Workers background sync with', allWalletAddresses.length, 'wallets');
+        startPortfolioSync(allWalletAddresses);
+      }
+    }
+  }, [isInitialized, walletsLoaded, connectedWallets, twitterId, wallets, startPortfolioSync]);
 
 
   return (

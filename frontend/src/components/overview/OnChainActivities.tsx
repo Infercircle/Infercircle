@@ -7,6 +7,7 @@ import { IoInformationCircle } from "react-icons/io5";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 import { Asset } from "./Dashboard";
+import { useWebWorkers } from "@/hooks/useWebWorkers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -95,6 +96,39 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
   const [hasPersistedData, setHasPersistedData] = useState(false);
 
+  // Initialize Web Workers
+  const { startPortfolioSync, isInitialized } = useWebWorkers();
+
+  // Listen for Web Worker portfolio updates
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const handlePortfolioUpdate = () => {
+      // Check if fresh data is available in session storage
+      try {
+        const cached = sessionStorage.getItem('portfolio_cache');
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          // Always use fresh data from Web Worker
+          console.log('🔄 OnChainActivities: Loading fresh portfolio data from Web Worker');
+          setHasPersistedData(true);
+          setLoading(false);
+          // Process the fresh data...
+          // This will be handled by the regular useEffect when portfolio data updates
+        }
+      } catch (error) {
+        console.error('Error loading Web Worker portfolio update:', error);
+      }
+    };
+
+    // Listen for storage events (when Web Worker updates session storage)
+    window.addEventListener('storage', handlePortfolioUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handlePortfolioUpdate);
+    };
+  }, [isInitialized]);
+
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
   // Chain summaries from Zerion portfolio data
@@ -153,19 +187,33 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     
     if (persistedData) {
       try {
-        const { assets: cachedAssets, chainSummaries: cachedChainSummaries, timestamp } = JSON.parse(persistedData);
-        // Check if data is still fresh (less than 5 minutes old)
-        if (Date.now() - timestamp < 5 * 60 * 1000) {
-          setAssets(cachedAssets);
-          setChainSummaries(cachedChainSummaries);
-          setHasPersistedData(true);
-          setLoading(false);
-          
-          if (cachedAssets.length > 0 && onFirstAssetLoad) {
-            onFirstAssetLoad(cachedAssets[0]);
-          }
-          return; // Skip API call
+        const { assets: cachedAssets, chainSummaries: cachedChainSummaries } = JSON.parse(persistedData);
+        // Always use cached data since Web Workers keep it fresh in background
+        setAssets(cachedAssets);
+        setChainSummaries(cachedChainSummaries);
+        setHasPersistedData(true);
+        setLoading(false);
+        
+        if (cachedAssets.length > 0 && onFirstAssetLoad) {
+          onFirstAssetLoad(cachedAssets[0]);
         }
+        
+        // Start background sync with Web Workers to keep data fresh
+        if (isInitialized) {
+          const allWalletAddresses = [
+            ...wallets.eth,
+            ...wallets.sol,
+            ...wallets.btc,
+            ...wallets.tron,
+            ...wallets.ton
+          ].filter(addr => addr && addr.trim() !== '');
+          
+          if (allWalletAddresses.length > 0) {
+            startPortfolioSync(allWalletAddresses);
+          }
+        }
+        
+        return; // Skip API call since we have cached data
       } catch (error) {
         console.error('Error loading persisted OnChainActivities data:', error);
       }
@@ -431,11 +479,26 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
     fetchBalances();
     
+    // Start background portfolio sync with Web Workers after initial load
+    if (isInitialized) {
+      const allWalletAddresses = [
+        ...wallets.eth,
+        ...wallets.sol,
+        ...wallets.btc,
+        ...wallets.tron,
+        ...wallets.ton
+      ].filter(addr => addr && addr.trim() !== '');
+      
+      if (allWalletAddresses.length > 0) {
+        startPortfolioSync(allWalletAddresses);
+      }
+    }
+    
     return () => {
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
-  }, [twitterId, refreshKey, wallets, sharedPortfolioData]);
+  }, [twitterId, refreshKey, wallets, sharedPortfolioData, isInitialized, startPortfolioSync]);
 
   // Save assets to session storage when they change
   useEffect(() => {
@@ -481,6 +544,37 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isChainDropdownOpen]);
+
+  // Listen for portfolio updates from Web Worker
+  useEffect(() => {
+    const handlePortfolioUpdate = () => {
+      // Web Worker has updated portfolio data, reload from session storage
+      const cached = sessionStorage.getItem('portfolio_cache');
+      if (cached && twitterId) {
+        console.log('🔄 Portfolio data updated by Web Worker, refreshing assets...');
+        try {
+          // Check if we have fresh asset data from Web Worker
+          const sessionKey = `dashboard_assets_${twitterId}`;
+          const assetData = sessionStorage.getItem(sessionKey);
+          if (assetData) {
+            const { assets: cachedAssets, chainSummaries: cachedChainSummaries } = JSON.parse(assetData);
+            setAssets(cachedAssets);
+            setChainSummaries(cachedChainSummaries);
+            setHasPersistedData(true);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('Error refreshing assets from Web Worker update:', error);
+        }
+      }
+    };
+
+    window.addEventListener('portfolio-updated', handlePortfolioUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolio-updated', handlePortfolioUpdate);
+    };
+  }, [twitterId, wallets]);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {

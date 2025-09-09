@@ -139,14 +139,12 @@ const IcoIdo = () => {
     
     if (persistedData) {
       try {
-        const { data: cachedData, timestamp } = JSON.parse(persistedData);
-        // Check if data is still fresh (less than 10 minutes old)
-        if (Date.now() - timestamp < 10 * 60 * 1000) {
-          setIcoIdoData(cachedData);
-          setHasPersistedData(true);
-          setLoading(false);
-          return; // Skip API call
-        }
+        const { data: cachedData } = JSON.parse(persistedData);
+        // Always use cached data for instant loading
+        setIcoIdoData(cachedData);
+        setHasPersistedData(true);
+        setLoading(false);
+        return; // Skip API call
       } catch (error) {
         console.error('Error loading persisted ICO/IDO data:', error);
       }
