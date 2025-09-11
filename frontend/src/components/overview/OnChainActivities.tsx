@@ -99,36 +99,6 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   // Initialize Web Workers
   const { startPortfolioSync, isInitialized } = useWebWorkers();
 
-  // Listen for Web Worker portfolio updates
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const handlePortfolioUpdate = () => {
-      // Check if fresh data is available in session storage
-      try {
-        const cached = sessionStorage.getItem('portfolio_cache');
-        if (cached) {
-          const { data } = JSON.parse(cached);
-          // Always use fresh data from Web Worker
-          console.log('🔄 OnChainActivities: Loading fresh portfolio data from Web Worker');
-          setHasPersistedData(true);
-          setLoading(false);
-          // Process the fresh data...
-          // This will be handled by the regular useEffect when portfolio data updates
-        }
-      } catch (error) {
-        console.error('Error loading Web Worker portfolio update:', error);
-      }
-    };
-
-    // Listen for storage events (when Web Worker updates session storage)
-    window.addEventListener('storage', handlePortfolioUpdate);
-    
-    return () => {
-      window.removeEventListener('storage', handlePortfolioUpdate);
-    };
-  }, [isInitialized]);
-
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
   // Chain summaries from Zerion portfolio data
@@ -547,34 +517,48 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   // Listen for portfolio updates from Web Worker
   useEffect(() => {
-    const handlePortfolioUpdate = () => {
-      // Web Worker has updated portfolio data, reload from session storage
-      const cached = sessionStorage.getItem('portfolio_cache');
-      if (cached && twitterId) {
-        console.log('🔄 Portfolio data updated by Web Worker, refreshing assets...');
+    const handlePortfolioUpdate = (event: Event) => {
+      // Web Worker has updated price data, merge with existing assets
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.assets) {
+        console.log('🔄 Portfolio prices updated by Web Worker, updating existing assets...');
         try {
-          // Check if we have fresh asset data from Web Worker
-          const sessionKey = `dashboard_assets_${twitterId}`;
-          const assetData = sessionStorage.getItem(sessionKey);
-          if (assetData) {
-            const { assets: cachedAssets, chainSummaries: cachedChainSummaries } = JSON.parse(assetData);
-            setAssets(cachedAssets);
-            setChainSummaries(cachedChainSummaries);
-            setHasPersistedData(true);
-            setLoading(false);
-          }
+          const updatedAssets = customEvent.detail.assets;
+          
+          // Update existing assets with new price data
+          setAssets(prevAssets => {
+            return prevAssets.map(asset => {
+              // Find matching asset from worker data
+              const updatedAsset = updatedAssets.find((updated: any) => 
+                updated.symbol === asset.symbol && updated.name === asset.name
+              );
+              
+              if (updatedAsset) {
+                // Merge the price data while keeping existing sentiment/chain data
+                return {
+                  ...asset,
+                  price: updatedAsset.price,
+                  priceChange: updatedAsset.priceChange,
+                  value: updatedAsset.value, // This will be recalculated with new price
+                  balance: updatedAsset.balance
+                };
+              }
+              
+              return asset;
+            });
+          });
         } catch (error) {
-          console.error('Error refreshing assets from Web Worker update:', error);
+          console.error('Error updating assets from Web Worker price update:', error);
         }
       }
     };
 
-    window.addEventListener('portfolio-updated', handlePortfolioUpdate);
+    window.addEventListener('portfolio-price-updated', handlePortfolioUpdate);
     
     return () => {
-      window.removeEventListener('portfolio-updated', handlePortfolioUpdate);
+      window.removeEventListener('portfolio-price-updated', handlePortfolioUpdate);
     };
-  }, [twitterId, wallets]);
+  }, []);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {

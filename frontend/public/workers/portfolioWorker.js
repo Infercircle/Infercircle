@@ -13,6 +13,7 @@ class PortfolioWorker {
 
     this.isRunning = true;
     this.config = config;
+    this.API_BASE = config.apiBase || 'http://localhost:8080';
     
     this.postMessage({ type: 'LOG', message: 'Starting background portfolio sync...' });
     
@@ -40,56 +41,28 @@ class PortfolioWorker {
 
   async fetchAndUpdatePortfolioData() {
     try {
-      const { twitterId, wallets, sharedPortfolioData } = this.config;
+      const { wallets } = this.config;
       
-      if (!wallets || !this.hasValidWallets(wallets)) {
+      if (!wallets || !Array.isArray(wallets) || wallets.length === 0) {
         return;
       }
 
       this.postMessage({ type: 'LOG', message: 'Fetching fresh portfolio data...' });
 
-      const allWallets = [
-        ...wallets.eth.map(walletAddress => ({ walletAddress, chain: 'eth' })),
-        ...wallets.sol.map(walletAddress => ({ walletAddress, chain: 'sol' })),
-        ...wallets.btc.map(walletAddress => ({ walletAddress, chain: 'btc' })),
-        ...wallets.tron.map(walletAddress => ({ walletAddress, chain: 'tron' })),
-        ...wallets.ton.map(walletAddress => ({ walletAddress, chain: 'ton' })),
-      ];
-
+      // Simple approach - just fetch positions for each wallet
       let allTokens = [];
-      let aggregatedChainData = {};
+      const processedAssets = new Map(); // To avoid duplicates
 
-      for (const w of allWallets) {
-        if (!w.walletAddress || w.walletAddress.trim() === '') continue;
+      for (const walletAddress of wallets) {
+        if (!walletAddress || walletAddress.trim() === '') continue;
 
         try {
           // Fetch positions data
-          const response = await fetch(`${this.API_BASE}/balances/positions/${w.walletAddress}`);
+          const response = await fetch(`${this.API_BASE}/balances/positions/${walletAddress}`);
           if (!response.ok) continue;
           
           const result = await response.json();
           const positionsData = result.data;
-
-          // Use shared portfolio data for chain aggregation
-          const portfolioData = sharedPortfolioData?.[w.walletAddress]?.portfolio;
-          
-          if (portfolioData?.chains && portfolioData?.positionsChainsDistribution) {
-            for (const [chainId, chainValue] of Object.entries(portfolioData.positionsChainsDistribution)) {
-              const chainInfo = portfolioData.chains[chainId];
-              const numericChainValue = Number(chainValue);
-              if (chainInfo && numericChainValue > 0) {
-                if (!aggregatedChainData[chainId]) {
-                  aggregatedChainData[chainId] = {
-                    totalValue: 0,
-                    assetCount: 0,
-                    chainName: chainInfo.name,
-                    iconUrl: chainInfo.iconUrl
-                  };
-                }
-                aggregatedChainData[chainId].totalValue += numericChainValue;
-              }
-            }
-          }
 
           // Process positions
           if (positionsData && Array.isArray(positionsData)) {
@@ -101,52 +74,51 @@ class PortfolioWorker {
                 const decimals = asset.implementations?.[chain.id]?.decimals || 18;
                 const balance = parseFloat(position.quantity) / Math.pow(10, decimals);
                 
-                const assetObj = {
-                  name: asset.name,
-                  symbol: asset.symbol,
-                  chain: chain.name,
-                  price: asset.price?.value || 0,
-                  balance: balance,
-                  value: position.value || 0,
-                  priceChange: asset.price?.relativeChange24h || 0,
-                  sentimentChange: undefined,
-                  sentiment: undefined,
-                  mindShare: undefined,
-                  icon: asset.iconUrl || '',
-                  id: asset.name,
-                };
-
-                allTokens.push(assetObj);
+                const assetKey = `${asset.symbol}_${chain.name}`;
                 
-                if (aggregatedChainData[chain.id]) {
-                  aggregatedChainData[chain.id].assetCount += 1;
+                if (processedAssets.has(assetKey)) {
+                  // Aggregate if same asset on same chain
+                  const existing = processedAssets.get(assetKey);
+                  existing.balance += balance;
+                  existing.value += (position.value || 0);
+                } else {
+                  const assetObj = {
+                    name: asset.name,
+                    symbol: asset.symbol,
+                    chain: chain.name,
+                    price: asset.price?.value || 0,
+                    balance: balance,
+                    value: position.value || 0,
+                    priceChange: asset.price?.relativeChange24h || 0,
+                    sentimentChange: undefined,
+                    sentiment: undefined,
+                    mindShare: undefined,
+                    icon: asset.iconUrl || '',
+                    id: asset.name,
+                  };
+                  
+                  processedAssets.set(assetKey, assetObj);
                 }
               }
             }
           }
         } catch (error) {
-          console.error(`Worker: Error fetching data for wallet ${w.walletAddress}:`, error);
+          console.error(`Worker: Error fetching data for wallet ${walletAddress}:`, error);
         }
       }
 
-      // Convert chain data to array
-      const chainSummariesArray = Object.entries(aggregatedChainData).map(([chainId, data]) => ({
-        chain: chainId,
-        ...data
-      })).sort((a, b) => b.totalValue - a.totalValue);
-
-      // Sort tokens by value
+      // Convert to array and sort
+      allTokens = Array.from(processedAssets.values());
       allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
-
-      // Fetch sentiment data
+      // Fetch sentiment data and send update
       const updatedTokens = await this.fetchSentimentData(allTokens);
 
-      // Send updated data to main thread
+      // Send updated data to main thread for cache update
       this.postMessage({
         type: 'PORTFOLIO_UPDATE',
         data: {
           assets: updatedTokens,
-          chainSummaries: chainSummariesArray,
+          chainSummaries: [], // Keep simple for now
           timestamp: Date.now()
         }
       });
@@ -202,14 +174,7 @@ class PortfolioWorker {
   }
 
   hasValidWallets(wallets) {
-    if (!wallets) return false;
-    return (
-      wallets.eth.length > 0 ||
-      wallets.sol.length > 0 ||
-      wallets.btc.length > 0 ||
-      wallets.tron.length > 0 ||
-      wallets.ton.length > 0
-    );
+    return Array.isArray(wallets) && wallets.length > 0;
   }
 
   postMessage(message) {

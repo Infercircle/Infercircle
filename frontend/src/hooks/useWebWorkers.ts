@@ -29,14 +29,16 @@ export const useWebWorkers = () => {
         switch (type) {
           case 'PORTFOLIO_UPDATE':
             console.log('🔄 Portfolio updated via Web Worker');
-            setNetWorth(data.netWorth);
-            setWallets(data.wallets);
-            setSharedPortfolioData(data.portfolioData || {});
             
-            // Update session storage
-            sessionStorage.setItem('portfolio_cache', JSON.stringify({
-              data: data,
+            // Store the updated assets data for any component that needs it
+            sessionStorage.setItem('portfolio_worker_cache', JSON.stringify({
+              assets: data.assets,
               timestamp: Date.now()
+            }));
+            
+            // Trigger event for components to update their data
+            window.dispatchEvent(new CustomEvent('portfolio-price-updated', { 
+              detail: { assets: data.assets }
             }));
             break;
             
@@ -113,9 +115,14 @@ export const useWebWorkers = () => {
   const startPortfolioSync = useCallback((wallets: string[]) => {
     if (!portfolioWorkerRef.current || !wallets.length) return;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+    
     portfolioWorkerRef.current.postMessage({
       type: 'START_SYNC',
-      data: { wallets }
+      data: { 
+        wallets,
+        apiBase: API_BASE
+      }
     });
   }, []);
 
