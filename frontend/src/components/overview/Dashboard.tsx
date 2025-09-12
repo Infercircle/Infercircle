@@ -6,33 +6,7 @@ import Watchlist from "./Watchlist";
 import IcoIdo from "./IcoIdo";
 // import Suggested from "./Suggested";
 import { useSession } from "next-auth/react";
-
-// Helper function to get cached logos from localStorage
-const getCachedLogos = (): Record<string, string> => {
-  if (typeof window === 'undefined') return {};
-  try {
-    const cached = localStorage.getItem('logoCache');
-    if (!cached) return {};
-    
-    const parsed = JSON.parse(cached);
-    
-    // Handle both new format (with timestamp) and legacy format (string only)
-    const validEntries: Record<string, string> = {};
-    Object.entries(parsed).forEach(([symbol, data]: [string, any]) => {
-      if (data && typeof data === 'object' && data.url) {
-        // New format: { url: string, timestamp: number }
-        validEntries[symbol] = data.url;
-      } else if (typeof data === 'string') {
-        // Legacy format: direct string
-        validEntries[symbol] = data;
-      }
-    });
-    
-    return validEntries;
-  } catch {
-    return {};
-  }
-};
+import { useDashboardStore } from "@/stores/dashboardStore";
 
 interface DashboardProps {
   netWorth?: number;
@@ -76,25 +50,39 @@ export interface Asset {
 
 const Dashboard: React.FC<DashboardProps> = ({ netWorth = 0, totalPriceChange = 0, refreshKey = 0, loadingNetWorth = false, connectedWallets = 0, wallets, sharedPortfolioData }) => {
   const { data: session, status } = useSession();
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [showPriceChart, setShowPriceChart] = useState(false);
-  const [chartAsset, setChartAsset] = useState<Asset | null>(null);
-  const [chartType, setChartType] = useState<'price' | 'balance' | 'sentiment' | 'combined'>('price');
-  const [sharedLogoCache, setSharedLogoCache] = useState<Record<string, string>>(getCachedLogos()); // Initialize from localStorage
-  const [allElites, setAllElites] = useState<Set<string>>(new Set());
-  const [curatedTweets, setCuratedTweets] = useState<any[]>([]);
+  // Use Zustand store for dashboard state
+  const {
+    selectedAsset,
+    showPriceChart,
+    chartAsset,
+    chartType,
+    sharedLogoCache,
+    allElites,
+    curatedTweets,
+    setSelectedAsset,
+    setShowPriceChart,
+    setChartAsset,
+    setChartType,
+    updateLogoCache,
+    setAllElites,
+    setCuratedTweets,
+    addCuratedTweets
+  } = useDashboardStore();
 
   useEffect(() => {
     async function fetchEliteUsers() {
-      const res = await fetch('/api/elite');
-      const data = await res.json();
-      if (res.ok && Array.isArray(data)) {
-        const eliteSet = new Set(data.map((user: any) => user.username));
-        setAllElites(eliteSet);
+      // Only fetch if allElites is empty (not already populated)
+      if (allElites.size === 0) {
+        const res = await fetch('/api/elite');
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          const eliteSet = new Set(data.map((user: any) => user.username));
+          setAllElites(eliteSet);
+        }
       }
     }
     fetchEliteUsers();
-  }, []);
+  }, [allElites.size, setAllElites]);
 
 useEffect(()=> {
   const BATCH_SIZE = 10;
@@ -138,18 +126,16 @@ useEffect(()=> {
       results.push(...flattenedBatchResults);
       
       // Update curatedTweets immediately after each batch for real-time UI updates
-      setCuratedTweets(prev => {
-        const newTweets = [...prev, ...flattenedBatchResults];
-        return newTweets;
-      });
+      addCuratedTweets(flattenedBatchResults);
     }
   }
   
-  if(allElites.size > 0) {
+  // Only process if we have elites and no curated tweets yet
+  if(allElites.size > 0 && curatedTweets.length === 0) {
     const usernames = Array.from(allElites);
     processInBatches(usernames);
   }
-}, [allElites]);
+}, [allElites, curatedTweets.length, addCuratedTweets]);
 
   // Background processing for elite curators on login (only once per session)
   useEffect(() => {
@@ -265,7 +251,7 @@ useEffect(()=> {
   };
 
   const handleLogoCacheUpdate = (logoCache: Record<string, string>) => {
-    setSharedLogoCache(prev => ({ ...prev, ...logoCache }));
+    updateLogoCache(logoCache);
   };
 
   return (

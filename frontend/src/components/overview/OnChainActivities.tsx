@@ -7,6 +7,7 @@ import { IoInformationCircle } from "react-icons/io5";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 import { Asset } from "./Dashboard";
+import { useWebWorkers } from "@/hooks/useWebWorkers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -91,8 +92,12 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [totalScore, setTotalScore] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [loadingLogos, setLoadingLogos] = useState<Set<string>>(new Set());
-      const [selectedChain, setSelectedChain] = useState<string>('all');
-    const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [selectedChain, setSelectedChain] = useState<string>('all');
+  const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [hasPersistedData, setHasPersistedData] = useState(false);
+
+  // Initialize Web Workers
+  const { startPortfolioSync, isInitialized } = useWebWorkers();
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
@@ -144,6 +149,44 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       setFilteredAssets([]);
       setLoading(false);
       return;
+    }
+
+    // Check for cached data first
+    const sessionKey = `dashboard_assets_${twitterId}`;
+    const persistedData = sessionStorage.getItem(sessionKey);
+    
+    if (persistedData) {
+      try {
+        const { assets: cachedAssets, chainSummaries: cachedChainSummaries } = JSON.parse(persistedData);
+        // Always use cached data since Web Workers keep it fresh in background
+        setAssets(cachedAssets);
+        setChainSummaries(cachedChainSummaries);
+        setHasPersistedData(true);
+        setLoading(false);
+        
+        if (cachedAssets.length > 0 && onFirstAssetLoad) {
+          onFirstAssetLoad(cachedAssets[0]);
+        }
+        
+        // Start background sync with Web Workers to keep data fresh
+        if (isInitialized) {
+          const allWalletAddresses = [
+            ...wallets.eth,
+            ...wallets.sol,
+            ...wallets.btc,
+            ...wallets.tron,
+            ...wallets.ton
+          ].filter(addr => addr && addr.trim() !== '');
+          
+          if (allWalletAddresses.length > 0) {
+            startPortfolioSync(allWalletAddresses);
+          }
+        }
+        
+        return; // Skip API call since we have cached data
+      } catch (error) {
+        console.error('Error loading persisted OnChainActivities data:', error);
+      }
     }
 
     let retryInterval: NodeJS.Timeout | null = null;
@@ -406,11 +449,39 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
     fetchBalances();
     
+    // Start background portfolio sync with Web Workers after initial load
+    if (isInitialized) {
+      const allWalletAddresses = [
+        ...wallets.eth,
+        ...wallets.sol,
+        ...wallets.btc,
+        ...wallets.tron,
+        ...wallets.ton
+      ].filter(addr => addr && addr.trim() !== '');
+      
+      if (allWalletAddresses.length > 0) {
+        startPortfolioSync(allWalletAddresses);
+      }
+    }
+    
     return () => {
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
-  }, [twitterId, refreshKey, wallets, sharedPortfolioData]);
+  }, [twitterId, refreshKey, wallets, sharedPortfolioData, isInitialized, startPortfolioSync]);
+
+  // Save assets to session storage when they change
+  useEffect(() => {
+    if (assets.length > 0 && twitterId) {
+      const sessionKey = `dashboard_assets_${twitterId}`;
+      const dataToStore = {
+        assets,
+        chainSummaries,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+    }
+  }, [assets, chainSummaries, twitterId]);
 
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
@@ -443,6 +514,51 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isChainDropdownOpen]);
+
+  // Listen for portfolio updates from Web Worker
+  useEffect(() => {
+    const handlePortfolioUpdate = (event: Event) => {
+      // Web Worker has updated price data, merge with existing assets
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.assets) {
+        console.log('🔄 Portfolio prices updated by Web Worker, updating existing assets...');
+        try {
+          const updatedAssets = customEvent.detail.assets;
+          
+          // Update existing assets with new price data
+          setAssets(prevAssets => {
+            return prevAssets.map(asset => {
+              // Find matching asset from worker data
+              const updatedAsset = updatedAssets.find((updated: any) => 
+                updated.symbol === asset.symbol && updated.name === asset.name
+              );
+              
+              if (updatedAsset) {
+                // Merge the price data while keeping existing sentiment/chain data
+                return {
+                  ...asset,
+                  price: updatedAsset.price,
+                  priceChange: updatedAsset.priceChange,
+                  value: updatedAsset.value, // This will be recalculated with new price
+                  balance: updatedAsset.balance
+                };
+              }
+              
+              return asset;
+            });
+          });
+        } catch (error) {
+          console.error('Error updating assets from Web Worker price update:', error);
+        }
+      }
+    };
+
+    window.addEventListener('portfolio-price-updated', handlePortfolioUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolio-price-updated', handlePortfolioUpdate);
+    };
+  }, []);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
@@ -634,7 +750,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   return (
     <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
               {/* Preloader overlay - covers entire component */}
-        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-[#181A20] rounded-2xl transition-opacity duration-500 z-[60] ${loading && !hasPersistedData ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex space-x-1">
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
           <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>

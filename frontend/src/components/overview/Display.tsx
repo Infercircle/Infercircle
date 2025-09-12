@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Tippy from '@tippyjs/react';
 import { IoFilter } from "react-icons/io5";
 import { Asset } from "./Dashboard";
+import { useWebWorkers } from "@/hooks/useWebWorkers";
 
 // Import ApexCharts with proper typing and dynamic loading
 const Chart = dynamic(() => import('react-apexcharts'), { 
@@ -205,6 +206,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
   sharedLogoCache = {}, 
   curatedTweets = [] 
 }) => {
+  // Initialize Web Workers
+  const { updateSentimentConfig, isInitialized } = useWebWorkers();
+  
   const [rankRetryCount, setRankRetryCount] = useState(0);
   const [rankCache, setRankCache] = useState<Record<string, number>>({});
   const [chartData, setChartData] = useState<ChartData | null>(null);
@@ -239,11 +243,70 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const MAX_CACHE_ENTRIES = 10; // Limit cache size
   const MAX_TWEET_MAP_SIZE = 200; // Limit tweet map size
 
-
   // Function to get cache key for an asset
   const getCacheKey = useCallback((asset: Asset): string => {
     return Buffer.from(`${asset.symbol.toLowerCase()}-${asset.name.toLowerCase()}-${asset.chain.toLowerCase()}`).toString('base64');
   }, []);
+
+  // Listen for Web Worker tweet updates
+  useEffect(() => {
+    if (!isInitialized || !selectedAsset) return;
+
+    const handleTweetUpdate = (event: CustomEvent) => {
+      const { assetKey, tweets: updatedTweets } = event.detail;
+      const currentAssetKey = getCacheKey(selectedAsset);
+      
+      if (assetKey === currentAssetKey) {
+        console.log('🔄 Received tweet update from Web Worker');
+        setTweets(updatedTweets);
+        // Update tweet map
+        const newMap = new Map<string, Tweet>();
+        updatedTweets.forEach((tweet: Tweet) => newMap.set(tweet.id, tweet));
+        setTweetMap(newMap);
+      }
+    };
+
+    // Listen for Web Worker tweet updates
+    window.addEventListener('tweets-updated' as any, handleTweetUpdate);
+    
+    // Update Web Worker config when selected asset changes
+    updateSentimentConfig({
+      selectedAsset,
+      allElites: [] // Will be populated with elite curator data
+    });
+
+    return () => {
+      window.removeEventListener('tweets-updated' as any, handleTweetUpdate);
+    };
+  }, [isInitialized, selectedAsset, updateSentimentConfig, getCacheKey]);
+
+  // Load tweet cache from session storage on mount
+  useEffect(() => {
+    const sessionKey = 'display_tweet_cache';
+    const persistedCache = sessionStorage.getItem(sessionKey);
+    
+    if (persistedCache) {
+      try {
+        const { cache: cachedData } = JSON.parse(persistedCache);
+        // Always use cached data since Web Workers keep it fresh in background
+        setTweetCache(cachedData);
+      } catch (error) {
+        console.error('Error loading persisted tweet cache:', error);
+      }
+    }
+  }, []);
+
+  // Save tweet cache to session storage when it changes
+  useEffect(() => {
+    if (Object.keys(tweetCache).length > 0) {
+      const sessionKey = 'display_tweet_cache';
+      const dataToStore = {
+        cache: tweetCache,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+    }
+  }, [tweetCache]);
 
   // Function to check if cached data is still fresh
   const isCacheFresh = useCallback((cacheEntry: any): boolean => {
