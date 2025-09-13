@@ -49,59 +49,90 @@ class PortfolioWorker {
 
       this.postMessage({ type: 'LOG', message: 'Fetching fresh portfolio data...' });
 
-      // Simple approach - just fetch positions for each wallet
+      // Simple approach - fetch both positions and portfolio data for each wallet
       let allTokens = [];
       const processedAssets = new Map(); // To avoid duplicates
+      let totalNetWorth = 0;
+      let weightedPriceChange = 0;
+      const portfolioDataMap = {}; // Store portfolio data for each wallet
 
       for (const walletAddress of wallets) {
         if (!walletAddress || walletAddress.trim() === '') continue;
 
         try {
-          // Fetch positions data
-          const response = await fetch(`${this.API_BASE}/balances/positions/${walletAddress}`);
-          if (!response.ok) continue;
-          
-          const result = await response.json();
-          const positionsData = result.data;
+          // Fetch both positions and portfolio data
+          const [positionsResponse, portfolioResponse] = await Promise.all([
+            fetch(`${this.API_BASE}/balances/positions/${walletAddress}`),
+            fetch(`${this.API_BASE}/balances/portfolio/${walletAddress}`)
+          ]);
 
-          // Process positions
-          if (positionsData && Array.isArray(positionsData)) {
-            for (const position of positionsData) {
-              if (position.isDisplayable && position.value > 0) {
-                const asset = position.asset;
-                const chain = position.chain;
-                
-                const decimals = asset.implementations?.[chain.id]?.decimals || 18;
-                const balance = parseFloat(position.quantity) / Math.pow(10, decimals);
-                
-                const assetKey = `${asset.symbol}_${chain.name}`;
-                
-                if (processedAssets.has(assetKey)) {
-                  // Aggregate if same asset on same chain
-                  const existing = processedAssets.get(assetKey);
-                  existing.balance += balance;
-                  existing.value += (position.value || 0);
-                } else {
-                  const assetObj = {
-                    name: asset.name,
-                    symbol: asset.symbol,
-                    chain: chain.name,
-                    price: asset.price?.value || 0,
-                    balance: balance,
-                    value: position.value || 0,
-                    priceChange: asset.price?.relativeChange24h || 0,
-                    sentimentChange: undefined,
-                    sentiment: undefined,
-                    mindShare: undefined,
-                    icon: asset.iconUrl || '',
-                    id: asset.name,
-                  };
+          // Process positions data
+          if (positionsResponse.ok) {
+            const positionsResult = await positionsResponse.json();
+            const positionsData = positionsResult.data;
+
+            if (positionsData && Array.isArray(positionsData)) {
+              for (const position of positionsData) {
+                if (position.isDisplayable && position.value > 0) {
+                  const asset = position.asset;
+                  const chain = position.chain;
                   
-                  processedAssets.set(assetKey, assetObj);
+                  const decimals = asset.implementations?.[chain.id]?.decimals || 18;
+                  const balance = parseFloat(position.quantity) / Math.pow(10, decimals);
+                  
+                  const assetKey = `${asset.symbol}_${chain.name}`;
+                  
+                  if (processedAssets.has(assetKey)) {
+                    // Aggregate if same asset on same chain
+                    const existing = processedAssets.get(assetKey);
+                    existing.balance += balance;
+                    existing.value += (position.value || 0);
+                  } else {
+                    const assetObj = {
+                      name: asset.name,
+                      symbol: asset.symbol,
+                      chain: chain.name,
+                      price: asset.price?.value || 0,
+                      balance: balance,
+                      value: position.value || 0,
+                      priceChange: asset.price?.relativeChange24h || 0,
+                      sentimentChange: undefined,
+                      sentiment: undefined,
+                      mindShare: undefined,
+                      icon: asset.iconUrl || '',
+                      id: asset.name,
+                    };
+                    
+                    processedAssets.set(assetKey, assetObj);
+                  }
                 }
               }
             }
           }
+
+          // Process portfolio data for net worth calculation
+          if (portfolioResponse.ok) {
+            const portfolioResult = await portfolioResponse.json();
+            const portfolioData = portfolioResult.data;
+            
+            if (portfolioData && portfolioData.totalValue !== undefined) {
+              const walletValue = portfolioData.totalValue;
+              totalNetWorth += walletValue;
+              
+              // Store portfolio data for this wallet
+              portfolioDataMap[walletAddress] = {
+                portfolio: portfolioData,
+                chains: portfolioData.chains,
+                positionsChainsDistribution: portfolioData.positionsChainsDistribution
+              };
+              
+              // Calculate weighted price change
+              if (portfolioData.change24h && portfolioData.change24h.relative !== undefined) {
+                weightedPriceChange += walletValue * portfolioData.change24h.relative;
+              }
+            }
+          }
+
         } catch (error) {
           console.error(`Worker: Error fetching data for wallet ${walletAddress}:`, error);
         }
@@ -110,6 +141,12 @@ class PortfolioWorker {
       // Convert to array and sort
       allTokens = Array.from(processedAssets.values());
       allTokens.sort((a, b) => (b.value || 0) - (a.value || 0));
+      
+      // Calculate weighted average price change
+      let aggregatePriceChange = 0;
+      if (totalNetWorth > 0) {
+        aggregatePriceChange = weightedPriceChange / totalNetWorth;
+      }
       // Fetch sentiment data and send update
       const updatedTokens = await this.fetchSentimentData(allTokens);
 
@@ -118,6 +155,9 @@ class PortfolioWorker {
         type: 'PORTFOLIO_UPDATE',
         data: {
           assets: updatedTokens,
+          netWorth: totalNetWorth,
+          totalPriceChange: aggregatePriceChange,
+          portfolioData: portfolioDataMap,
           chainSummaries: [], // Keep simple for now
           timestamp: Date.now()
         }

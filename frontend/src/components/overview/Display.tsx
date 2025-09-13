@@ -355,10 +355,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       
       return newCache;
     });
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`💾 Saved ${tweetsData.length} tweets to cache for ${asset.symbol}`);
-    }
   }, [getCacheKey, MAX_CACHE_ENTRIES]);
 
   // Function to create a unique content hash for duplicate detection (kept for elite tweets)
@@ -387,8 +383,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
     setLoadingTweets(true);
     
     try {
-      console.log(`🔄 Fetching tweets for ${assetSymbol}`);
-      
       // Check cache first
       if (selectedAsset) {
         const cached = loadFromCache(selectedAsset);
@@ -420,7 +414,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
             const data = await response.json();
             
             if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-              console.log(`✅ Got ${data.data.length} tweets from "${query}"`);
               
               data.data.forEach((tweet: any) => {
                 const rawTimestamp = Date.now() - (allTweets.length * 1000);
@@ -467,8 +460,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
         // Smaller seconds = more recent, so reverse order
         return aSeconds - bSeconds;
       });
-      
-      console.log(`📝 Processed ${uniqueTweets.length} unique tweets for ${assetSymbol}`);
       
       // Update state
       setTweets(uniqueTweets);
@@ -539,13 +530,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
     // Only log in development mode
     const isDev = process.env.NODE_ENV === 'development';
     
-    if (isDev) {
-      console.log('🔍 Processing curated tweets:', {
-        curatedTweetsCount: curatedTweets?.length || 0,
-        selectedAsset: selectedAsset?.symbol || 'none'
-      });
-    }
-    
     if (!curatedTweets || !selectedAsset) {
       return [];
     }
@@ -556,10 +540,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const isRelated = isAssetRelated(tweetContent, selectedAsset.name, selectedAsset.symbol);
       return isRelated;
     });
-
-    if (isDev) {
-      console.log(`📊 Filtered ${filtered.length} curated tweets for ${selectedAsset.symbol}`);
-    }
     
     // Always process fresh curated tweets (don't rely only on cache)
     
@@ -605,20 +585,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
           
           newEliteTweets.push(transformedTweet);
           seenHashes.add(contentHash); // Add hash AFTER successful validation
-          
-          if (isDev) {
-            console.log('✅ Added elite tweet:', {
-              name: transformedTweet.name,
-              handle: transformedTweet.handle
-            });
-          }
-        } else {
-          if (isDev) {
-            console.log('❌ Skipped elite tweet:', {
-              reason: transformedTweet.text.length <= 5 ? 'too short' : 
-                      transformedTweet.name === 'Unknown' ? 'unknown author' : 'duplicate content'
-            });
-          }
         }
       });
       
@@ -631,9 +597,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
         // Smaller seconds = more recent, so reverse order
         return aSeconds - bSeconds;
       });
-      if (isDev) {
-        console.log(`💫 Setting ${newEliteTweets.length} elite tweets for ${selectedAsset.symbol}`);
-      }
       setEliteTweets(newEliteTweets);
       
       // Add elite tweets to the tweet map for expanded view support
@@ -833,7 +796,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
             const res = await fetch(`${API_BASE}/tokens/sentiment-graph/${chartAsset.id}?days=${activeFilter.days}`);
             if (res.ok) {
               const data = await res.json();
-              console.log('Sentiment data fetched:', data);
               if (data.data && Array.isArray(data.data) && data.data.length >= 3) {
                 setSentimentChartData({ sentimentData: data.data });
               } else if (data.data && Array.isArray(data.data) && data.data.length > 0) {
@@ -863,7 +825,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
                 sentimentRes.json()
               ]);
               
-              console.log('Combined data fetched - Price:', priceData, 'Sentiment:', sentimentData);
               
               if (priceData && sentimentData.data && Array.isArray(sentimentData.data) && sentimentData.data.length >= 3) {
                 setChartData(priceData);
@@ -951,7 +912,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Handle asset changes - load from cache or fetch new tweets
   useEffect(() => {
     if (selectedAsset?.name && selectedAsset?.symbol) {
-      console.log(`🔄 Asset changed to: ${selectedAsset.symbol} (${selectedAsset.name})`);
       
       // Clear expanded state when switching assets
       setExpandedTweetId(null);
@@ -960,14 +920,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const cached = loadFromCache(selectedAsset);
       
       if (!cached) {
-        console.log(`❌ No cache for ${selectedAsset.symbol}, fetching fresh tweets`);
         // Clear tweets and fetch new ones
         setTweets([]);
         setTweetMap(new Map());
         fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
       }
     } else {
-      console.log(`🧹 Clearing tweets - no asset selected`);
       setTweets([]);
       setTweetMap(new Map());
       setExpandedTweetId(null);
@@ -996,7 +954,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       
       // Only refresh if cache is very stale (older than 10 minutes) or doesn't exist
       if (!cacheEntry || (Date.now() - cacheEntry.timestamp) > TWEET_CACHE_DURATION) {
-        console.log(`🔄 Background refresh for ${selectedAsset.symbol} (stale cache)`);
         fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
       }
     }, TWEET_CACHE_DURATION); // Every 10 minutes

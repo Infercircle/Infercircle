@@ -30,15 +30,36 @@ export const useWebWorkers = () => {
           case 'PORTFOLIO_UPDATE':
             console.log('🔄 Portfolio updated via Web Worker');
             
+            // Update Zustand store with fresh data
+            if (data.netWorth !== undefined) {
+              setNetWorth(data.netWorth);
+            }
+            if (data.totalPriceChange !== undefined) {
+              // totalPriceChange is already a percentage from the weighted calculation
+              // No need to multiply by 100
+              setSharedPortfolioData({ totalPriceChange: data.totalPriceChange });
+            }
+            if (data.portfolioData) {
+              setSharedPortfolioData(data.portfolioData);
+            }
+            
             // Store the updated assets data for any component that needs it
             sessionStorage.setItem('portfolio_worker_cache', JSON.stringify({
               assets: data.assets,
+              netWorth: data.netWorth,
+              totalPriceChange: data.totalPriceChange,
+              portfolioData: data.portfolioData,
               timestamp: Date.now()
             }));
             
             // Trigger event for components to update their data
             window.dispatchEvent(new CustomEvent('portfolio-price-updated', { 
-              detail: { assets: data.assets }
+              detail: { 
+                assets: data.assets,
+                netWorth: data.netWorth,
+                totalPriceChange: data.totalPriceChange,
+                portfolioData: data.portfolioData
+              }
             }));
             break;
             
@@ -130,9 +151,14 @@ export const useWebWorkers = () => {
   const startSentimentSync = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
     if (!sentimentWorkerRef.current) return;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+
     sentimentWorkerRef.current.postMessage({
       type: 'START_SYNC',
-      data: config
+      data: { 
+        ...config,
+        apiBase: API_BASE
+      }
     });
   }, []);
 
@@ -150,9 +176,14 @@ export const useWebWorkers = () => {
   const updateSentimentConfig = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
     if (!sentimentWorkerRef.current) return;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+
     sentimentWorkerRef.current.postMessage({
       type: 'UPDATE_CONFIG',
-      data: config
+      data: { 
+        ...config,
+        apiBase: API_BASE
+      }
     });
   }, []);
 
