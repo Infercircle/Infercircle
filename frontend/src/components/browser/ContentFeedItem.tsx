@@ -8,6 +8,39 @@ import { SiFarcaster } from "react-icons/si";
 import { MdOutlineArticle, MdOutlineSchool } from "react-icons/md";
 import { HiOutlineDocumentText, HiOutlineMicrophone, HiOutlinePresentationChartLine } from "react-icons/hi";
 import { RiGovernmentFill } from "react-icons/ri";
+import { AiOutlineHeart } from "react-icons/ai";
+
+const ExternalLinkIcon = () => (
+  <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m7-1V7m0 0h-5m5 0L10 17" />
+  </svg>
+);
+
+const sentimentText = (sentiment: string) => {
+  let text = '';
+  let textColor = '';
+  let bgColor = '';
+  
+  if (sentiment === "positive") {
+    text = 'Positive';
+    textColor = 'text-green-400';
+    bgColor = 'bg-green-500/20';
+  } else if (sentiment === "negative") {
+    text = 'Negative';
+    textColor = 'text-red-400';
+    bgColor = 'bg-red-500/20';
+  } else {
+    text = 'Neutral';
+    textColor = 'text-gray-400';
+    bgColor = 'bg-gray-500/20';
+  }
+  
+  return (
+    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${textColor} ${bgColor}`}>
+      {text}
+    </span>
+  );
+};
 
 interface ContentEntry {
   id: string;
@@ -17,8 +50,15 @@ interface ContentEntry {
   source: string;
   sourceName: string;
   icon: string;
+  avatar?: string;
   attendeeCount: number;
   isExpanded?: boolean;
+  sentiment?: string;
+  tweetUrl?: string;
+  likes?: number;
+  replies?: number;
+  retweets?: number;
+  followers?: string;
 }
 
 interface ContentItemProps {
@@ -45,8 +85,6 @@ const getSourceIcon = (source: string) => {
       return HiOutlineMicrophone;
     case 'podcast':
       return FaPodcast;
-    case 'conference':
-      return FaVideo;
     case 'medium':
       return MdOutlineArticle;
     case 'research':
@@ -92,18 +130,55 @@ export default function ContentFeedItem({ item, isExpanded, onToggleExpand, isSe
       onClick={onSelect}
     >
       <div className="flex items-start space-x-4">
-        {/* Icon */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-          <span className="text-sm">{item.icon}</span>
+        {/* Avatar/Icon */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+          {item.avatar ? (
+            <img 
+              src={item.avatar} 
+              alt={item.title} 
+              className="w-full h-full object-cover rounded-full"
+              onError={(e) => {
+                // Fallback to icon if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<span class="text-sm">${item.icon}</span>`;
+                }
+              }}
+            />
+          ) : (
+            <span className="text-sm">{item.icon}</span>
+          )}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Title and Date Row */}
           <div className="flex items-start justify-between mb-1">
-            <h3 className="text-white font-medium text-sm flex-1 pr-4">{item.title}</h3>
+            <div className="flex-1 pr-4 min-w-0">
+              <h3 className="text-white font-medium text-sm flex items-center gap-2 min-w-0">
+                <span className="truncate">{item.title}</span>
+                {item.source === 'twitter' && item.followers && (
+                  <span className="text-gray-400 text-xs font-normal flex-shrink-0">• {item.followers} followers</span>
+                )}
+              </h3>
+            </div>
             <div className="flex items-center space-x-3 flex-shrink-0">
               <span className="text-gray-400 text-xs whitespace-nowrap">{item.date}</span>
+              {/* External link for tweets */}
+              {item.source === 'twitter' && item.tweetUrl && (
+                <a
+                  href={item.tweetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#A259FF] flex items-center"
+                  title="View Tweet"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLinkIcon />
+                </a>
+              )}
               <button
                 onClick={onToggleExpand}
                 className="p-1 hover:bg-[rgba(36,37,42,0.25)] rounded-full transition-colors cursor-pointer"
@@ -121,7 +196,6 @@ export default function ContentFeedItem({ item, isExpanded, onToggleExpand, isSe
           {/* Tags */}
           <div className="flex items-center space-x-2">
             <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium border text-white ${
-              item.source === 'conference' ? 'bg-orange-500/20 border-orange-500/30' :
               item.source === 'medium' ? 'bg-blue-500/20 border-blue-500/30' :
               item.source === 'research' ? 'bg-green-500/20 border-green-500/30' :
               item.source === 'twitter' ? 'bg-gray-500/20 border-gray-500/30' :
@@ -136,7 +210,6 @@ export default function ContentFeedItem({ item, isExpanded, onToggleExpand, isSe
               'bg-gray-500/20 border-gray-500/30'
             }`}>
               {SourceIcon && <SourceIcon className={`w-3 h-3 ${
-                item.source === 'conference' ? 'text-orange-400' :
                 item.source === 'medium' ? 'text-blue-400' :
                 item.source === 'research' ? 'text-green-400' :
                 item.source === 'twitter' ? 'text-gray-400' :
@@ -157,10 +230,26 @@ export default function ContentFeedItem({ item, isExpanded, onToggleExpand, isSe
               </span>
             </span>
             <span className="text-gray-400 text-xs">{item.sourceName}</span>
-            <div className="flex items-center space-x-1">
-              <EngagementIcon className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-400 text-xs">{item.attendeeCount}</span>
-            </div>
+            {/* Show engagement data */}
+            {item.source === 'twitter' ? (
+              /* Twitter engagement: likes only */
+              <div className="flex items-center space-x-1">
+                <AiOutlineHeart className="w-3 h-3 text-gray-400" />
+                <span className="text-gray-400 text-xs">{item.likes || 0}</span>
+              </div>
+            ) : (
+              /* Other sources engagement */
+              <div className="flex items-center space-x-1">
+                <EngagementIcon className="w-3 h-3 text-gray-400" />
+                <span className="text-gray-400 text-xs">{item.attendeeCount}</span>
+              </div>
+            )}
+            {/* Sentiment indicator for tweets */}
+            {item.sentiment && (
+              <div className="flex items-center space-x-1">
+                {sentimentText(item.sentiment)}
+              </div>
+            )}
           </div>
 
           {/* Expanded Content */}

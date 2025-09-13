@@ -11,6 +11,7 @@ import twitterspacesRoutes from "./routes/twitterspaces";
 import eliteCuratorsRoutes from "./routes/eliteCurators";
 import suggestionsRoutes from "./routes/suggestions";
 import balancesRoutes from "./routes/balances";
+import projectsRoutes from "./routes/projects";
 import { startMindShareCalculation } from "./lib/worker";
 import { cacheWarmupService } from "./services/cacheWarmup";
 dotenv.config();
@@ -41,6 +42,7 @@ app.use("/twitterspaces", twitterspacesRoutes);
 app.use("/elite-curators", eliteCuratorsRoutes);
 app.use("/balances", balancesRoutes);
 app.use("/suggestions", suggestionsRoutes);
+app.use("/projects", projectsRoutes);
 app.get("/", (req: Request, res: Response) => {
   res.send("API Server Running 🚀");
 });

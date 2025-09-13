@@ -2,20 +2,35 @@
 
 import React, { useState } from "react";
 import { FiChevronLeft, FiChevronUp, FiChevronDown, FiZap } from "react-icons/fi";
-import { availableProjects } from "./TopNavigation";
+
+interface Project {
+  id: string;
+  name: string;
+  symbol: string;
+  icon: string;
+  key: string;
+  category?: string;
+}
 
 interface ContentDetailProps {
   selectedItem: string | null;
   onBack: () => void;
   selectedProject: string;
+  selectedProjectData: Project | null;
 }
 
-export default function ContentDisplay({ selectedItem, onBack, selectedProject }: ContentDetailProps) {
+export default function ContentDisplay({ selectedItem, onBack, selectedProject, selectedProjectData }: ContentDetailProps) {
   const [currentKeywordPage, setCurrentKeywordPage] = useState(1);
   const [totalKeywordPages] = useState(28);
 
-  // Get current project data
-  const currentProject = availableProjects.find(project => project.id === selectedProject) || availableProjects[0];
+  // Use the passed project data or fallback to default
+  const currentProject = selectedProjectData || {
+    id: "BTC",
+    name: "Bitcoin",
+    symbol: "BTC",
+    icon: "🟠",
+    key: "bitcoin"
+  };
 
   const mockContent = {
     "1": {
@@ -343,34 +358,49 @@ export default function ContentDisplay({ selectedItem, onBack, selectedProject }
         "This vote will determine how tokens are allocated among different stakeholders and what the long-term tokenomics will look like."
       ]
     },
-    "20": {
-      title: "EigenLayer Mainnet Launch",
-      event: "Conference",
-      date: "1 May, 2024 - 11:00 AM",
-      speaker: "EigenLayer Team",
-      transcript: [
-        {
-          time: "00:00:35",
-          speaker: "EigenLayer Team",
-          content: "Today marks a historic moment as we launch EigenLayer on mainnet. This represents years of research and development, and we're excited to see how the community will use this new infrastructure to build the future of blockchain security."
-        }
-      ],
-      keywordHits: [
-        "Today marks a historic moment as we launch EigenLayer on mainnet.",
-        "This represents years of research and development, and we're excited to see how the community will use this new infrastructure to build the future of blockchain security."
-      ]
-    }
   };
+
+  // Show empty state when no project is selected
+  if (!selectedProject || !selectedProjectData) {
+    return (
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded shadow-lg h-[800px] flex flex-col items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+            <FiZap className="w-8 h-8 text-purple-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Select a Project</h2>
+          <p className="text-gray-400 mb-6">Choose a project from the search bar above to view its content and insights</p>
+          <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+            <span>💡</span>
+            <span>Try searching for Bitcoin, Ethereum, or any crypto project</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedItem || !mockContent[selectedItem as keyof typeof mockContent]) {
     return (
-      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded shadow-lg h-[700px] flex flex-col">
+      <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded shadow-lg h-[800px] flex flex-col">
         {/* Fixed Header */}
         <div className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">{currentProject.icon}</span>
-              <h1 className="text-xl font-semibold text-white">{currentProject.name} ({currentProject.id})</h1>
+              {currentProject.icon.startsWith('http') ? (
+                <img 
+                  src={currentProject.icon} 
+                  alt={currentProject.name}
+                  className="w-8 h-8 rounded-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <span className={`text-2xl ${currentProject.icon.startsWith('http') ? 'hidden' : ''}`}>
+                {currentProject.icon.startsWith('http') ? '🪙' : currentProject.icon}
+              </span>
+              <h1 className="text-xl font-semibold text-white">{currentProject.name}{currentProject.symbol ? ` (${currentProject.symbol})` : ''}</h1>
             </div>
             <button className="flex items-center space-x-2 px-3 py-2 bg-purple-500/20 border border-purple-400/30 rounded hover:bg-purple-500/30 transition-colors cursor-pointer">
               <FiZap className="w-4 h-4 text-purple-400" />
@@ -466,7 +496,7 @@ export default function ContentDisplay({ selectedItem, onBack, selectedProject }
   const content = mockContent[selectedItem as keyof typeof mockContent];
 
   return (
-    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded shadow-lg h-[700px] flex flex-col">
+    <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b] rounded shadow-lg h-[800px] flex flex-col">
         {/* Fixed Header */}
         <div className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">

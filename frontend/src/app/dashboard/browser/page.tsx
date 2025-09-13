@@ -6,12 +6,24 @@ import SourceFilters from "@/components/browser/SourceFilters";
 import ContentFeed from "@/components/browser/ContentFeed";
 import ContentDisplay from "@/components/browser/ContentDisplay";
 
+interface Project {
+  id: string;
+  name: string;
+  symbol: string;
+  icon: string;
+  key: string;
+  category?: string;
+}
+
 export default function BrowserPage() {
   const [selectedProject, setSelectedProject] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [timeRange, setTimeRange] = useState("Last 24h");
   const [selectedSources, setSelectedSources] = useState(["all"]);
   const [selectedContentItem, setSelectedContentItem] = useState<string | null>(null);
+  const [selectedProjectData, setSelectedProjectData] = useState<Project | null>(null);
+  const [isEliteMode, setIsEliteMode] = useState(false);
+  const [resultsCount, setResultsCount] = useState(0);
 
   return (
     <div className="text-white">
@@ -22,7 +34,10 @@ export default function BrowserPage() {
         setSearchQuery={setSearchQuery}
         timeRange={timeRange}
         setTimeRange={setTimeRange}
-        resultsCount={47938}
+        resultsCount={resultsCount}
+        onProjectDataChange={setSelectedProjectData}
+        isEliteMode={isEliteMode}
+        onEliteModeChange={setIsEliteMode}
       />
 
       {/* Hidden on mobile/medium - Source Filters */}
@@ -41,6 +56,9 @@ export default function BrowserPage() {
             selectedSources={selectedSources}
             selectedItem={selectedContentItem}
             onItemSelect={setSelectedContentItem}
+            selectedProjectData={selectedProjectData}
+            onResultsCountChange={setResultsCount}
+            timeRange={timeRange}
           />
         </div>
         
@@ -50,6 +68,7 @@ export default function BrowserPage() {
             selectedItem={selectedContentItem}
             onBack={() => setSelectedContentItem(null)}
             selectedProject={selectedProject}
+            selectedProjectData={selectedProjectData}
           />
         </div>
       </div>

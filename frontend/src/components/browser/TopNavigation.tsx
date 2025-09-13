@@ -10,14 +10,15 @@ import { HiOutlineDocumentText, HiOutlineMicrophone, HiOutlinePresentationChartL
 import { RiGovernmentFill } from "react-icons/ri";
 
 
-export const availableProjects = [
-  { id: "EIGEN", name: "EigenLayer", icon: "🔵" },
-  { id: "BTC", name: "Bitcoin", icon: "🟠" },
-  { id: "ETH", name: "Ethereum", icon: "🔷" },
-  { id: "SOL", name: "Solana", icon: "🟣" },
-  { id: "AVAX", name: "Avalanche", icon: "🔴" },
-  { id: "MATIC", name: "Polygon", icon: "🟣" },
-];
+// Project interface for API response
+interface Project {
+  id: string;
+  name: string;
+  symbol: string;
+  icon: string;
+  key: string;
+  category?: string;
+}
 
 const availableSources = [
   { id: "all", name: "All Sources", icon: null },
@@ -28,7 +29,6 @@ const availableSources = [
   { id: "news", name: "News", icon: HiOutlineDocumentText },
   { id: "twitter-space", name: "Twitter Space", icon: HiOutlineMicrophone },
   { id: "podcast", name: "Podcast", icon: FaPodcast },
-  { id: "conference", name: "Conference", icon: FaVideo },
   { id: "medium", name: "Medium", icon: MdOutlineArticle },
   { id: "research", name: "Research", icon: MdOutlineSchool },
   { id: "discord", name: "Discord", icon: FaDiscord },
@@ -43,6 +43,9 @@ interface TopNavigationProps {
   timeRange: string;
   setTimeRange: (range: string) => void;
   resultsCount: number;
+  onProjectDataChange?: (projectData: Project | null) => void;
+  isEliteMode?: boolean;
+  onEliteModeChange?: (isElite: boolean) => void;
 }
 
 
@@ -53,7 +56,10 @@ export default function TopNavigation({
   setSearchQuery,
   timeRange,
   setTimeRange,
-  resultsCount
+  resultsCount,
+  onProjectDataChange,
+  isEliteMode = false,
+  onEliteModeChange
 }: TopNavigationProps) {
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
@@ -65,15 +71,94 @@ export default function TopNavigation({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSources, setSelectedSources] = useState(["all"]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectData, setSelectedProjectData] = useState<Project | null>(null);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeRangeRef = useRef<HTMLDivElement>(null);
 
-  const selectedProjectData = availableProjects.find(p => p.id === selectedProject);
+  // All projects cache - fetched once on mount
+  const allProjectsCache = useRef<Project[] | null>(null);
 
-  const filteredProjects = availableProjects.filter(project =>
-    project.name.toLowerCase().includes(projectSearchQuery.toLowerCase()) ||
-    project.id.toLowerCase().includes(projectSearchQuery.toLowerCase())
-  );
+  // Fetch all projects once on mount
+  const fetchAllProjects = async () => {
+    if (allProjectsCache.current) {
+      return allProjectsCache.current;
+    }
+
+    setIsLoadingProjects(true);
+    try {
+      const response = await fetch('http://localhost:8080/projects/all');
+      const data = await response.json();
+      if (data.status === 'success') {
+        allProjectsCache.current = data.data;
+        return data.data;
+      }
+    } catch (error) {
+      console.error('Error fetching all projects:', error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+    return [];
+  };
+
+  // Filter projects locally
+  const filterProjects = (query: string, allProjects: Project[]): Project[] => {
+    if (!query.trim()) {
+      return allProjects.slice(0, 8); // Show top 8 by default
+    }
+
+    const searchTerm = query.toLowerCase();
+    const filtered = allProjects
+      .filter(project => {
+        const name = project.name?.toLowerCase() || '';
+        const symbol = project.symbol?.toLowerCase() || '';
+        const key = project.key?.toLowerCase() || '';
+        
+        return name.includes(searchTerm) || 
+               symbol.includes(searchTerm) ||
+               key.includes(searchTerm) ||
+               name.startsWith(searchTerm) ||
+               symbol.startsWith(searchTerm);
+      })
+      .slice(0, 30); // Show up to 30 results for better search experience
+    
+    console.log(`Searching for "${query}" in ${allProjects.length} projects, found ${filtered.length} results`);
+    return filtered;
+  };
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (allProjectsCache.current) {
+        const filtered = filterProjects(projectSearchQuery, allProjectsCache.current);
+        setProjects(filtered);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [projectSearchQuery]);
+
+  // Load all projects on component mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      const allProjects = await fetchAllProjects();
+      console.log(`Loaded ${allProjects.length} projects on mount`);
+      if (allProjects.length > 0) {
+        // Show top 8 projects initially
+        setProjects(allProjects.slice(0, 8));
+        console.log('Set initial 8 projects in dropdown');
+      }
+    };
+    loadProjects();
+  }, []);
+
+  // Notify parent when selected project data changes
+  useEffect(() => {
+    if (onProjectDataChange) {
+      onProjectDataChange(selectedProjectData);
+    }
+  }, [selectedProjectData, onProjectDataChange]);
 
   const timeRangeOptions = [
     { id: "all", label: "All" },
@@ -126,16 +211,23 @@ export default function TopNavigation({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleProjectSelect = (project: typeof availableProjects[0]) => {
+  const handleProjectSelect = (project: Project) => {
     setSelectedProject(project.id);
+    setSelectedProjectData(project); // Store the selected project data
     setShowProjectDropdown(false);
     setIsProjectInputFocused(false);
     setProjectSearchQuery("");
+    // Clear the projects list to avoid confusion
+    setProjects([]);
   };
 
   const handleProjectInputFocus = () => {
     setIsProjectInputFocused(true);
     setShowProjectDropdown(true);
+    // Show top 8 projects when focusing (if no search query)
+    if (allProjectsCache.current && !projectSearchQuery.trim()) {
+      setProjects(allProjectsCache.current.slice(0, 8));
+    }
   };
 
   const handleProjectInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,26 +419,57 @@ export default function TopNavigation({
         </div>
 
           {/* Project Search Input */}
-          <div className="relative flex-1 min-w-48 max-w-64" ref={dropdownRef}>
+          <div className="relative flex-1 min-w-48 max-w-80" ref={dropdownRef}>
           <div className="relative">
              <input
                type="text"
-               placeholder={selectedProject ? "" : "Search projects"}
-               value={isProjectInputFocused ? projectSearchQuery : (selectedProjectData ? `${selectedProjectData.icon} ${selectedProjectData.name} (${selectedProjectData.id})` : "")}
+               placeholder={selectedProject ? "" : (isLoadingProjects ? "Loading projects..." : "Search projects")}
+               value={isProjectInputFocused ? projectSearchQuery : (selectedProjectData ? `${selectedProjectData.name}${selectedProjectData.symbol ? ` (${selectedProjectData.symbol})` : ''}` : "")}
                onChange={handleProjectInputChange}
                onFocus={handleProjectInputFocus}
-               className="w-full h-10 px-4 pl-10 pr-20 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded focus:outline-none text-white placeholder-gray-400 cursor-text"
+               onBlur={() => {
+                 // Don't hide dropdown immediately to allow clicking on items
+                 setTimeout(() => {
+                   if (!showProjectDropdown) {
+                     setIsProjectInputFocused(false);
+                   }
+                 }, 150);
+               }}
+               className="w-full h-10 px-4 pl-10 pr-20 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded focus:outline-none text-white placeholder-gray-400 cursor-text truncate"
+               disabled={isLoadingProjects}
              />
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            {/* Show project icon when selected, otherwise show search icon */}
+            {selectedProjectData && !isProjectInputFocused ? (
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                {selectedProjectData.icon && selectedProjectData.icon.startsWith('http') ? (
+                  <img 
+                    src={selectedProjectData.icon} 
+                    alt={selectedProjectData.name}
+                    className="w-4 h-4 rounded-full"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <span className={`text-sm ${selectedProjectData.icon && selectedProjectData.icon.startsWith('http') ? 'hidden' : ''}`}>
+                  {selectedProjectData.icon && selectedProjectData.icon.startsWith('http') ? '🪙' : (selectedProjectData.icon || '🪙')}
+                </span>
+              </div>
+            ) : (
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            )}
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {/* Clear button - show when project is selected or when searching */}
               {(selectedProject || (isProjectInputFocused && projectSearchQuery)) && (
                  <button
                    onClick={() => {
                      setSelectedProject("");
+                     setSelectedProjectData(null); // Clear selected project data
                      setProjectSearchQuery("");
                      setShowProjectDropdown(false);
                      setIsProjectInputFocused(false);
+                     setProjects([]);
                    }}
                    className="p-1 hover:bg-[#2A2A2A] rounded-sm transition-colors cursor-pointer"
                  >
@@ -354,7 +477,13 @@ export default function TopNavigation({
                 </button>
               )}
                <button
-                 onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                  onClick={() => {
+                    const newShowState = !showProjectDropdown;
+                    setShowProjectDropdown(newShowState);
+                    if (newShowState && allProjectsCache.current && !projectSearchQuery.trim()) {
+                      setProjects(allProjectsCache.current.slice(0, 8));
+                    }
+                  }}
                  className="p-1 hover:bg-[#2A2A2A] rounded-sm transition-colors cursor-pointer"
                >
                 <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
@@ -364,12 +493,21 @@ export default function TopNavigation({
 
           {/* Project Dropdown */}
           {showProjectDropdown && (
-             <div className="absolute top-full left-0 mt-1 w-64 bg-[rgba(24,26,32,1)] border border-[#23272b] rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+             <div className="absolute top-full left-0 mt-1 w-full bg-[rgba(24,26,32,1)] border border-[#23272b] rounded shadow-lg z-50 max-h-96 overflow-y-auto">
                <div className="sticky top-0 bg-[rgba(24,26,32,1)] px-3 py-2 border-b border-[#23272b] z-10">
-                 <div className="text-purple-400 text-sm font-medium">Project List</div>
+                 <div className="text-purple-400 text-sm font-medium">
+                   {projectSearchQuery.trim() ? `Found ${projects.length} projects` : 'Project List'}
+                 </div>
                </div>
-              {filteredProjects.length > 0 ? (
-                filteredProjects.map((project) => (
+              {isLoadingProjects ? (
+                <div className="px-4 py-6 text-center">
+                  <div className="flex items-center justify-center space-x-2 text-gray-400">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                    <span className="text-sm">Loading projects...</span>
+                  </div>
+                </div>
+              ) : projects.length > 0 ? (
+                projects.map((project) => (
                   <button
                     key={project.id}
                     onClick={() => handleProjectSelect(project)}
@@ -377,10 +515,30 @@ export default function TopNavigation({
                       selectedProject === project.id ? 'bg-purple-500/20 text-purple-400' : ''
                     }`}
                   >
-                    <span className="text-lg">{project.icon}</span>
-                    <div className="flex items-center space-x-2">
-                      <span className={`font-medium ${selectedProject === project.id ? 'text-purple-400' : 'text-white'}`}>{project.name}</span>
-                      <span className={`text-sm ${selectedProject === project.id ? 'text-purple-300' : 'text-gray-400'}`}>{project.id}</span>
+                    <img 
+                      src={project.icon} 
+                      alt={project.name}
+                      className="w-4 h-4 rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <span className="text-sm hidden">🪙</span>
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <span className={`font-medium truncate ${selectedProject === project.id ? 'text-purple-400' : 'text-white'}`} title={project.name}>
+                        {project.name}
+                      </span>
+                      {project.symbol && (
+                        <span className={`text-sm flex-shrink-0 ${selectedProject === project.id ? 'text-purple-300' : 'text-gray-400'}`}>
+                          {project.symbol}
+                        </span>
+                      )}
+                      {project.category && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${selectedProject === project.id ? 'bg-purple-500/20 text-purple-300' : 'bg-gray-600/30 text-gray-400'}`}>
+                          {project.category}
+                        </span>
+                      )}
                     </div>
                     {selectedProject === project.id && (
                       <div className="ml-auto">
@@ -390,14 +548,16 @@ export default function TopNavigation({
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-3 text-gray-400 text-sm">No projects found</div>
+                <div className="px-4 py-3 text-gray-400 text-sm">
+                  {projectSearchQuery.trim() ? 'No projects found' : 'Type to search projects'}
+                </div>
               )}
             </div>
           )}
           </div>
 
         {/* Search Bar */}
-        <div className="flex-1 min-w-48 max-w-64 lg:max-w-3xl">
+         <div className="flex-1 min-w-48 max-w-64 lg:max-w-3xl">
           <div className="relative">
             <input
               type="text"
@@ -418,6 +578,28 @@ export default function TopNavigation({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Elite Tweet Toggle */}
+        <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+          <span className={`text-xs font-medium transition-all duration-300 ${
+            isEliteMode ? 'text-white' : 'text-[#666]'
+          }`}>Elite Tweet</span>
+          <button 
+            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none cursor-pointer ${
+              isEliteMode ? 'bg-[#A259FF] shadow-md shadow-[#A259FF]/30' : 'bg-[#444] hover:bg-[#555]'
+            }`}
+            onClick={() => onEliteModeChange?.(!isEliteMode)}
+          >
+            <span 
+              className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
+                isEliteMode ? 'translate-x-4.5 shadow-sm' : 'translate-x-0.5 shadow-sm'
+              }`}
+            />
+            {isEliteMode && (
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#A259FF]/25 to-[#A259FF]/15 animate-pulse" />
+            )}
+          </button>
         </div>
 
         {/* Filter Button - Mobile/Medium Only */}

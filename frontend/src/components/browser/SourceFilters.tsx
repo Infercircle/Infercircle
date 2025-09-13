@@ -22,7 +22,6 @@ const availableSources = [
   { id: "news", name: "News", icon: HiOutlineDocumentText },
   { id: "twitter-space", name: "Twitter Space", icon: HiOutlineMicrophone },
   { id: "podcast", name: "Podcast", icon: FaPodcast },
-  { id: "conference", name: "Conference", icon: FaVideo },
   { id: "medium", name: "Medium", icon: MdOutlineArticle },
   { id: "research", name: "Research", icon: MdOutlineSchool },
   { id: "discord", name: "Discord", icon: FaDiscord },
