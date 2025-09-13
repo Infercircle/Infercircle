@@ -43,8 +43,8 @@ export class CacheWarmupService {
 
   constructor() {}
 
-  // Non-blocking warmup using setImmediate and batch processing
-  async warmupPopularAssets(limit: number = 120): Promise<void> {
+  // Completely non-blocking warmup - fire and forget
+  warmupPopularAssets(limit: number = 120): void {
     if (this.isWarmupRunning) {
       console.log("🔥 Cache warmup already in progress, skipping...");
       return;
@@ -53,214 +53,164 @@ export class CacheWarmupService {
     this.isWarmupRunning = true;
     console.log("🔥 Starting non-blocking cache warmup for popular assets...");
     
+    // Use setImmediate to move everything to next tick - completely non-blocking
+    setImmediate(() => {
+      this.performWarmupInBackground(limit);
+    });
+  }
+
+  // Background processing - runs completely async without blocking
+  private performWarmupInBackground(limit: number): void {
     const startTime = Date.now();
-    let warmedCount = 0;
-    let skippedCount = 0;
+    let completed = 0;
+    let skipped = 0;
+    let failed = 0;
 
-    // Process assets in background using setImmediate
-    const processAsset = async (assetIndex: number): Promise<void> => {
-      if (assetIndex >= this.popularAssets.length) {
-        const duration = Date.now() - startTime;
-        console.log(`🔥 Cache warmup completed in ${duration}ms`);
-        console.log(`📊 Warmed: ${warmedCount}, Skipped: ${skippedCount}`);
-        this.isWarmupRunning = false;
-        return;
-      }
+    // Flatten all queries for parallel processing
+    const allQueries = this.popularAssets.flatMap(asset => 
+      asset.queries.map(query => ({ query, assetName: asset.name }))
+    );
 
-      const asset = this.popularAssets[assetIndex];
-      
-      // Process queries for this asset
-      const processQuery = async (queryIndex: number): Promise<void> => {
-        if (queryIndex >= asset.queries.length) {
-          // Move to next asset after a delay (non-blocking)
-          setImmediate(() => {
-            setTimeout(() => processAsset(assetIndex + 1), 100); // Reduced delay
-          });
-          return;
-        }
+    console.log(`🔥 Processing ${allQueries.length} queries in parallel...`);
 
-        const query = asset.queries[queryIndex];
-        
-        try {
-          // Check cache in non-blocking way
+    // Process all queries in parallel without any blocking
+    const processPromises = allQueries.map((item, index) => {
+      return new Promise<void>((resolve) => {
+        // Stagger requests to avoid overwhelming the API
+        setTimeout(() => {
           setImmediate(async () => {
             try {
-              const cached = await tweetCacheService.getCachedTweets(query, limit);
+              // Check cache first
+              const cached = await tweetCacheService.getCachedTweets(item.query, limit);
               if (cached) {
-                console.log(`✅ Cache already warm for: ${query}`);
-                skippedCount++;
-              } else {
-                console.log(`🔥 Warming cache for: ${query} (${asset.name})`);
-                // Fetch in background without blocking
-                this.fetchAndCacheTweetsBackground(query, limit)
-                  .then(() => {
-                    warmedCount++;
-                    console.log(`💾 Background caching completed for: ${query}`);
-                  })
-                  .catch(error => {
-                    console.error(`❌ Background warmup failed for ${query}:`, error);
-                  });
+                skipped++;
+                resolve();
+                return;
               }
               
-              // Process next query after small delay
-              setTimeout(() => processQuery(queryIndex + 1), 50); // Very small delay
+              // Fire the warmup request and immediately resolve - don't wait for it
+              this.fetchAndCacheTweetsBackground(item.query, limit)
+                .then(() => {
+                  completed++;
+                  console.log(`🚀 Warmup initiated for: ${item.query} (${completed}/${allQueries.length - skipped})`);
+                })
+                .catch((error) => {
+                  failed++;
+                  console.error(`❌ Failed to initiate warmup for ${item.query}:`, error.message);
+                });
+              
+              // Resolve immediately - don't wait for the HTTP request to complete
+              resolve();
             } catch (error) {
-              console.error(`❌ Warmup failed for ${query}:`, error);
-              setTimeout(() => processQuery(queryIndex + 1), 50);
+              failed++;
+              console.error(`❌ Error processing ${item.query}:`, error);
+              resolve();
             }
           });
-          
-        } catch (error) {
-          console.error(`❌ Warmup failed for ${query}:`, error);
-          setTimeout(() => processQuery(queryIndex + 1), 50);
-        }
-      };
+        }, index * 100);
+      });
+    });
 
-      // Start processing queries for this asset
-      processQuery(0);
-    };
-
-    // Start processing assets
-    processAsset(0);
+    // Let all promises run in background - don't await
+    Promise.allSettled(processPromises).then(() => {
+      const duration = Date.now() - startTime;
+      console.log(`🔥 Cache warmup completed in ${duration}ms`);
+      console.log(`📊 Completed: ${completed}, Skipped: ${skipped}, Failed: ${failed}`);
+      this.isWarmupRunning = false;
+    }).catch((error) => {
+      console.error("❌ Warmup background processing failed:", error);
+      this.isWarmupRunning = false;
+    });
   }
 
   // Background tweet fetching that doesn't block the main thread
-  private async fetchAndCacheTweetsBackground(query: string, limit: number): Promise<void> {
-    return new Promise((resolve, reject) => {
+  private fetchAndCacheTweetsBackground(query: string, limit: number): Promise<void> {
+    return new Promise((resolve) => {
       // Use setImmediate to move this off the main event loop
-      setImmediate(async () => {
-        try {
-          const response = await fetch(`${this.helperApiUrl}/twitter/search`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query, limit, product: "Latest" })
-          });
-
-          if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
-          }
-
-          const data = await response.json();
-          const tweets = Array.isArray(data) ? data : data.data || data.tweets || data.results || [];
-
-          if (tweets.length > 0) {
-            // Process tweets in chunks to avoid blocking
-            const processInChunks = async (tweets: any[], chunkSize: number = 10) => {
-              const chunks = [];
-              for (let i = 0; i < tweets.length; i += chunkSize) {
-                chunks.push(tweets.slice(i, i + chunkSize));
-              }
-
-              const processedTweets: any[] = [];
-              
-              for (const chunk of chunks) {
-                // Process each chunk and yield control back to event loop
-                await new Promise(resolve => {
-                  setImmediate(() => {
-                    try {
-                      const chunkProcessed = chunk.map((tweet: any) => {
-                        const text = tweet.content || tweet.raw_data?.rawContent || tweet.raw_data?.content || tweet.text || "";
-                        const user = tweet.raw_data?.user || {};
-                        const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(text);
-                        let sentimentLabel = "neutral";
-                        if (sentiment.compound >= 0.05) sentimentLabel = "positive";
-                        else if (sentiment.compound <= -0.05) sentimentLabel = "negative";
-                  
-                        let rawTimestamp = tweet.date || tweet.raw_data?.date || new Date().toISOString();
-                        let formattedTimestamp = getRelativeTime(rawTimestamp);
-                        
-                        return {
-                          id: tweet.id,
-                          name: user.displayname || tweet.username || user.username || "Unknown",
-                          handle: user.username ? `@${user.username}` : (tweet.username ? `@${tweet.username}` : ""),
-                          avatar: user.profileImageUrl || user.profile_image_url || null,
-                          followers: user.followersCount || user.followers_count || 0,
-                          tweetUrl: tweet.url || tweet.raw_data?.url || tweet.raw_data?.url || "",
-                          text,
-                          timestamp: formattedTimestamp,
-                          sentiment: sentimentLabel,
-                          sentimentScore: sentiment.compound,
-                          likes: tweet.likes || tweet.raw_data?.likeCount || 0,
-                          retweets: tweet.retweets || tweet.raw_data?.retweetCount || 0,
-                          replies: tweet.replies || tweet.raw_data?.replyCount || 0,
-                        };
-                      });
-                      
-                      processedTweets.push(...chunkProcessed);
-                      resolve(void 0);
-                    } catch (error) {
-                      console.error('Error processing tweet chunk:', error);
-                      resolve(void 0);
-                    }
-                  });
-                });
-              }
-
-              return processedTweets;
-            };
-
-            const processedTweets = await processInChunks(tweets);
-            await tweetCacheService.cacheTweets(query, limit, processedTweets);
-            console.log(`💾 Cached ${processedTweets.length} tweets for query: ${query}`);
-            resolve();
+      setImmediate(() => {
+        // Fire the request and forget about it - don't wait for response
+        fetch(`${process.env.BASE_URL}/twitter/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: query, 
+            limit: 120,
+            product: 'Latest'
+          })
+        }).then(response => {
+          if (response.ok) {
+            console.log(`� Warmup request sent for: ${query}`);
           } else {
-            console.log(`⚠️ No tweets found for query: ${query}`);
-            resolve();
+            console.warn(`⚠️ Warmup request failed for ${query}: ${response.status}`);
           }
-        } catch (error) {
-          console.error(`Error fetching tweets for ${query}:`, error);
-          reject(error);
-        }
+        }).catch(error => {
+          console.error(`❌ Warmup request error for ${query}:`, error.message);
+        });
+
+        // Resolve immediately - don't wait for the HTTP request
+        resolve();
       });
     });
   }
 
   // Keep the original method for backward compatibility but make it non-blocking
-  private async fetchAndCacheTweets(query: string, limit: number): Promise<void> {
+  private fetchAndCacheTweets(query: string, limit: number): Promise<void> {
     return this.fetchAndCacheTweetsBackground(query, limit);
   }
 
-  async warmupSpecificQueries(queries: string[], limit: number = 10): Promise<void> {
+  // Non-blocking specific queries warmup
+  warmupSpecificQueries(queries: string[], limit: number = 10): void {
     console.log(`🔥 Starting non-blocking cache warmup for ${queries.length} specific queries...`);
     
-    // Process queries in parallel without blocking
-    const promises = queries.map(async (query, index) => {
-      // Stagger the requests to avoid overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, index * 100));
-      
-      try {
-        const cached = await tweetCacheService.getCachedTweets(query, limit);
-        if (!cached) {
-          await this.fetchAndCacheTweetsBackground(query, limit);
-        }
-      } catch (error) {
-        console.error(`Warmup failed for ${query}:`, error);
-      }
-    });
+    // Use setImmediate to defer to next tick
+    setImmediate(() => {
+      // Process all queries in parallel
+      const promises = queries.map((query, index) => {
+        return new Promise<void>((resolve) => {
+          // Stagger requests to avoid overwhelming the API
+          setTimeout(async () => {
+            try {
+              const cached = await tweetCacheService.getCachedTweets(query, limit);
+              if (!cached) {
+                // Fire the warmup request and don't wait for it
+                this.fetchAndCacheTweetsBackground(query, limit)
+                  .then(() => {
+                    console.log(`🚀 Warmup initiated for specific query: ${query}`);
+                  })
+                  .catch((error) => {
+                    console.error(`❌ Failed to initiate warmup for specific query ${query}:`, error);
+                  });
+              } else {
+                console.log(`✅ Cache already warm for specific query: ${query}`);
+              }
+            } catch (error) {
+              console.error(`❌ Error checking cache for specific query ${query}:`, error);
+            } finally {
+              // Always resolve immediately
+              resolve();
+            }
+          }, index * 100); // 100ms stagger
+        });
+      });
 
-    // Don't await all promises - let them run in background
-    Promise.all(promises)
-      .then(() => console.log("🔥 Specific query warmup completed"))
-      .catch(error => console.error("❌ Specific query warmup had errors:", error));
+      // Let all promises run in background - don't await
+      Promise.allSettled(promises).then(() => {
+        console.log("🔥 Specific query warmup completed in background");
+      }).catch((error) => {
+        console.error("❌ Specific query warmup had errors:", error);
+      });
+    });
   }
 
   startPeriodicWarmup(intervalMinutes: number = 30): void {
     console.log(`⏰ Starting periodic cache warmup every ${intervalMinutes} minutes`);
     
-    // Initial warmup (non-blocking)
     setTimeout(() => {
-      // Don't await this - let it run in background
-      this.warmupPopularAssets().catch(error => {
-        console.error("❌ Initial cache warmup failed:", error);
-      });
+      this.warmupPopularAssets();
     }, 5000);
 
-    // Periodic warmup (non-blocking)
     setInterval(() => {
-      // Don't await this - let it run in background
-      this.warmupPopularAssets().catch(error => {
-        console.error("❌ Periodic cache warmup failed:", error);
-      });
+      this.warmupPopularAssets();
     }, intervalMinutes * 60 * 1000);
   }
 }

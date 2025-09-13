@@ -61,12 +61,7 @@ export class TweetCacheService {
         password: process.env.REDIS_PASSWORD as string,
         port: parseInt(process.env.REDIS_PORT || '6379'),
         tls: true
-      }) : new Redis(redisUrl, {
-        retryDelayOnFailover: 100,
-        enableReadyCheck: false,
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
-      });
+      }) : new Redis(redisUrl);
 
       this.redis.on('connect', () => {
         console.log('✅ Redis connected successfully');
@@ -105,7 +100,7 @@ export class TweetCacheService {
       // First check memory cache (fastest)
       const memoryData = this.memoryCache.get<CacheResponse>(key);
       if (memoryData) {
-        console.log(`🚀 Cache HIT (Memory): ${key}`);
+        // console.log(`🚀 Cache HIT (Memory): ${key}`);
         return {
           ...memoryData,
           cached: true,
@@ -122,7 +117,7 @@ export class TweetCacheService {
           // Store in memory cache for faster access next time
           this.memoryCache.set(key, parsedData, this.MEMORY_TTL);
           
-          console.log(`🔄 Cache HIT (Redis): ${key}`);
+          // console.log(`🔄 Cache HIT (Redis): ${key}`);
           return {
             ...parsedData,
             cached: true,
@@ -131,7 +126,7 @@ export class TweetCacheService {
         }
       }
 
-      console.log(`❌ Cache MISS: ${key}`);
+      // console.log(`❌ Cache MISS: ${key}`);
       return null;
     } catch (error) {
       console.error('Cache retrieval error:', error);
@@ -182,7 +177,7 @@ export class TweetCacheService {
         await this.redis.setex(key, this.REDIS_TTL, JSON.stringify(cacheData));
       }
 
-      console.log(`💾 Cached tweets: ${key} (${cachedTweets.length} tweets)`);
+      // console.log(`💾 Cached tweets: ${key} (${cachedTweets.length} tweets)`);
     } catch (error) {
       console.error('Cache storage error:', error);
     }
