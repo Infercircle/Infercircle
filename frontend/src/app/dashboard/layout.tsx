@@ -236,7 +236,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (status === "authenticated" && user?.id) {
       setWalletsLoaded(false); // Reset to false before fetching
       refreshWallets();
@@ -248,7 +248,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [twitterId, status, user?.id]);
 
   // Recalculate net worth and price change when wallets or refreshKey change
-  React.useEffect(() => {
+  useEffect(() => {
     if (connectedWallets > 0) {
       fetchAndSumBalances();
     } else {
@@ -259,7 +259,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [wallets, refreshKey]);
 
   // Start Web Workers background sync when wallets are loaded and workers are initialized
-  React.useEffect(() => {
+  useEffect(() => {
     if (isInitialized && walletsLoaded && connectedWallets > 0 && twitterId) {
       // Convert wallets to format expected by Web Worker
       const allWalletAddresses = [
@@ -277,6 +277,39 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [isInitialized, walletsLoaded, connectedWallets, twitterId, wallets, startPortfolioSync]);
 
+  // Listen for portfolio updates from Web Worker
+  useEffect(() => {
+    const handlePortfolioUpdate = (event: CustomEvent) => {
+      const { netWorth, totalPriceChange, portfolioData } = event.detail;
+      
+      console.log('📊 Received portfolio update from Web Worker:', {
+        netWorth,
+        totalPriceChange,
+        portfolioData: portfolioData ? Object.keys(portfolioData) : null
+      });
+      
+      // Update Zustand store with worker data
+      if (netWorth !== undefined) {
+        setNetWorth(netWorth);
+        setLoadingNetWorth(false);
+      }
+      
+      if (totalPriceChange !== undefined) {
+        setTotalPriceChange(totalPriceChange);
+      }
+      
+      if (portfolioData) {
+        setSharedPortfolioData(portfolioData);
+      }
+    };
+
+    // Listen for portfolio updates from Web Worker
+    window.addEventListener('portfolio-price-updated', handlePortfolioUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('portfolio-price-updated', handlePortfolioUpdate as EventListener);
+    };
+  }, [setNetWorth, setTotalPriceChange, setSharedPortfolioData, setLoadingNetWorth]);
 
   return (
     <div>
