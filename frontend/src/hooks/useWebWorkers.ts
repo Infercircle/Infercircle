@@ -130,9 +130,14 @@ export const useWebWorkers = () => {
   const startSentimentSync = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
     if (!sentimentWorkerRef.current) return;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+
     sentimentWorkerRef.current.postMessage({
       type: 'START_SYNC',
-      data: config
+      data: { 
+        ...config,
+        apiBase: API_BASE
+      }
     });
   }, []);
 
@@ -150,9 +155,14 @@ export const useWebWorkers = () => {
   const updateSentimentConfig = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
     if (!sentimentWorkerRef.current) return;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+
     sentimentWorkerRef.current.postMessage({
       type: 'UPDATE_CONFIG',
-      data: config
+      data: { 
+        ...config,
+        apiBase: API_BASE
+      }
     });
   }, []);
 

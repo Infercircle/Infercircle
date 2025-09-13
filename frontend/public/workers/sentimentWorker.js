@@ -4,7 +4,7 @@ class SentimentWorker {
     this.intervals = new Map();
     this.tweetCache = {};
     this.CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-    this.API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+    this.API_BASE = 'http://localhost:8080'; // Default, will be updated from config
   }
 
   startBackgroundSync(config) {
@@ -15,6 +15,7 @@ class SentimentWorker {
 
     this.isRunning = true;
     this.config = config;
+    this.API_BASE = config.apiBase || 'http://localhost:8080'; // Use passed API base
     
     this.postMessage({ type: 'LOG', message: 'Starting background sentiment sync...' });
     
@@ -290,6 +291,10 @@ self.onmessage = function(e) {
       break;
     case 'UPDATE_CONFIG':
       self.sentimentWorker.config = { ...self.sentimentWorker.config, ...data };
+      // Update API_BASE if provided
+      if (data.apiBase) {
+        self.sentimentWorker.API_BASE = data.apiBase;
+      }
       break;
     default:
       console.log('Worker: Unknown message type:', type);
