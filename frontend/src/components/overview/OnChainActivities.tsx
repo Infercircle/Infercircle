@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { User, AssetSentiMentScore } from "@prisma/client";
 import { getAllAssetSentimentScores } from "@/actions/queries";
-import { IoInformationCircle } from "react-icons/io5";
+import { IoInformationCircle, IoSearch, IoClose } from "react-icons/io5";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 import { Asset } from "./Dashboard";
@@ -94,6 +94,8 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [loadingLogos, setLoadingLogos] = useState<Set<string>>(new Set());
   const [selectedChain, setSelectedChain] = useState<string>('all');
   const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [hasPersistedData, setHasPersistedData] = useState(false);
 
   // Initialize Web Workers
@@ -110,16 +112,30 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     iconUrl?: string;
   }>>([]);
 
-  // Filter assets by selected chain
+  // Filter assets by selected chain and search query
   const chainFilteredAssets = React.useMemo(() => {
-    if (selectedChain === 'all') return assets;
+    let filtered = assets;
     
-    // Find the selected chain data to get the proper chain name
-    const selectedChainData = chainSummaries.find(c => c.chain === selectedChain);
-    if (!selectedChainData) return assets;
+    // Filter by chain
+    if (selectedChain !== 'all') {
+      const selectedChainData = chainSummaries.find(c => c.chain === selectedChain);
+      if (selectedChainData) {
+        filtered = filtered.filter(asset => asset.chain.toLowerCase() === selectedChainData.chainName.toLowerCase());
+      }
+    }
     
-    return assets.filter(asset => asset.chain.toLowerCase() === selectedChainData.chainName.toLowerCase());
-  }, [assets, selectedChain, chainSummaries]);
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(asset => 
+        asset.name.toLowerCase().includes(query) ||
+        asset.symbol.toLowerCase().includes(query) ||
+        asset.chain.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [assets, selectedChain, chainSummaries, searchQuery]);
 
   // Helper function to check if wallets are actually populated
   const hasValidWallets = () => {
@@ -560,6 +576,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     };
   }, []);
 
+
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
       onAssetSelect(asset);
@@ -597,14 +614,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   if (connectedWallets === 0) {
     return (
       <div className="bg-[rgba(24,26,32,1)] backdrop-blur-xl border border-[#23272b]  rounded-2xl p-4 shadow-lg w-full flex flex-col min-h-[480px] max-h-[500px] flex-1 overflow-hidden relative">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
-          <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
-                  <div className="flex items-center gap-2 justify-center lg:justify-start">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-2">
+          <div className="text-base font-semibold text-white text-center lg:text-left whitespace-nowrap">Portfolio Overview</div>
+                  <div className="flex flex-wrap items-center gap-2 justify-center lg:justify-end">
             {/* Chain Filter Dropdown */}
             <div className="relative chain-dropdown-container">
                           <button 
                 onClick={() => setIsChainDropdownOpen(!isChainDropdownOpen)}
-                className="text-[#A3A3A3] text-sm bg-transparent px-3 py-1 rounded-lg flex items-center gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
+                className="text-[#A3A3A3] text-xs sm:text-sm bg-transparent px-2 sm:px-3 py-1 rounded-lg flex items-center gap-1 sm:gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
               >
               {selectedChain === 'all' ? (
                 <span>All Chains</span>
@@ -681,11 +698,48 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
-          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
+          className="text-[#A259FF] text-xs sm:text-sm flex items-center gap-1 border border-[#23272b] px-2 sm:px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
-          {showAllAssets ? 'Hide Zero Assets' : 'View All Assets'}
+          {showAllAssets ? 'Hide' : 'View All'}
           <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">0</span>
         </button>
+        
+          {/* Search functionality */}
+          <div className="flex items-center gap-2 search-container">
+            {!isSearchExpanded ? (
+              <button
+                onClick={() => {
+                  setIsSearchExpanded(true);
+                  setShowAllAssets(true); // Toggle to show all assets when searching
+                }}
+                className="text-[#A3A3A3] hover:text-[#A259FF] transition-colors p-1"
+                title="Search tokens"
+              >
+                <IoSearch className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 bg-[#23272b] border border-[#23272b] rounded-lg px-3 py-1">
+                <IoSearch className="w-4 h-4 text-[#A3A3A3]" />
+                <input
+                  type="text"
+                  placeholder="Search tokens"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent text-white text-sm placeholder-[#666] outline-none w-[85px]"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setIsSearchExpanded(false);
+                    setSearchQuery('');
+                  }}
+                  className="text-[#A3A3A3] hover:text-white transition-colors"
+                >
+                  <IoClose className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
         <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
@@ -774,14 +828,14 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         </div>
       )}
       
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-2">
-          <div className="text-base font-semibold text-white text-center lg:text-left">Portfolio Overview</div>
-                  <div className="flex items-center gap-2 justify-center lg:justify-start">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-2">
+          <div className="text-base font-semibold text-white text-center lg:text-left whitespace-nowrap">Portfolio Overview</div>
+                  <div className="flex flex-wrap items-center gap-2 justify-center lg:justify-end">
             {/* Chain Filter Dropdown */}
             <div className="relative chain-dropdown-container">
                           <button 
                 onClick={() => setIsChainDropdownOpen(!isChainDropdownOpen)}
-                className="text-[#A3A3A3] text-sm bg-transparent px-3 py-1 rounded-lg flex items-center gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
+                className="text-[#A3A3A3] text-xs sm:text-sm bg-transparent px-2 sm:px-3 py-1 rounded-lg flex items-center gap-1 sm:gap-2 hover:bg-[#23262b]/20 transition-colors border border-[#23272b] cursor-pointer"
               >
               {selectedChain === 'all' ? (
                 <span>All Chains</span>
@@ -858,11 +912,48 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           
         <button 
           onClick={() => setShowAllAssets(!showAllAssets)}
-          className="text-[#A259FF] text-sm flex items-center gap-1 border border-[#23272b] px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
+          className="text-[#A259FF] text-xs sm:text-sm flex items-center gap-1 border border-[#23272b] px-2 sm:px-3 py-1 rounded-lg hover:bg-[#23262b]/20 transition-colors cursor-pointer"
         >
-          {showAllAssets ? 'Hide Zero Assets' : 'View All Assets'}
+          {showAllAssets ? 'Hide' : 'View All'}
             <span className="ml-2 bg-violet-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full align-middle inline-block">{filteredAssets.length}</span>
         </button>
+        
+          {/* Search functionality */}
+          <div className="flex items-center gap-2 search-container">
+            {!isSearchExpanded ? (
+              <button
+                onClick={() => {
+                  setIsSearchExpanded(true);
+                  setShowAllAssets(true); // Toggle to show all assets when searching
+                }}
+                className="text-[#A3A3A3] hover:text-[#A259FF] transition-colors p-1"
+                title="Search tokens"
+              >
+                <IoSearch className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 bg-[#23272b] border border-[#23272b] rounded-lg px-3 py-1">
+                <IoSearch className="w-4 h-4 text-[#A3A3A3]" />
+                <input
+                  type="text"
+                  placeholder="Search tokens"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent text-white text-sm placeholder-[#666] outline-none w-[85px]"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setIsSearchExpanded(false);
+                    setSearchQuery('');
+                  }}
+                  className="text-[#A3A3A3] hover:text-white transition-colors"
+                >
+                  <IoClose className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-[#A259FF]/40 scrollbar-track-transparent flex-1">
