@@ -207,7 +207,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
   curatedTweets = [] 
 }) => {
   // Initialize Web Workers
-  const { updateSentimentConfig, isInitialized } = useWebWorkers();
+  const { updateSentimentConfig, updateAssetList, isInitialized } = useWebWorkers();
   
   const [rankRetryCount, setRankRetryCount] = useState(0);
   const [rankCache, setRankCache] = useState<Record<string, number>>({});
@@ -226,7 +226,15 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const [tweetMap, setTweetMap] = useState<Map<string, Tweet>>(new Map());
   const [expandedTweetId, setExpandedTweetId] = useState<string | null>(null);
   
-  // Simplified caching system
+  // Enhanced caching system for tweets with priority assets
+  const [tweetCacheMap, setTweetCacheMap] = useState<Map<string, {
+    tweets: Tweet[];
+    timestamp: number;
+    fromWorker: boolean;
+    assetValue?: number; // Track asset value for priority caching
+  }>>(new Map());
+  
+  // Simplified caching system (keeping for backward compatibility with curated tweets)
   const [tweetCache, setTweetCache] = useState<Record<string, {
     tweets: Tweet[];
     timestamp: number;
@@ -238,15 +246,120 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-  // Cache duration and limits
-  const TWEET_CACHE_DURATION = 10 * 60 * 1000;
-  const MAX_CACHE_ENTRIES = 10; // Limit cache size
+  // Cache configuration
+  const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+  const MAX_PRIORITY_ASSETS = 20; // Cache top 20 valued assets
+  const MAX_TOTAL_CACHE = 30; // Total cache limit
   const MAX_TWEET_MAP_SIZE = 200; // Limit tweet map size
+  
+  // Priority assets tracking
+  const [priorityAssets, setPriorityAssets] = useState<Set<string>>(new Set());
 
   // Function to get cache key for an asset
   const getCacheKey = useCallback((asset: Asset): string => {
     return Buffer.from(`${asset.symbol.toLowerCase()}-${asset.name.toLowerCase()}-${asset.chain.toLowerCase()}`).toString('base64');
   }, []);
+
+  // Priority asset management - track top valued assets
+  const updatePriorityAssets = useCallback((allAssets: Asset[]) => {
+    if (!allAssets || allAssets.length === 0) return;
+    
+    // Sort assets by value (asset.value which is balance * price) and take top 20
+    const sortedAssets = [...allAssets]
+      .filter(asset => asset.value && asset.value > 0)
+      .sort((a, b) => (b.value || 0) - (a.value || 0))
+      .slice(0, MAX_PRIORITY_ASSETS);
+    
+    const newPriorityAssets = new Set(sortedAssets.map(getCacheKey));
+    setPriorityAssets(newPriorityAssets);
+    
+    // Update tweetCacheMap with asset values
+    setTweetCacheMap(prev => {
+      const updated = new Map(prev);
+      sortedAssets.forEach(asset => {
+        const key = getCacheKey(asset);
+        const existing = updated.get(key);
+        if (existing) {
+          updated.set(key, {
+            ...existing,
+            assetValue: asset.value || 0
+          });
+        }
+      });
+      return updated;
+    });
+  }, [getCacheKey, MAX_PRIORITY_ASSETS]);
+
+  // Smart cache retrieval - prioritizes priority assets
+  const getCachedTweets = useCallback((asset: Asset): Tweet[] | null => {
+    const cacheKey = getCacheKey(asset);
+    
+    // Check enhanced cache map first
+    const enhancedEntry = tweetCacheMap.get(cacheKey);
+    if (enhancedEntry && (Date.now() - enhancedEntry.timestamp) < CACHE_DURATION) {
+      console.log(`📱 Loading ${enhancedEntry.tweets.length} tweets from enhanced cache for ${asset.symbol}`);
+      return enhancedEntry.tweets;
+    }
+    
+    // Fallback to simple cache for backward compatibility
+    const simpleEntry = tweetCache[cacheKey];
+    if (simpleEntry && (Date.now() - simpleEntry.timestamp) < CACHE_DURATION) {
+      console.log(`📱 Loading ${simpleEntry.tweets.length} tweets from simple cache for ${asset.symbol}`);
+      return simpleEntry.tweets;
+    }
+    
+    return null;
+  }, [getCacheKey, tweetCacheMap, tweetCache, CACHE_DURATION]);
+
+  // Smart cache storage - prioritizes important assets
+  const storeCachedTweets = useCallback((asset: Asset, tweets: Tweet[], fromWorker = false) => {
+    const cacheKey = getCacheKey(asset);
+    const isPriority = priorityAssets.has(cacheKey);
+    const assetValue = asset.value || 0;
+    
+    const cacheEntry = {
+      tweets,
+      timestamp: Date.now(),
+      fromWorker,
+      assetValue
+    };
+    
+    // Store in enhanced cache map
+    setTweetCacheMap(prev => {
+      const updated = new Map(prev);
+      updated.set(cacheKey, cacheEntry);
+      
+      // Smart cleanup if cache is full
+      if (updated.size > MAX_TOTAL_CACHE) {
+        const entries = Array.from(updated.entries());
+        
+        // Sort by priority: priority assets first, then by asset value, then by timestamp
+        entries.sort(([keyA, entryA], [keyB, entryB]) => {
+          const priorityA = priorityAssets.has(keyA);
+          const priorityB = priorityAssets.has(keyB);
+          
+          if (priorityA !== priorityB) return priorityB ? 1 : -1;
+          if (entryA.assetValue !== entryB.assetValue) return (entryB.assetValue || 0) - (entryA.assetValue || 0);
+          return entryB.timestamp - entryA.timestamp;
+        });
+        
+        // Keep only the top entries
+        const keepEntries = entries.slice(0, MAX_TOTAL_CACHE);
+        return new Map(keepEntries);
+      }
+      
+      return updated;
+    });
+    
+    // Also store in simple cache for backward compatibility
+    const simpleCacheEntry = { tweets, timestamp: Date.now() };
+    setTweetCache(prev => ({ ...prev, [cacheKey]: simpleCacheEntry }));
+    
+      console.log(`💾 Cached ${tweets.length} tweets for ${asset.symbol} (Priority: ${isPriority}, Value: $${assetValue.toFixed(2)})`);
+    
+    // Debug: Log cache status
+    console.log(`🗃️ Cache status: ${tweetCacheMap.size}/${MAX_TOTAL_CACHE} entries, Priority assets: ${priorityAssets.size}/${MAX_PRIORITY_ASSETS}`);
+  }, [getCacheKey, priorityAssets, MAX_TOTAL_CACHE, tweetCacheMap.size, MAX_PRIORITY_ASSETS]);
 
   // Listen for Web Worker tweet updates
   useEffect(() => {
@@ -263,6 +376,11 @@ const Display: React.FC<DisplayProps> = React.memo(({
         const newMap = new Map<string, Tweet>();
         updatedTweets.forEach((tweet: Tweet) => newMap.set(tweet.id, tweet));
         setTweetMap(newMap);
+        
+        // Cache the Web Worker results using smart caching
+        if (selectedAsset && updatedTweets.length > 0) {
+          storeCachedTweets(selectedAsset, updatedTweets, true); // fromWorker = true
+        }
       }
     };
 
@@ -278,7 +396,39 @@ const Display: React.FC<DisplayProps> = React.memo(({
     return () => {
       window.removeEventListener('tweets-updated' as any, handleTweetUpdate);
     };
-  }, [isInitialized, selectedAsset, updateSentimentConfig, getCacheKey]);
+  }, [isInitialized, selectedAsset, updateSentimentConfig, getCacheKey, storeCachedTweets]);
+
+  // Listen for portfolio updates to maintain priority assets
+  useEffect(() => {
+    const handlePortfolioUpdate = (event: CustomEvent) => {
+      const { assets } = event.detail;
+      if (assets && Array.isArray(assets)) {
+        // Update priority assets based on the latest portfolio data
+        updatePriorityAssets(assets);
+        console.log(`📊 Updated priority assets from ${assets.length} total assets`);
+      }
+    };
+
+    window.addEventListener('portfolio-price-updated' as any, handlePortfolioUpdate);
+    
+    // Initialize priority assets from cached portfolio data if available
+    const cachedPortfolio = sessionStorage.getItem('portfolio_worker_cache');
+    if (cachedPortfolio) {
+      try {
+        const { assets } = JSON.parse(cachedPortfolio);
+        if (assets && Array.isArray(assets)) {
+          updatePriorityAssets(assets);
+          console.log(`📊 Initialized priority assets from cache with ${assets.length} assets`);
+        }
+      } catch (error) {
+        console.error('Error loading cached portfolio for priority assets:', error);
+      }
+    }
+    
+    return () => {
+      window.removeEventListener('portfolio-price-updated' as any, handlePortfolioUpdate);
+    };
+  }, [updatePriorityAssets]);
 
   // Load tweet cache from session storage on mount
   useEffect(() => {
@@ -311,51 +461,25 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Function to check if cached data is still fresh
   const isCacheFresh = useCallback((cacheEntry: any): boolean => {
     if (!cacheEntry || !cacheEntry.timestamp) return false;
-    return (Date.now() - cacheEntry.timestamp) < TWEET_CACHE_DURATION;
-  }, [TWEET_CACHE_DURATION]);
+    return (Date.now() - cacheEntry.timestamp) < CACHE_DURATION;
+  }, [CACHE_DURATION]);
 
-  // Function to load tweets from cache
+  // Function to load tweets from cache using smart caching
   const loadFromCache = useCallback((asset: Asset): boolean => {
-    const cacheKey = getCacheKey(asset);
-    const cacheEntry = tweetCache[cacheKey];
+    const cachedTweets = getCachedTweets(asset);
     
-    if (cacheEntry && isCacheFresh(cacheEntry)) {
-      console.log(`📱 Loading ${cacheEntry.tweets.length} tweets from cache for ${asset.symbol}`);
-      setTweets(cacheEntry.tweets);
+    if (cachedTweets) {
+      setTweets(cachedTweets);
       // Update tweet map
       const newMap = new Map<string, Tweet>();
-      cacheEntry.tweets.forEach(tweet => newMap.set(tweet.id, tweet));
+      cachedTweets.forEach(tweet => newMap.set(tweet.id, tweet));
       setTweetMap(newMap);
       return true;
     }
     
-    console.log(`❌ Cache miss for ${asset.symbol}: ${!cacheEntry ? 'no entry' : 'stale data'}`);
+    console.log(`❌ Cache miss for ${asset.symbol}: no cached data available`);
     return false;
-  }, [tweetCache, getCacheKey, isCacheFresh]);
-
-  // Function to save tweets to cache
-  const saveToCache = useCallback((asset: Asset, tweetsData: Tweet[]) => {
-    const cacheKey = getCacheKey(asset);
-    const cacheEntry = {
-      tweets: tweetsData,
-      timestamp: Date.now()
-    };
-    
-    setTweetCache(prev => {
-      const newCache = { ...prev, [cacheKey]: cacheEntry };
-      
-      // Clean up old cache entries if we exceed the limit
-      const entries = Object.entries(newCache);
-      if (entries.length > MAX_CACHE_ENTRIES) {
-        // Keep only the most recent entries
-        const sortedEntries = entries.sort(([,a], [,b]) => b.timestamp - a.timestamp);
-        const cleanedCache = Object.fromEntries(sortedEntries.slice(0, MAX_CACHE_ENTRIES));
-        return cleanedCache;
-      }
-      
-      return newCache;
-    });
-  }, [getCacheKey, MAX_CACHE_ENTRIES]);
+  }, [getCachedTweets]);
 
   // Function to create a unique content hash for duplicate detection (kept for elite tweets)
   const createTweetHash = useCallback((tweet: Tweet): string => {
@@ -380,6 +504,17 @@ const Display: React.FC<DisplayProps> = React.memo(({
   const fetchTweets = useCallback(async (assetName: string, assetSymbol: string, chain?: string) => {
     if (!assetName || !assetSymbol) return;
     
+    // First check if Web Worker has fresh data
+    if (selectedAsset) {
+      const cached = loadFromCache(selectedAsset);
+      if (cached) {
+        console.log('🚀 Using Web Worker cached tweets');
+        setLoadingTweets(false);
+        return; // Use Web Worker data
+      }
+    }
+    
+    console.log('📡 Fallback: Fetching tweets directly (Web Worker data not available)');
     setLoadingTweets(true);
     
     try {
@@ -465,9 +600,9 @@ const Display: React.FC<DisplayProps> = React.memo(({
       setTweets(uniqueTweets);
       setTweetMap(newTweetMap);
       
-      // Cache the results
+      // Cache the results using smart caching
       if (selectedAsset && uniqueTweets.length > 0) {
-        saveToCache(selectedAsset, uniqueTweets);
+        storeCachedTweets(selectedAsset, uniqueTweets);
       }
       
     } catch (error) {
@@ -475,7 +610,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
     } finally {
       setLoadingTweets(false);
     }
-  }, [API_BASE, selectedAsset, loadFromCache, saveToCache]);
+  }, [API_BASE, selectedAsset, loadFromCache, storeCachedTweets]);
 
   // Enhanced asset filtering with name and symbol priority
   const isAssetRelated = useCallback((tweetContent: string, assetName: string, assetSymbol: string) => {
@@ -916,14 +1051,21 @@ const Display: React.FC<DisplayProps> = React.memo(({
       // Clear expanded state when switching assets
       setExpandedTweetId(null);
       
-      // Try to load from cache first for instant display
+      // Always try to load from cache first (Web Worker keeps this fresh)
       const cached = loadFromCache(selectedAsset);
       
       if (!cached) {
-        // Clear tweets and fetch new ones
+        // Only show loading and fetch as fallback if no cached data
         setTweets([]);
         setTweetMap(new Map());
-        fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
+        
+        // Use fallback fetch with a delay to give Web Worker a chance
+        setTimeout(() => {
+          const stillNoCachedData = !loadFromCache(selectedAsset);
+          if (stillNoCachedData) {
+            fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
+          }
+        }, 2000); // Give Web Worker 2 seconds to provide data
       }
     } else {
       setTweets([]);
@@ -937,12 +1079,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
     if (selectedAsset && tweets.length > 0) {
       // Debounce saves to avoid excessive caching
       const saveTimer = setTimeout(() => {
-        saveToCache(selectedAsset, tweets);
+        storeCachedTweets(selectedAsset, tweets);
       }, 500);
       
       return () => clearTimeout(saveTimer);
     }
-  }, [selectedAsset, tweets, saveToCache]);
+  }, [selectedAsset, tweets, storeCachedTweets]);
 
   // Background refresh for stale cache (every 10 minutes)
   useEffect(() => {
@@ -953,13 +1095,13 @@ const Display: React.FC<DisplayProps> = React.memo(({
       const cacheEntry = tweetCache[cacheKey];
       
       // Only refresh if cache is very stale (older than 10 minutes) or doesn't exist
-      if (!cacheEntry || (Date.now() - cacheEntry.timestamp) > TWEET_CACHE_DURATION) {
+      if (!cacheEntry || (Date.now() - cacheEntry.timestamp) > CACHE_DURATION) {
         fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
       }
-    }, TWEET_CACHE_DURATION); // Every 10 minutes
+    }, CACHE_DURATION); // Every 10 minutes
 
     return () => clearInterval(interval);
-  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets, getCacheKey, tweetCache, TWEET_CACHE_DURATION]);
+  }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets, getCacheKey, tweetCache, CACHE_DURATION]);
 
   // Cleanup effect - periodic cleanup of cache and tweet map
   useEffect(() => {
@@ -970,7 +1112,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
         const cleanedCache: typeof prev = {};
         
         Object.entries(prev).forEach(([key, entry]) => {
-          if (now - entry.timestamp < TWEET_CACHE_DURATION * 2) { // Keep entries for 20 minutes max
+          if (now - entry.timestamp < CACHE_DURATION * 2) { // Keep entries for 20 minutes max
             cleanedCache[key] = entry;
           }
         });
@@ -1007,7 +1149,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
     }, 5 * 60 * 1000); // Clean up every 5 minutes
 
     return () => clearInterval(cleanupInterval);
-  }, [TWEET_CACHE_DURATION, MAX_TWEET_MAP_SIZE, tweetMap]);
+  }, [CACHE_DURATION, MAX_TWEET_MAP_SIZE, tweetMap]);
 
   // Show message if no wallets are connected
   if (connectedWallets === 0) {

@@ -187,6 +187,16 @@ export const useWebWorkers = () => {
     });
   }, []);
 
+  // Update asset list for background tweet fetching
+  const updateAssetList = useCallback((assets: any[]) => {
+    if (!sentimentWorkerRef.current) return;
+
+    sentimentWorkerRef.current.postMessage({
+      type: 'UPDATE_ASSET_LIST',
+      data: { assets }
+    });
+  }, []);
+
   // Initialize workers on mount
   useEffect(() => {
     initializeWorkers();
@@ -231,6 +241,7 @@ export const useWebWorkers = () => {
     startSentimentSync,
     stopAllSync,
     updateSentimentConfig,
+    updateAssetList,
     isInitialized: isInitializedRef.current
   };
 };

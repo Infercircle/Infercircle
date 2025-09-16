@@ -97,7 +97,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [hasPersistedData, setHasPersistedData] = useState(false);
 
   // Initialize Web Workers
-  const { startPortfolioSync, isInitialized } = useWebWorkers();
+  const { startPortfolioSync, updateAssetList, isInitialized } = useWebWorkers();
 
   const hiddenAssetsCount = assets.length - filteredAssets.length;
 
@@ -480,8 +480,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
         timestamp: Date.now()
       };
       sessionStorage.setItem(sessionKey, JSON.stringify(dataToStore));
+      
+      // Send asset list to sentiment worker for background tweet fetching
+      if (isInitialized) {
+        updateAssetList(assets);
+      }
     }
-  }, [assets, chainSummaries, twitterId]);
+  }, [assets, chainSummaries, twitterId, isInitialized, updateAssetList]);
 
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {

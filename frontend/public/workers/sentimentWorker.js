@@ -5,6 +5,7 @@ class SentimentWorker {
     this.tweetCache = {};
     this.CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
     this.API_BASE = 'http://localhost:8080'; // Default, will be updated from config
+    this.assetList = []; // Store current asset list for background fetching
   }
 
   startBackgroundSync(config) {
@@ -16,17 +17,29 @@ class SentimentWorker {
     this.isRunning = true;
     this.config = config;
     this.API_BASE = config.apiBase || 'http://localhost:8080'; // Use passed API base
+    this.assetList = config.assetList || []; // Store asset list for background fetching
     
-    this.postMessage({ type: 'LOG', message: 'Starting background sentiment sync...' });
+    this.postMessage({ type: 'LOG', message: 'Starting background sentiment and tweet sync...' });
     
-    // Start periodic fetching every 3 minutes
-    const intervalId = setInterval(() => {
+    // Start periodic fetching for tweets every 3 minutes
+    const tweetIntervalId = setInterval(() => {
+      this.fetchTweetsForAllAssets();
+    }, 3 * 60 * 1000);
+    
+    // Start periodic fetching for sentiment data every 5 minutes
+    const sentimentIntervalId = setInterval(() => {
       this.fetchAndUpdateSentimentData();
-    }, 3 * 60 * 1000); // 3 minutes
+    }, 5 * 60 * 1000);
     
-    this.intervals.set('sentiment', intervalId);
+    this.intervals.set('tweets', tweetIntervalId);
+    this.intervals.set('sentiment', sentimentIntervalId);
     
-    // Initial fetch after 45 seconds
+    // Initial fetch after 30 seconds for tweets
+    setTimeout(() => {
+      this.fetchTweetsForAllAssets();
+    }, 30000);
+    
+    // Initial fetch after 45 seconds for sentiment
     setTimeout(() => {
       this.fetchAndUpdateSentimentData();
     }, 45000);
@@ -38,7 +51,53 @@ class SentimentWorker {
       clearInterval(intervalId);
     });
     this.intervals.clear();
-    this.postMessage({ type: 'LOG', message: 'Sentiment sync stopped' });
+    this.postMessage({ type: 'LOG', message: 'Sentiment and tweet sync stopped' });
+  }
+
+  // New method to fetch tweets for all assets in background
+  async fetchTweetsForAllAssets() {
+    if (!this.assetList || this.assetList.length === 0) {
+      return;
+    }
+
+    this.postMessage({ type: 'LOG', message: `Fetching tweets for ${this.assetList.length} assets...` });
+
+    // Process assets in batches to avoid overwhelming the API
+    const BATCH_SIZE = 3;
+    
+    for (let i = 0; i < this.assetList.length; i += BATCH_SIZE) {
+      const batch = this.assetList.slice(i, i + BATCH_SIZE);
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(asset => this.fetchTweetsForAsset(asset));
+      
+      try {
+        await Promise.allSettled(batchPromises);
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + BATCH_SIZE < this.assetList.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        console.error('Error processing tweet batch:', error);
+      }
+    }
+  }
+
+  // Update asset list when portfolio changes
+  updateAssetList(newAssetList) {
+    this.assetList = newAssetList || [];
+    this.postMessage({ 
+      type: 'LOG', 
+      message: `Updated asset list: ${this.assetList.length} assets` 
+    });
+    
+    // Immediately fetch tweets for new assets if we're running
+    if (this.isRunning && this.assetList.length > 0) {
+      setTimeout(() => {
+        this.fetchTweetsForAllAssets();
+      }, 1000);
+    }
   }
 
   async fetchAndUpdateSentimentData() {
@@ -73,10 +132,9 @@ class SentimentWorker {
         return; // Don't fetch if cache is fresh
       }
 
-      this.postMessage({ type: 'LOG', message: `Fetching tweets for ${asset.symbol}...` });
-
+      // Generate multiple queries for better coverage
       const queries = [
-        `${asset.name} ${asset.symbol}`,
+        `${asset.name} $${asset.symbol}`,
         `$${asset.symbol.toLowerCase()}`,
         asset.name
       ];
@@ -90,11 +148,11 @@ class SentimentWorker {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               query, 
-              limit: 40, 
+              limit: 120, 
               product: "Latest" 
             })
           });
-
+          
           if (response.ok) {
             const data = await response.json();
             const tweets = Array.isArray(data) ? data : data.data || data.tweets || [];
@@ -295,6 +353,9 @@ self.onmessage = function(e) {
       if (data.apiBase) {
         self.sentimentWorker.API_BASE = data.apiBase;
       }
+      break;
+    case 'UPDATE_ASSET_LIST':
+      self.sentimentWorker.updateAssetList(data.assets);
       break;
     default:
       console.log('Worker: Unknown message type:', type);
