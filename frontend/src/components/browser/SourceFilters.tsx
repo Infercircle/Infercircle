@@ -62,21 +62,22 @@ export default function SourceFilters({
               <button
                 key={source.id}
                 onClick={() => handleSourceToggle(source.id)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                className={`flex items-center space-x-2 px-3 py-2 rounded transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 group ${
                   isSourceSelected(source.id)
-                    ? "bg-purple-500/20 text-purple-400 border border-purple-400/30"
-                    : "bg-purple-500/20 text-gray-300 border border-purple-400/30 hover:bg-purple-500/30"
+                    ? "bg-purple-500/60 text-white border border-purple-400/30"
+                    : "bg-purple-500/20 text-gray-300 border border-purple-400/30 hover:bg-purple-500/60 hover:text-gray-100"
                 }`}
               >
                 <span className="text-sm font-medium">{source.name}</span>
                 {source.icon && (
-                  <source.icon className="w-3 h-3 text-gray-400" />
+                  <source.icon className={`w-3 h-3 ${
+                    isSourceSelected(source.id) ? "text-white" : "text-gray-400 group-hover:text-gray-100"
+                  }`} />
                 )}
               </button>
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );
