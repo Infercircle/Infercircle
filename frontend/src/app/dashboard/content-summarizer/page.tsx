@@ -428,9 +428,9 @@ export default function ContentSummarizer() {
 
     // Make API call
     try {
-      const endpoint = contentType === 'space' ? '/api/content-summarizer/spaces-chunked' : '/api/content-summarizer/broadcasts';
+      const endpoint = contentType === 'space' ? '/api/content-summarizer/spaces-chunked' : '/api/content-summarizer/broadcasts-chunked';
       const response = await axios.post(endpoint, { 
-        space_url: url,
+        ...(contentType === 'space' ? { space_url: url } : { broadcast_url: url }),
         is_ended: true 
       }, {
         timeout: 1800000, // 30 minutes timeout
@@ -780,14 +780,29 @@ export default function ContentSummarizer() {
               <div className="flex bg-[#181A20] rounded-lg p-1">
                 <button
                   type="button"
-                  className="px-3 py-1 rounded text-sm font-medium bg-[#A259FF] text-white cursor-default"
+                  onClick={() => !isLoading && setContentType('space')}
+                  disabled={isLoading}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors cursor-pointer ${
+                    contentType === 'space'
+                      ? 'bg-[#A259FF] text-white'
+                      : isLoading 
+                        ? 'text-gray-500 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
                 >
                   Spaces
                 </button>
                 <button
                   type="button"
-                  disabled={true}
-                  className="px-3 py-1 rounded text-sm font-medium text-gray-500 cursor-not-allowed opacity-50"
+                  onClick={() => !isLoading && setContentType('broadcast')}
+                  disabled={isLoading}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors cursor-pointer ${
+                    contentType === 'broadcast'
+                      ? 'bg-[#A259FF] text-white'
+                      : isLoading 
+                        ? 'text-gray-500 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
                 >
                   Broadcasts
                 </button>
