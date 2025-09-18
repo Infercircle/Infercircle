@@ -114,93 +114,7 @@ export default function ContentSummarizer() {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // History management
-  const [history, setHistory] = useState<HistoryItem[]>([
-    {
-      id: '1',
-      title: 'Twitter Space - 12/15/2024',
-      url: 'https://twitter.com/i/spaces/1a2b3c4d5e6f',
-      contentType: 'space',
-      summary: 'This space discussed the latest trends in cryptocurrency and DeFi protocols. Key topics included yield farming strategies, liquidity provision, and risk management in volatile markets. The speakers shared insights on upcoming token launches and provided analysis on market sentiment.',
-      transcript: 'Speaker 1: Welcome everyone to today\'s space about crypto trends. Let\'s start with yield farming.\n\nSpeaker 2: Yield farming has evolved significantly. The key is finding sustainable protocols with good tokenomics.\n\nSpeaker 1: Absolutely. Risk management is crucial in this space.\n\nSpeaker 2: I agree. Always DYOR before investing in any protocol.',
-      duration: '45:30',
-      participants: 2,
-      space_id: '1a2b3c4d5e6f',
-      createdAt: '2024-12-15T10:30:00Z',
-      metadata: {
-        confidence: 0.95,
-        speakers: 2,
-        chapters: 3
-      }
-    },
-    {
-      id: '2',
-      title: 'Twitter Broadcast - 12/14/2024',
-      url: 'https://twitter.com/i/broadcasts/7g8h9i0j1k2l',
-      contentType: 'broadcast',
-      summary: 'A comprehensive analysis of the current NFT market conditions. The discussion covered floor prices, utility-based NFTs, and the future of digital collectibles. Speakers provided technical analysis and market predictions for the upcoming quarter.',
-      transcript: 'Host: Today we\'re diving deep into the NFT market. Let\'s analyze the current trends.\n\nGuest: The market has shown resilience despite recent volatility. Utility-based NFTs are gaining traction.\n\nHost: What about floor prices? Are we seeing stabilization?\n\nGuest: Yes, we\'re seeing more stable floor prices in established collections.',
-      duration: '32:15',
-      participants: 1,
-      broadcast_id: '7g8h9i0j1k2l',
-      createdAt: '2024-12-14T15:45:00Z',
-      metadata: {
-        confidence: 0.92,
-        speakers: 2,
-        chapters: 4
-      }
-    },
-    {
-      id: '3',
-      title: 'Twitter Space - 12/13/2024',
-      url: 'https://twitter.com/i/spaces/3m4n5o6p7q8r',
-      contentType: 'space',
-      summary: 'Discussion about Web3 gaming and play-to-earn mechanics. The conversation explored different gaming platforms, token economics in games, and the future of blockchain-based gaming. Speakers shared their experiences with various gaming protocols.',
-      transcript: 'Moderator: Welcome to our Web3 gaming discussion. Let\'s start with play-to-earn mechanics.\n\nGamer 1: P2E has evolved beyond simple token rewards. Now we see more sophisticated economic models.\n\nGamer 2: The key is sustainable tokenomics that don\'t lead to inflation.\n\nModerator: What about user experience? How important is gameplay quality?\n\nGamer 1: Gameplay is crucial. Tokens alone won\'t retain players long-term.',
-      duration: '58:20',
-      participants: 3,
-      space_id: '3m4n5o6p7q8r',
-      createdAt: '2024-12-13T20:15:00Z',
-      metadata: {
-        confidence: 0.88,
-        speakers: 3,
-        chapters: 5
-      }
-    },
-    {
-      id: '4',
-      title: 'Twitter Broadcast - 12/12/2024',
-      url: 'https://twitter.com/i/broadcasts/9s0t1u2v3w4x',
-      contentType: 'broadcast',
-      summary: 'Technical deep dive into layer 2 scaling solutions. Covered various L2 protocols, their trade-offs, and implementation strategies. The discussion included gas optimization techniques and cross-chain interoperability challenges.',
-      transcript: 'Technical Lead: Let\'s discuss L2 scaling solutions. We have several options available.\n\nDeveloper: Each L2 has different trade-offs. Optimistic rollups vs ZK rollups.\n\nTechnical Lead: Gas optimization is crucial for user adoption.\n\nDeveloper: Cross-chain interoperability remains a challenge we need to solve.',
-      duration: '41:10',
-      participants: 1,
-      broadcast_id: '9s0t1u2v3w4x',
-      createdAt: '2024-12-12T14:20:00Z',
-      metadata: {
-        confidence: 0.94,
-        speakers: 2,
-        chapters: 6
-      }
-    },
-    {
-      id: '5',
-      title: 'Twitter Space - 12/11/2024',
-      url: 'https://twitter.com/i/spaces/5y6z7a8b9c0d',
-      contentType: 'space',
-      summary: 'Community discussion about DAO governance and voting mechanisms. Explored different governance models, token holder rights, and decision-making processes in decentralized organizations. Speakers shared experiences from various DAOs.',
-      transcript: 'DAO Member: Governance is the backbone of any successful DAO.\n\nCommunity Lead: We need better voting mechanisms that prevent whale dominance.\n\nDAO Member: Quadratic voting could help distribute influence more fairly.\n\nCommunity Lead: Transparency in decision-making is also crucial for trust.',
-      duration: '37:45',
-      participants: 4,
-      space_id: '5y6z7a8b9c0d',
-      createdAt: '2024-12-11T18:30:00Z',
-      metadata: {
-        confidence: 0.91,
-        speakers: 4,
-        chapters: 4
-      }
-    }
-  ]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
 
@@ -315,13 +229,21 @@ export default function ContentSummarizer() {
 
   // History management functions
   const saveToHistory = (result: SummarizationResult, url: string, contentType: 'space' | 'broadcast') => {
+    try {
+      // Guard against exceeding localStorage quota by truncating very large fields
+      const MAX_TRANSCRIPT_CHARS = 200_000; // ~200 KB of text
+      const MAX_SUMMARY_CHARS = 50_000; // ~50 KB of text
+
+      const safeSummary = (result.summary || '').slice(0, MAX_SUMMARY_CHARS);
+      const safeTranscript = (result.transcript || '').slice(0, MAX_TRANSCRIPT_CHARS);
+
     const historyItem: HistoryItem = {
       id: Date.now().toString(),
       title: `${contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} - ${new Date().toLocaleDateString()}`,
       url,
       contentType,
-      summary: result.summary,
-      transcript: result.transcript,
+        summary: safeSummary,
+        transcript: safeTranscript,
       duration: result.duration,
       participants: result.participants,
       space_id: result.space_id,
@@ -330,9 +252,25 @@ export default function ContentSummarizer() {
       metadata: result.metadata
     };
 
-    const updatedHistory = [historyItem, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem('content_summarizer_history', JSON.stringify(updatedHistory));
+      const updatedHistory = [historyItem, ...history];
+      setHistory(updatedHistory);
+
+      try {
+        localStorage.setItem('content_summarizer_history', JSON.stringify(updatedHistory));
+      } catch (storageError) {
+        // If we hit quota, try saving a trimmed version with fewer items
+        console.error('Failed to persist full history; attempting trimmed save:', storageError);
+        try {
+          const trimmed = updatedHistory.slice(0, 25); // keep most recent 25
+          localStorage.setItem('content_summarizer_history', JSON.stringify(trimmed));
+          setHistory(trimmed);
+        } catch (trimError) {
+          console.error('Failed to persist trimmed history:', trimError);
+        }
+      }
+    } catch (err) {
+      console.error('saveToHistory error:', err);
+    }
   };
 
   const loadHistoryFromStorage = () => {
