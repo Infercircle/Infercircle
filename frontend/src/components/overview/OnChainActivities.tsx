@@ -346,13 +346,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             
             for(const asset of allAssets) {
               if(asset.name.toLowerCase() == token.name.toLowerCase()){
-                const SentimentIndex = (asset.positiveTweets - asset.negativeTweets) / (asset.positiveTweets + asset.neutralTweets + asset.negativeTweets);
+                const SentimentIndex = (asset.positiveTweets - asset.negativeTweets - (asset.neutralTweets*(0.2))) / (asset.positiveTweets + asset.neutralTweets + asset.negativeTweets);
                 // Only use database icon if Zerion doesn't have one
                 if (!updatedToken.icon || updatedToken.icon === '') {
                   updatedToken.icon = asset.image || "";
                 }
                 updatedToken.sentiment = parseFloat(asset.sentiment);
-                updatedToken.mindShare = parseFloat(((SentimentIndex*50) + 50).toFixed(2));
+                updatedToken.mindShare = parseFloat((((SentimentIndex + 1)/2)*100).toFixed(2));
                 updatedToken.id = asset.id;
                 break;
               }
@@ -421,13 +421,13 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             if (res.symbol.toLowerCase() === token.symbol.toLowerCase()) {
               setAssets(prevAssets => prevAssets.map(asset => {
                 if (asset.symbol === token.symbol && asset.name === token.name) {
-                  let SentimentIndex = (res.positiveTweets - res.negativeTweets) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
+                  let SentimentIndex = (res.positiveTweets - res.negativeTweets - (res.neutralTweets*(0.2))) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
                   return {
                     ...asset,
                     // Only use fallback icon if Zerion doesn't have one
                     icon: (res.image && res.image !== '') ? res.image : (asset.icon || ""),
                     sentiment: parseFloat(res.sentiment),
-                    mindShare: parseFloat(((SentimentIndex*50) + 50).toFixed(2))
+                    mindShare: parseFloat((((SentimentIndex + 1) / 2) * 100).toFixed(2))
                   };
                 }
                 return asset;
