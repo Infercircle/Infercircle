@@ -19,7 +19,7 @@ const sidebarItems = [
     group: "Social Metrics",
     icon: FiUsers,
     items: [
-      // { label: "Browser", icon: FiGlobe, href: "/dashboard/browser" },
+      { label: "Browser", icon: FiGlobe, href: "/dashboard/browser" },
       // { label: "InferAI", icon: GrRobot, href: "/dashboard/inferai" },
       // { label: "Watchlist", icon: FiStar, href: "/dashboard/watchlist" },
       // { label: "Token Index", icon: FiBarChart2, href: "/dashboard/token-index" },

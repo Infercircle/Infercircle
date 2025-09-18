@@ -38,7 +38,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
   const isOverviewPage = pathname === "/dashboard";
-  const showSearch = !isInferAI && pathname !== "/dashboard" && pathname !== "/dashboard/content-summarizer" && pathname !== "/dashboard/pre-tge" && pathname !== "/dashboard/post-tge-projects" && pathname !== "/dashboard/token-sales";
   const showWallet = !isInferAI && pathname !== "/dashboard/content-summarizer";
   const showMobileMenu = pathname.startsWith("/dashboard");
   const { data: session, status } = useSession();
@@ -343,7 +342,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 collapsed={collapsed}
                 showConnectWallet={showWallet}
                 showAuthButtons={false}
-                showSearch={showSearch}
                 onOpenWalletModal={openWalletModal}
                 connectedWallets={connectedWallets}
                 onToggleMobileMenu={showMobileMenu ? toggleMobileMenu : undefined}

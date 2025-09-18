@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out hidden md:flex ${
+      className={`fixed left-0 top-0 h-screen text-white flex flex-col transition-all duration-300 ease-in-out hidden md:flex z-[999999] ${
         collapsed ? 'w-14 bg-[rgba(24,26,32,1)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl' : 'w-56 bg-[rgba(24,26,32,1)] border-r border-[#23272b] shadow-[4px_0px_6px_#00000040] backdrop-blur-xl'
       }`}
     >
