@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     
     // Call the broadcast chunked endpoint on helper
     console.log('⏳ Starting chunked download and transcription (broadcast)...');
-    const chunkedResponse = await axios.post(`${HELPER_APIS_URL}/download-and-transcribe-runpod-chunked-broadcast`, {
+    const chunkedResponse = await axios.post(`${HELPER_APIS_URL}/download-and-transcribe-runpod-chunked`, {
       broadcast_url,
       is_ended,
       auto_transcribe: true 
