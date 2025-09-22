@@ -43,11 +43,11 @@ interface resultType {symbol: string, sentiment: string, image: string, positive
 
 // Helper function to calculate sentiment score from tweet counts
 function calculateSentimentScore(positiveTweets: number, negativeTweets: number, neutralTweets: number): number {
-    const SentimentIndex = (positiveTweets - negativeTweets) / (positiveTweets + neutralTweets + negativeTweets);
+    const SentimentIndex = (positiveTweets - negativeTweets - (neutralTweets*(0.2))) / (positiveTweets + neutralTweets + negativeTweets);
     const totalTweets = positiveTweets + negativeTweets + neutralTweets;
     if (totalTweets === 0) return 0;
     
-    const mindshare = ((SentimentIndex*50) + 50).toFixed(2);
+    const mindshare = (((SentimentIndex + 1) / 2) * 100).toFixed(2);
     
     return parseFloat(mindshare);
 }
