@@ -17,18 +17,18 @@ model InviteCode {
 }
 
 model User {
-  id                        String                     @id
-  name                      String?
-  email                     String?                    @unique
-  image                     String?
-  username                  String?                    @unique
-  followersCount            Int?
-  inviteAccepted            Boolean                    @default(false)
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @default(now())
-  twitterId                 String?                    @unique
-  UserWallet                UserWallet[]               @relation("UserWallets")
-  eliteCurators             elite_curators[]
+  id             String           @id
+  name           String?
+  email          String?          @unique
+  image          String?
+  username       String?          @unique
+  followersCount Int?
+  inviteAccepted Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now())
+  twitterId      String?          @unique
+  eliteCurators  elite_curators[] @relation("UserToelite_curators")
+  UserWallet     UserWallet[]     @relation("UserWallets")
 }
 
 model UserWallet {
@@ -40,16 +40,16 @@ model UserWallet {
 }
 
 model elite_curators {
-  id                        Int                        @id @default(autoincrement())
-  twitter_id                String                     @unique @db.VarChar(32)
-  username                  String                     @unique @db.VarChar(64)
-  twitter_score             Float?
-  tags                      Json?
-  categories                Json?
-  subscribed_at             DateTime?                  @db.Timestamp(6)
-  created_at                DateTime?                  @default(now()) @db.Timestamp(6)
-  followers_count           Int?
-  users                     User[]
+  id              Int       @id @default(autoincrement())
+  twitter_id      String    @unique @db.VarChar(32)
+  username        String    @unique @db.VarChar(64)
+  twitter_score   Float?
+  tags            Json?
+  categories      Json?
+  subscribed_at   DateTime? @db.Timestamp(6)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  followers_count Int?
+  users           User[]    @relation("UserToelite_curators")
 }
 
 model top_elite_curators {
@@ -59,33 +59,45 @@ model top_elite_curators {
   processed  Boolean? @default(false)
 }
 
-
 model AssetSentiMentScore {
-  id              String  @id
-  name            String  @unique
-  symbol          String
-  image           String?  
-  sentiment       String @default("0") 
-  positiveTweets  Int    @default(0) 
-  negativeTweets  Int    @default(0)
-  neutralTweets   Int    @default(0)
-  dailySentiment  DailySentimentScore[]
+  id             String                @id
+  name           String                @unique
+  symbol         String
+  image          String?
+  sentiment      String                @default("0")
+  negativeTweets Int                   @default(0)
+  neutralTweets  Int                   @default(0)
+  positiveTweets Int                   @default(0)
+  dailySentiment DailySentimentScore[]
 }
 
 model DailySentimentScore {
-  id               String               @id @default(cuid())
-  assetId          String
-  date             DateTime             @db.Date
-  sentimentScore   Float                @default(0)
-  positiveTweets   Int                  @default(0)
-  negativeTweets   Int                  @default(0)
-  neutralTweets    Int                  @default(0)
-  totalTweets      Int                  @default(0)
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  asset            AssetSentiMentScore  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id             String              @id @default(cuid())
+  assetId        String
+  date           DateTime            @db.Date
+  sentimentScore Float               @default(0)
+  positiveTweets Int                 @default(0)
+  negativeTweets Int                 @default(0)
+  neutralTweets  Int                 @default(0)
+  totalTweets    Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  asset          AssetSentiMentScore @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@unique([assetId, date])
   @@index([date])
   @@index([assetId, date])
+}
+
+model ContentSummary {
+  ContentId   String      @id @default(cuid())
+  ContentType ContentType
+  Summary     String
+  Transcript  String
+  CreatedAt   DateTime    @default(now())
+}
+
+enum ContentType {
+  space
+  broadcast
 }
