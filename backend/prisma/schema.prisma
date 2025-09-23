@@ -29,6 +29,7 @@ model User {
   twitterId      String?          @unique
   eliteCurators  elite_curators[] @relation("UserToelite_curators")
   UserWallet     UserWallet[]     @relation("UserWallets")
+  contentSummaries UserContentSummary[]
 }
 
 model UserWallet {
@@ -95,6 +96,20 @@ model ContentSummary {
   Summary     String
   Transcript  String
   CreatedAt   DateTime    @default(now())
+  users       UserContentSummary[]
+}
+
+model UserContentSummary {
+  id              String         @id @default(cuid())
+  userId          String
+  contentId       String
+  createdAt       DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentSummary  ContentSummary @relation(fields: [contentId], references: [ContentId], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+  @@index([contentId])
 }
 
 enum ContentType {
