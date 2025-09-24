@@ -75,7 +75,7 @@ router.post("/addAsset", asyncHandler(async(req: Request, res: Response) => {
                   };
                 }
               } catch (cmcError) {
-                console.warn(`Failed to fetch logo from CMC for ${asset.symbol}:`, cmcError.message);
+                console.warn(`Failed to fetch logo from CMC for ${asset.symbol}:`, (cmcError instanceof Error ? cmcError.message : cmcError));
               }
               
               // Return asset with empty image as fallback
