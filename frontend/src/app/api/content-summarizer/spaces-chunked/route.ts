@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const HELPER_APIS_URL = process.env.HELPER_APIS_URL;
+const HELPER_APIS_URL = process.env.NEXT_PUBLIC_HELPER_APIS_URL;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 export async function POST(request: NextRequest) {

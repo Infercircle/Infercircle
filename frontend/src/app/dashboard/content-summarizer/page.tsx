@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiUsers, FiMessageSquare, FiSave, FiTrash2, FiEye } from 'react-icons/fi';
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
+import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiUsers, FiMessageSquare, FiSave, FiTrash2, FiEye, FiSettings } from 'react-icons/fi';
 import { MdHistory } from "react-icons/md";
 import { marked } from 'marked';
 import axios from 'axios';
+import { useSession } from 'next-auth/react';
 
 // Typewriter component for animated text display
 const Typewriter: React.FC<{ text: string; speed?: number; className?: string; onComplete?: () => void }> = ({ 
@@ -86,6 +89,7 @@ interface HistoryItem {
 
 export default function ContentSummarizer() {
   // Basic state
+  const { data: session } = useSession();
   const [url, setUrl] = useState('');
   const [contentType, setContentType] = useState<'space' | 'broadcast'>('space');
   const [isLoading, setIsLoading] = useState(false);
@@ -117,6 +121,8 @@ export default function ContentSummarizer() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Refs for transcript search
   const transcriptRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -228,72 +234,76 @@ export default function ContentSummarizer() {
   };
 
   // History management functions
-  const saveToHistory = (result: SummarizationResult, url: string, contentType: 'space' | 'broadcast') => {
+  const saveToHistory = async (result: SummarizationResult, url: string, contentType: 'space' | 'broadcast') => {
     try {
-      // Guard against exceeding localStorage quota by truncating very large fields
-      const MAX_TRANSCRIPT_CHARS = 200_000; // ~200 KB of text
-      const MAX_SUMMARY_CHARS = 50_000; // ~50 KB of text
+      // Determine contentId from URL or result ids
+      const contentId = 
+        (contentType === 'space' ? result.space_id : result.broadcast_id) ||
+        (contentType === 'space' ? url.split('/').pop() || '' : url.split('/').pop() || '');
 
-      const safeSummary = (result.summary || '').slice(0, MAX_SUMMARY_CHARS);
-      const safeTranscript = (result.transcript || '').slice(0, MAX_TRANSCRIPT_CHARS);
+      if (!contentId) return;
 
-    const historyItem: HistoryItem = {
-      id: Date.now().toString(),
-      title: `${contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} - ${new Date().toLocaleDateString()}`,
-      url,
-      contentType,
-        summary: safeSummary,
-        transcript: safeTranscript,
-      duration: result.duration,
-      participants: result.participants,
-      space_id: result.space_id,
-      broadcast_id: result.broadcast_id,
-      createdAt: new Date().toISOString(),
-      metadata: result.metadata
-    };
+      await fetch('/api/content-summarizer/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: (session as any)?.user?.id,
+          contentId,
+          contentType,
+          summary: result.summary || '',
+          transcript: result.transcript || ''
+        })
+      });
 
-      const updatedHistory = [historyItem, ...history];
-      setHistory(updatedHistory);
-
-      try {
-        localStorage.setItem('content_summarizer_history', JSON.stringify(updatedHistory));
-      } catch (storageError) {
-        // If we hit quota, try saving a trimmed version with fewer items
-        console.error('Failed to persist full history; attempting trimmed save:', storageError);
-        try {
-          const trimmed = updatedHistory.slice(0, 25); // keep most recent 25
-          localStorage.setItem('content_summarizer_history', JSON.stringify(trimmed));
-          setHistory(trimmed);
-        } catch (trimError) {
-          console.error('Failed to persist trimmed history:', trimError);
-        }
-      }
+      // Refresh history from database
+      await loadHistoryFromDB();
     } catch (err) {
-      console.error('saveToHistory error:', err);
+      console.error('saveToHistory (DB) error:', err);
     }
   };
 
-  const loadHistoryFromStorage = () => {
-    const historyData = localStorage.getItem('content_summarizer_history');
-    if (historyData) {
-      try {
-        const parsedHistory = JSON.parse(historyData);
-        setHistory(parsedHistory);
-      } catch (error) {
-        console.error('Failed to parse history data:', error);
-        setHistory([]);
+  const loadHistoryFromDB = async () => {
+    try {
+      if (!(session as any)?.user?.id) return;
+      setHistoryLoading(true);
+      const res = await fetch(`/api/content-summarizer/history?user_id=${(session as any).user.id}&limit=50`);
+      const data = await res.json();
+      if (Array.isArray(data.items)) {
+        const mapped: HistoryItem[] = data.items.map((i: any) => ({
+          id: i.contentId,
+          title: `${i.contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} - ${new Date(i.createdAt).toLocaleDateString()}`,
+          url: i.contentType === 'space' 
+            ? `https://x.com/i/spaces/${i.contentId}` 
+            : `https://x.com/i/broadcasts/${i.contentId}`,
+          contentType: i.contentType,
+          summary: i.summary,
+          transcript: i.transcript,
+          createdAt: i.createdAt
+        }));
+        setHistory(mapped);
       }
+    } catch (e) {
+      console.error('Failed to load history from DB:', e);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
-  const deleteHistoryItem = (id: string) => {
-    const updatedHistory = history.filter(item => item.id !== id);
-    setHistory(updatedHistory);
-    localStorage.setItem('content_summarizer_history', JSON.stringify(updatedHistory));
-    
-    // If the deleted item was selected, clear selection
-    if (selectedHistoryItem?.id === id) {
-      setSelectedHistoryItem(null);
+  const deleteHistoryItem = async (id: string) => {
+    try {
+      await fetch(`/api/content-summarizer/history?user_id=${(session as any)?.user?.id}&contentId=${id}`, {
+        method: 'DELETE'
+      });
+      
+      // Refresh history from database
+      await loadHistoryFromDB();
+      
+      // If the deleted item was selected, clear selection
+      if (selectedHistoryItem?.id === id) {
+        setSelectedHistoryItem(null);
+      }
+    } catch (error) {
+      console.error('Error deleting history item:', error);
     }
   };
 
@@ -392,7 +402,7 @@ export default function ContentSummarizer() {
       setCountdownActive(false);
 
       // Save to history
-      saveToHistory(data, url, contentType);
+      await saveToHistory(data, url, contentType);
 
       // Clear progress simulation
       if (progressIntervalRef.current) {
@@ -446,7 +456,6 @@ export default function ContentSummarizer() {
   // Load task on mount
   useEffect(() => {
     loadTaskFromStorage();
-    loadHistoryFromStorage();
     
     // Load notification preference - disabled by default
     const notificationSetting = localStorage.getItem('content_summarizer_notifications');
@@ -455,6 +464,28 @@ export default function ContentSummarizer() {
     setNotificationsEnabled(isEnabled);
     notificationsEnabledRef.current = isEnabled;
   }, []);
+
+  // Load history when session is available
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadHistoryFromDB();
+    }
+  }, [session]);
+
+  // Close settings dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSettings) {
+        const target = event.target as Element;
+        if (!target.closest('.settings-dropdown')) {
+          setShowSettings(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSettings]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -575,11 +606,6 @@ export default function ContentSummarizer() {
     // Clear all content summarizer related storage
     localStorage.removeItem('currentTask');
     localStorage.removeItem('content_summarizer_notifications');
-    localStorage.removeItem('content_summarizer_history');
-    
-    // Clear state
-    setHistory([]);
-    setSelectedHistoryItem(null);
     
     // Refresh the page
     window.location.reload();
@@ -635,23 +661,76 @@ export default function ContentSummarizer() {
             <span className="text-xl sm:text-3xl text-white font-bold">𝕏</span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Content Summarizer</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="px-2 py-1 text-xs bg-[#A259FF] hover:bg-[#8B4DFF] text-white rounded transition-colors cursor-pointer flex items-center gap-1"
-                title="View history"
-              >
-                <MdHistory className="w-3 h-3" />
-                History
-              </button>
-              <button
-                onClick={handleClearStorage}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-gray-200 rounded transition-colors cursor-pointer flex items-center gap-1"
-                title="Clear storage and refresh page"
-              >
-                <FiX className="w-3 h-3" />
-                Clear Storage
-              </button>
+            <div className="flex items-center gap-1.5">
+              <Tippy content="History" placement="bottom">
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className={`p-2 rounded hover:bg-gray-700 transition-colors cursor-pointer ${
+                    showHistory ? 'text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <MdHistory className="w-5 h-5" />
+                </button>
+              </Tippy>
+              <div className="relative settings-dropdown">
+                <Tippy content="Settings" placement="bottom">
+                  <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    className={`p-2 rounded hover:bg-gray-700 transition-colors cursor-pointer ${
+                      showSettings ? 'text-white' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <FiSettings className="w-5 h-5" />
+                  </button>
+                </Tippy>
+                
+                {/* Settings Dropdown */}
+                {showSettings && (
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-[rgba(24,26,32,0.95)] backdrop-blur-xl border border-[#23272b] rounded-lg shadow-lg z-50">
+                    <div className="p-3">
+                      <h3 className="text-sm font-semibold text-white mb-3">Preferences</h3>
+                      
+                      <div className="space-y-3">
+                        {/* Notification Toggle */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-300">Notifications</p>
+                            <p className="text-xs text-gray-500">Get notified when processing completes</p>
+                          </div>
+                          <button
+                            onClick={toggleNotifications}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              notificationsEnabled ? 'bg-[#A259FF]' : 'bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        
+                        {/* Clear Storage Option */}
+                        <div className="border-t border-[#23272b] pt-3">
+                          <button
+                            onClick={() => {
+                              setShowSettings(false);
+                              handleClearStorage();
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-[rgba(239,68,68,0.1)] rounded transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              Reset
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">Clear current task and notification preferences</p>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-gray-400 text-sm sm:text-base">
@@ -785,6 +864,99 @@ export default function ContentSummarizer() {
             </div>
           </form>
         </div>
+
+        {/* History Panel */}
+        {showHistory && (
+          <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <MdHistory className="w-5 h-5" />
+                Transcription History
+              </h2>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-gray-400 hover:text-white cursor-pointer"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {historyLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#A259FF] mx-auto mb-3"></div>
+                <p className="text-gray-400">Loading history...</p>
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-8">
+                <MdHistory className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400">No transcriptions saved yet</p>
+                <p className="text-gray-500 text-sm">Your processed transcriptions will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`bg-[rgba(24,26,32,0.3)] border rounded-lg p-4 transition-colors cursor-pointer ${
+                      selectedHistoryItem?.id === item.id 
+                        ? 'border-[#A259FF] bg-[rgba(162,89,255,0.1)]' 
+                        : 'border-[#2a2e35] hover:border-[#3a3e45]'
+                    }`}
+                    onClick={() => loadHistoryItem(item)}
+                  >
+                    <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-white truncate mb-1">
+                          {item.title}
+                        </h3>
+                        <div className="flex items-center gap-4 text-xs text-gray-400 mb-2">
+                          <span className="flex items-center gap-1">
+                            <span className={`w-2 h-2 rounded-full ${
+                              item.contentType === 'space' ? 'bg-blue-400' : 'bg-green-400'
+                            }`}></span>
+                            {item.contentType === 'space' ? 'Space' : 'Broadcast'}
+                          </span>
+                          <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                          {item.metadata?.speakers && (
+                            <span className="flex items-center gap-1">
+                              <FiUsers className="w-3 h-3" />
+                              {item.metadata.speakers} speakers
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadHistoryItem(item);
+                          }}
+                          className="p-2 text-gray-400 hover:text-[#A259FF] transition-colors"
+                          title="View transcription"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteHistoryItem(item.id);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete from history"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-300 col-span-2 truncate">
+                        {item.summary}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Results */}
         {result && (
@@ -1043,93 +1215,6 @@ export default function ContentSummarizer() {
           </div>
         )}
 
-        {/* History Panel */}
-        {showHistory && (
-          <div className="bg-[rgba(24,26,32,0.2)] backdrop-blur-xl border border-[#23272b] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <MdHistory className="w-5 h-5" />
-                Transcription History
-              </h2>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="text-gray-400 hover:text-white cursor-pointer"
-              >
-                <FiX className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {history.length === 0 ? (
-              <div className="text-center py-8">
-                <MdHistory className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-400">No transcriptions saved yet</p>
-                <p className="text-gray-500 text-sm">Your processed transcriptions will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`bg-[rgba(24,26,32,0.3)] border rounded-lg p-4 transition-colors cursor-pointer ${
-                      selectedHistoryItem?.id === item.id 
-                        ? 'border-[#A259FF] bg-[rgba(162,89,255,0.1)]' 
-                        : 'border-[#2a2e35] hover:border-[#3a3e45]'
-                    }`}
-                    onClick={() => loadHistoryItem(item)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-white truncate mb-1">
-                          {item.title}
-                        </h3>
-                        <div className="flex items-center gap-4 text-xs text-gray-400 mb-2">
-                          <span className="flex items-center gap-1">
-                            <span className={`w-2 h-2 rounded-full ${
-                              item.contentType === 'space' ? 'bg-blue-400' : 'bg-green-400'
-                            }`}></span>
-                            {item.contentType === 'space' ? 'Space' : 'Broadcast'}
-                          </span>
-                          <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                          {item.metadata?.speakers && (
-                            <span className="flex items-center gap-1">
-                              <FiUsers className="w-3 h-3" />
-                              {item.metadata.speakers} speakers
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-300 line-clamp-2">
-                          {item.summary.substring(0, 150)}...
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            loadHistoryItem(item);
-                          }}
-                          className="p-2 text-gray-400 hover:text-[#A259FF] transition-colors"
-                          title="View transcription"
-                        >
-                          <FiEye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteHistoryItem(item.id);
-                          }}
-                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                          title="Delete from history"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Instructions */}
         {!result && !isLoading && showInstructions && (
