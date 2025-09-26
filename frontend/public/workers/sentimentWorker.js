@@ -22,9 +22,14 @@ class SentimentWorker {
     this.postMessage({ type: 'LOG', message: 'Starting background sentiment and tweet sync...' });
     
     // Start periodic fetching for tweets every 3 minutes
+    // Run immediately on start
+    this.fetchTweetsForAllAssets();
+
+    // Then schedule it every 3 minutes
     const tweetIntervalId = setInterval(() => {
       this.fetchTweetsForAllAssets();
     }, 3 * 60 * 1000);
+
     
     // Start periodic fetching for sentiment data every 5 minutes
     const sentimentIntervalId = setInterval(() => {
@@ -33,11 +38,6 @@ class SentimentWorker {
     
     this.intervals.set('tweets', tweetIntervalId);
     this.intervals.set('sentiment', sentimentIntervalId);
-    
-    // Initial fetch after 30 seconds for tweets
-    setTimeout(() => {
-      this.fetchTweetsForAllAssets();
-    }, 30000);
     
     // Initial fetch after 45 seconds for sentiment
     setTimeout(() => {
@@ -56,31 +56,24 @@ class SentimentWorker {
 
   // New method to fetch tweets for all assets in background
   async fetchTweetsForAllAssets() {
-    if (!this.assetList || this.assetList.length === 0) {
+    console.log('Worker: Fetching tweets for all assets in background...====================');
+    
+    const { assetList } = this.config;
+    console.log(assetList);
+
+    if (!assetList || assetList.length === 0) {
       return;
     }
 
-    this.postMessage({ type: 'LOG', message: `Fetching tweets for ${this.assetList.length} assets...` });
+    this.postMessage({ type: 'LOG', message: `Fetching tweets for ${assetList.length} assets...` });
 
-    // Process assets in batches to avoid overwhelming the API
-    const BATCH_SIZE = 3;
-    
-    for (let i = 0; i < this.assetList.length; i += BATCH_SIZE) {
-      const batch = this.assetList.slice(i, i + BATCH_SIZE);
-      
-      // Process batch in parallel
-      const batchPromises = batch.map(asset => this.fetchTweetsForAsset(asset));
-      
-      try {
-        await Promise.allSettled(batchPromises);
-        
-        // Small delay between batches to avoid rate limiting
-        if (i + BATCH_SIZE < this.assetList.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } catch (error) {
-        console.error('Error processing tweet batch:', error);
-      }
+    // Fetch all assets in parallel
+    const allPromises = assetList.filter(asset => Number(asset.value) > 1).map(asset => this.fetchTweetsForAsset(asset));
+
+    try {
+      await Promise.allSettled(allPromises);
+    } catch (error) {
+      console.error('Error processing tweet batch:', error);
     }
   }
 
@@ -161,9 +154,6 @@ class SentimentWorker {
         } catch (error) {
           console.error(`Worker: Error fetching tweets for query ${query}:`, error);
         }
-        
-        // Small delay between queries
-        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
       // Remove duplicates and process tweets
@@ -175,6 +165,27 @@ class SentimentWorker {
         tweets: processedTweets,
         timestamp: Date.now()
       };
+
+      // Save to sessionStorage for main thread access
+      const sessionStorageKey = `tweets_${cacheKey}`;
+      const sessionData = {
+        tweets: processedTweets,
+        timestamp: Date.now(),
+        assetKey: cacheKey
+      };
+      console.log("===========================================");
+      console.log("successfully fetched tweets for ", asset.symbol, processedTweets.length);
+      console.log("===========================================");
+      console.log(sessionData);
+      
+      // Store in sessionStorage (accessible by main thread)
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(sessionStorageKey, JSON.stringify(sessionData));
+        }
+      } catch (error) {
+        console.error('Error saving tweets to sessionStorage:', error);
+      }
 
       // Send updated tweets to main thread
       this.postMessage({
@@ -293,22 +304,64 @@ class SentimentWorker {
 
       return {
         id: tweet.id || Date.now() + Math.random(),
-        name: user.displayname || tweet.username || user.username || "Unknown",
+        name: tweet.name || "Unknown",
         handle: user.username ? `@${user.username}` : (tweet.username ? `@${tweet.username}` : ""),
-        avatar: user.profileImageUrl || user.profile_image_url || null,
-        followers: user.followersCount || user.followers_count || 0,
-        tweetUrl: tweet.url || tweet.raw_data?.url || "",
+        avatar: tweet.avatar || 'https://ranlower = 1 << (5 - 1)domuser.me/api/portraits/men/1.jpg',
+        followers: tweet.followers ? `${Math.floor(tweet.followers / 1000)}K` : '0',
+        tweetUrl: tweet.tweetUrl || tweet.raw_data?.url || "",
         text,
-        timestamp: this.getRelativeTime(tweet.date || new Date().toISOString()),
+        timestamp: tweet.timestamp || this.formatRelativeTime(rawTimestamp),
         sentiment: sentimentLabel,
         sentimentScore: (positiveCount - negativeCount) / Math.max(positiveCount + negativeCount, 1),
-        likes: tweet.likes || tweet.raw_data?.likeCount || 0,
-        retweets: tweet.retweets || tweet.raw_data?.retweetCount || 0,
-        replies: tweet.replies || tweet.raw_data?.replyCount || 0,
         rawTimestamp: new Date(tweet.date || Date.now()).getTime()
       };
-    }).sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+    }).filter((tweet, index, arr) => {
+        const duplicateIndex = arr.findIndex(t => t.text === tweet.text && t.handle === tweet.handle);
+        return duplicateIndex === index;
+      }).sort((a, b) => {
+        // Fallback to parsing timestamp strings
+        const aSeconds = this.parseTimestampToSeconds(a.timestamp);
+        const bSeconds = this.parseTimestampToSeconds(b.timestamp);
+
+        // Smaller seconds = more recent, so reverse order
+        return aSeconds - bSeconds;
+      });;
   }
+
+  // Function to format timestamp to relative time (5s, 3min, 2h, 1d, etc.)
+  formatRelativeTime(timestamp){
+    try {
+      const now = new Date();
+      const tweetTime = new Date(timestamp);
+      
+      // Check if the date is valid
+      if (isNaN(tweetTime.getTime())) {
+        return 'now';
+      }
+      
+      const diffInSeconds = Math.floor((now.getTime() - tweetTime.getTime()) / 1000);
+      if (diffInSeconds < 60) {
+        return `${diffInSeconds}s`;
+      } else if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60);
+        return `${minutes}min`;
+      } else if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600);
+        return `${hours}h`;
+      } else if (diffInSeconds < 2592000) {
+        const days = Math.floor(diffInSeconds / 86400);
+        return `${days}d`;
+      } else if (diffInSeconds < 31536000) {
+        const months = Math.floor(diffInSeconds / 2592000);
+        return `${months}mo`;
+      } else {
+        const years = Math.floor(diffInSeconds / 31536000);
+        return `${years}y`;
+      }
+    } catch (error) {
+      return 'now';
+    }
+  };
 
   getRelativeTime(dateString) {
     try {
@@ -326,6 +379,27 @@ class SentimentWorker {
       return 'now';
     }
   }
+
+  // Function to parse timestamp strings like "1s", "10min", "2h", "3d" back to numeric values for sorting
+  parseTimestampToSeconds(timestampStr){
+    if (!timestampStr || timestampStr === 'now') return 0;
+    
+    const match = timestampStr.match(/^(\d+)(s|min|h|d|mo|y)$/);
+    if (!match) return 0;
+    
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    
+    switch (unit) {
+      case 's': return value;
+      case 'min': return value * 60;
+      case 'h': return value * 3600;
+      case 'd': return value * 86400;
+      case 'mo': return value * 2592000; // 30 days
+      case 'y': return value * 31536000; // 365 days
+      default: return 0;
+    }
+  };
 
   postMessage(message) {
     self.postMessage(message);

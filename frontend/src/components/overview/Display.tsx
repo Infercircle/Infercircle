@@ -257,7 +257,7 @@ const Display: React.FC<DisplayProps> = React.memo(({
 
   // Function to get cache key for an asset
   const getCacheKey = useCallback((asset: Asset): string => {
-    return Buffer.from(`${asset.symbol.toLowerCase()}-${asset.name.toLowerCase()}-${asset.chain.toLowerCase()}`).toString('base64');
+    return `${asset.name.toLowerCase()}_${asset.symbol.toLowerCase()}_${asset.chain.toLowerCase()}`;
   }, []);
 
   // Priority asset management - track top valued assets
@@ -293,18 +293,29 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Smart cache retrieval - prioritizes priority assets
   const getCachedTweets = useCallback((asset: Asset): Tweet[] | null => {
     const cacheKey = getCacheKey(asset);
+    try {
+      const sessionStorageKey = `tweets_${cacheKey}`;
+      const sessionData = sessionStorage.getItem(sessionStorageKey);
+      if (sessionData) {
+        const parsed = JSON.parse(sessionData);
+        if (parsed.tweets) {
+          console.log('🚀 Using Web Worker sessionStorage cached tweets for', asset.symbol);
+          return parsed.tweets;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading Web Worker sessionStorage cache:', error);
+    }
     
-    // Check enhanced cache map first
+    // Check enhanced cache map second
     const enhancedEntry = tweetCacheMap.get(cacheKey);
-    if (enhancedEntry && (Date.now() - enhancedEntry.timestamp) < CACHE_DURATION) {
-      console.log(`📱 Loading ${enhancedEntry.tweets.length} tweets from enhanced cache for ${asset.symbol}`);
+    if (enhancedEntry) {
       return enhancedEntry.tweets;
     }
     
-    // Fallback to simple cache for backward compatibility
+    // Final fallback to simple cache
     const simpleEntry = tweetCache[cacheKey];
-    if (simpleEntry && (Date.now() - simpleEntry.timestamp) < CACHE_DURATION) {
-      console.log(`📱 Loading ${simpleEntry.tweets.length} tweets from simple cache for ${asset.symbol}`);
+    if (simpleEntry) {
       return simpleEntry.tweets;
     }
     
@@ -354,11 +365,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
     // Also store in simple cache for backward compatibility
     const simpleCacheEntry = { tweets, timestamp: Date.now() };
     setTweetCache(prev => ({ ...prev, [cacheKey]: simpleCacheEntry }));
-    
-      console.log(`💾 Cached ${tweets.length} tweets for ${asset.symbol} (Priority: ${isPriority}, Value: $${assetValue.toFixed(2)})`);
-    
-    // Debug: Log cache status
-    console.log(`🗃️ Cache status: ${tweetCacheMap.size}/${MAX_TOTAL_CACHE} entries, Priority assets: ${priorityAssets.size}/${MAX_PRIORITY_ASSETS}`);
   }, [getCacheKey, priorityAssets, MAX_TOTAL_CACHE, tweetCacheMap.size, MAX_PRIORITY_ASSETS]);
 
   // Listen for Web Worker tweet updates
@@ -372,6 +378,8 @@ const Display: React.FC<DisplayProps> = React.memo(({
       if (assetKey === currentAssetKey) {
         console.log('🔄 Received tweet update from Web Worker');
         setTweets(updatedTweets);
+        setLoadingTweets(false); // Stop loading when tweets arrive
+        
         // Update tweet map
         const newMap = new Map<string, Tweet>();
         updatedTweets.forEach((tweet: Tweet) => newMap.set(tweet.id, tweet));
@@ -467,17 +475,16 @@ const Display: React.FC<DisplayProps> = React.memo(({
   // Function to load tweets from cache using smart caching
   const loadFromCache = useCallback((asset: Asset): boolean => {
     const cachedTweets = getCachedTweets(asset);
-    
     if (cachedTweets) {
       setTweets(cachedTweets);
+      setLoadingTweets(false); // Stop loading when cache data is found
+      
       // Update tweet map
       const newMap = new Map<string, Tweet>();
       cachedTweets.forEach(tweet => newMap.set(tweet.id, tweet));
       setTweetMap(newMap);
       return true;
     }
-    
-    console.log(`❌ Cache miss for ${asset.symbol}: no cached data available`);
     return false;
   }, [getCachedTweets]);
 
@@ -514,7 +521,6 @@ const Display: React.FC<DisplayProps> = React.memo(({
       }
     }
     
-    console.log('📡 Fallback: Fetching tweets directly (Web Worker data not available)');
     setLoadingTweets(true);
     
     try {
@@ -1051,11 +1057,12 @@ const Display: React.FC<DisplayProps> = React.memo(({
       // Clear expanded state when switching assets
       setExpandedTweetId(null);
       
-      // Always try to load from cache first (Web Worker keeps this fresh)
+      // Always try to load from cache first
       const cached = loadFromCache(selectedAsset);
       
       if (!cached) {
-        // Only show loading and fetch as fallback if no cached data
+        // Show loading state immediately when switching assets
+        setLoadingTweets(true);
         setTweets([]);
         setTweetMap(new Map());
         
@@ -1064,13 +1071,19 @@ const Display: React.FC<DisplayProps> = React.memo(({
           const stillNoCachedData = !loadFromCache(selectedAsset);
           if (stillNoCachedData) {
             fetchTweets(selectedAsset.name, selectedAsset.symbol, selectedAsset.chain);
+          } else {
+            setLoadingTweets(false);
           }
-        }, 2000); // Give Web Worker 2 seconds to provide data
+        }, 2000);
+      } else {
+        // If we have cached data, ensure loading is false
+        setLoadingTweets(false);
       }
     } else {
       setTweets([]);
       setTweetMap(new Map());
       setExpandedTweetId(null);
+      setLoadingTweets(false);
     }
   }, [selectedAsset?.name, selectedAsset?.symbol, selectedAsset?.chain, fetchTweets, loadFromCache]);
 

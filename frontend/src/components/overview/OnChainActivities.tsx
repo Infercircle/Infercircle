@@ -8,6 +8,7 @@ import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 import { Asset } from "./Dashboard";
 import { useWebWorkers } from "@/hooks/useWebWorkers";
+import { useDashboardStore } from "@/stores/dashboardStore";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
@@ -83,7 +84,9 @@ type AssetSentimentArrayMap = {
 const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, onAssetSelect, selectedAsset, onFirstAssetLoad, onPriceChartRequest, onBalanceChartRequest, onSentimentChartRequest, onCombinedChartRequest, activeChartType, activeChartAsset, connectedWallets = 0, onLogoCacheUpdate, wallets, sharedPortfolioData }) => {
   const { data: session } = useSession();
   const twitterId = (session?.user as any)?.id || (session?.user as any)?.twitter_id || '';
-  const [assets, setAssets] = useState<Asset[]>([]);
+  
+  // Use dashboard store for assets
+  const { assets, setAssets, updateAssets } = useDashboardStore();
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>(assets);
   const [loading, setLoading] = useState(true);
   const [showAllAssets, setShowAllAssets] = useState(false);
@@ -97,9 +100,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const [hasPersistedData, setHasPersistedData] = useState(false);
 
   // Initialize Web Workers
-  const { startPortfolioSync, updateAssetList, isInitialized } = useWebWorkers();
+  const { updateAssetList, isInitialized } = useWebWorkers();
 
-  const hiddenAssetsCount = assets.length - filteredAssets.length;
+  // const hiddenAssetsCount = assets.length - filteredAssets.length;
 
   // Chain summaries from Zerion portfolio data
   const [chainSummaries, setChainSummaries] = useState<Array<{
@@ -154,6 +157,9 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     // Check for cached data first
     const sessionKey = `dashboard_assets_${twitterId}`;
     const persistedData = sessionStorage.getItem(sessionKey);
+
+    const portfolioSessionKey = 'portfolio_worker_cache';
+    const portfolioPersistedData = sessionStorage.getItem(portfolioSessionKey);
     
     if (persistedData) {
       try {
@@ -168,24 +174,22 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           onFirstAssetLoad(cachedAssets[0]);
         }
         
-        // Start background sync with Web Workers to keep data fresh
-        if (isInitialized) {
-          const allWalletAddresses = [
-            ...wallets.eth,
-            ...wallets.sol,
-            ...wallets.btc,
-            ...wallets.tron,
-            ...wallets.ton
-          ].filter(addr => addr && addr.trim() !== '');
-          
-          if (allWalletAddresses.length > 0) {
-            startPortfolioSync(allWalletAddresses);
-          }
-        }
-        
         return; // Skip API call since we have cached data
       } catch (error) {
         console.error('Error loading persisted OnChainActivities data:', error);
+      }
+    }
+
+    if(portfolioPersistedData) {
+      const { assets: portfolioCachedAssets } = JSON.parse(portfolioPersistedData);
+      if(portfolioCachedAssets && portfolioCachedAssets.length > 0) {
+        setAssets(portfolioCachedAssets);
+        setHasPersistedData(true);
+        setLoading(false);
+        if (portfolioCachedAssets.length > 0 && onFirstAssetLoad) {
+          onFirstAssetLoad(portfolioCachedAssets[0]);
+        }
+        return; // Skip API call since we have portfolio cached data
       }
     }
 
@@ -419,7 +423,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           
           missingData.results.forEach((res) => {
             if (res.symbol.toLowerCase() === token.symbol.toLowerCase()) {
-              setAssets(prevAssets => prevAssets.map(asset => {
+              updateAssets(prevAssets => prevAssets.map(asset => {
                 if (asset.symbol === token.symbol && asset.name === token.name) {
                   let SentimentIndex = (res.positiveTweets - res.negativeTweets) / (res.positiveTweets + res.neutralTweets + res.negativeTweets);
                   return {
@@ -450,25 +454,12 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     fetchBalances();
     
     // Start background portfolio sync with Web Workers after initial load
-    if (isInitialized) {
-      const allWalletAddresses = [
-        ...wallets.eth,
-        ...wallets.sol,
-        ...wallets.btc,
-        ...wallets.tron,
-        ...wallets.ton
-      ].filter(addr => addr && addr.trim() !== '');
-      
-      if (allWalletAddresses.length > 0) {
-        startPortfolioSync(allWalletAddresses);
-      }
-    }
     
     return () => {
       if (retryInterval) clearInterval(retryInterval);
     };
     // eslint-disable-next-line
-  }, [twitterId, refreshKey, wallets, sharedPortfolioData, isInitialized, startPortfolioSync]);
+  }, [twitterId, refreshKey, wallets, sharedPortfolioData, isInitialized]);
 
   // Save assets to session storage when they change
   useEffect(() => {
@@ -490,11 +481,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
 
   // Update assets with sentiment data whenever sentimentCache changes
   useEffect(() => {
-    setAssets(prevAssets => prevAssets.map(asset => {
+    updateAssets(prevAssets => prevAssets.map(asset => {
       const sentiment = sentimentCache[asset.symbol.toLowerCase()];
       return sentiment !== undefined ? { ...asset, sentiment } : asset;
     }));
-  }, [sentimentCache]);
+  }, [sentimentCache, updateAssets]);
 
   // Update filtered assets when showAllAssets, assets, or selectedChain change
   useEffect(() => {
@@ -531,7 +522,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
           const updatedAssets = customEvent.detail.assets;
           
           // Update existing assets with new price data
-          setAssets(prevAssets => {
+          updateAssets(prevAssets => {
             return prevAssets.map(asset => {
               // Find matching asset from worker data
               const updatedAsset = updatedAssets.find((updated: any) => 
@@ -563,7 +554,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     return () => {
       window.removeEventListener('portfolio-price-updated', handlePortfolioUpdate);
     };
-  }, []);
+  }, [updateAssets]);
 
   const handleAssetClick = (asset: Asset) => {
     if (onAssetSelect) {
