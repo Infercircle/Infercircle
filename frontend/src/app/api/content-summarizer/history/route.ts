@@ -50,9 +50,34 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const user_id = searchParams.get('user_id')
+    const contentId = searchParams.get('contentId')
+    const contentType = searchParams.get('contentType') as 'space' | 'broadcast' | null
     const type = searchParams.get('type') as 'space' | 'broadcast' | null
     const take = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50)
     const skip = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0)
+
+    // If searching by specific contentId and contentType, query ContentSummary directly
+    if (contentId && contentType) {
+      const contentSummary = await db.contentSummary.findFirst({
+        where: { 
+          ContentId: contentId,
+          ContentType: contentType
+        }
+      })
+
+      if (contentSummary) {
+        const data = [{
+          contentId: contentSummary.ContentId,
+          contentType: contentSummary.ContentType,
+          summary: contentSummary.Summary,
+          transcript: contentSummary.Transcript,
+          createdAt: contentSummary.CreatedAt,
+        }]
+        return NextResponse.json({ history: data, count: data.length })
+      } else {
+        return NextResponse.json({ history: [], count: 0 })
+      }
+    }
 
     if (!user_id) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
@@ -78,7 +103,7 @@ export async function GET(req: NextRequest) {
       createdAt: u.createdAt,
     }))
 
-    return NextResponse.json({ items: data, count: data.length })
+    return NextResponse.json({ history: data, count: data.length })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Server error' }, { status: 500 })
   }

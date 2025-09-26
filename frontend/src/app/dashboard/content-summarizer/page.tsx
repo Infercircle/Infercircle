@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiUsers, FiMessageSquare, FiSave, FiTrash2, FiEye, FiSettings } from 'react-icons/fi';
+import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiSave, FiTrash2, FiEye, FiSettings } from 'react-icons/fi';
 import { MdHistory } from "react-icons/md";
 import { marked } from 'marked';
 import axios from 'axios';
@@ -43,20 +43,6 @@ const Typewriter: React.FC<{ text: string; speed?: number; className?: string; o
 interface SummarizationResult {
   summary: string;
   transcript: string;
-  duration?: string;
-  participants?: number;
-  space_id?: string;
-  broadcast_id?: string;
-  download?: {
-    file_path: string;
-    file_size: number;
-    duration: number;
-  };
-  metadata?: {
-    confidence?: number;
-    speakers?: number;
-    chapters?: number;
-  };
 }
 
 interface Task {
@@ -75,16 +61,7 @@ interface HistoryItem {
   contentType: 'space' | 'broadcast';
   summary: string;
   transcript: string;
-  duration?: string;
-  participants?: number;
-  space_id?: string;
-  broadcast_id?: string;
   createdAt: string;
-  metadata?: {
-    confidence?: number;
-    speakers?: number;
-    chapters?: number;
-  };
 }
 
 export default function ContentSummarizer() {
@@ -103,6 +80,7 @@ export default function ContentSummarizer() {
   const [isFreshResult, setIsFreshResult] = useState(false);
   const [typewriterShown, setTypewriterShown] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   
   // Countdown timer state
   const [countdownActive, setCountdownActive] = useState(false);
@@ -236,10 +214,12 @@ export default function ContentSummarizer() {
   // History management functions
   const saveToHistory = async (result: SummarizationResult, url: string, contentType: 'space' | 'broadcast') => {
     try {
-      // Determine contentId from URL or result ids
-      const contentId = 
-        (contentType === 'space' ? result.space_id : result.broadcast_id) ||
-        (contentType === 'space' ? url.split('/').pop() || '' : url.split('/').pop() || '');
+      // Determine contentId from URL
+      const contentId = url.includes('/spaces/') 
+        ? url.split('/spaces/')[1]?.split('?')[0]?.split('/')[0]
+        : url.includes('/broadcasts/')
+        ? url.split('/broadcasts/')[1]?.split('?')[0]?.split('/')[0]
+        : url.split('/').pop() || '';
 
       if (!contentId) return;
 
@@ -268,8 +248,8 @@ export default function ContentSummarizer() {
       setHistoryLoading(true);
       const res = await fetch(`/api/content-summarizer/history?user_id=${(session as any).user.id}&limit=50`);
       const data = await res.json();
-      if (Array.isArray(data.items)) {
-        const mapped: HistoryItem[] = data.items.map((i: any) => ({
+      if (Array.isArray(data.history)) {
+        const mapped: HistoryItem[] = data.history.map((i: any) => ({
           id: i.contentId,
           title: `${i.contentType === 'space' ? 'Twitter Space' : 'Twitter Broadcast'} - ${new Date(i.createdAt).toLocaleDateString()}`,
           url: i.contentType === 'space' 
@@ -311,12 +291,7 @@ export default function ContentSummarizer() {
     setSelectedHistoryItem(item);
     setResult({
       summary: item.summary,
-      transcript: item.transcript,
-      duration: item.duration,
-      participants: item.participants,
-      space_id: item.space_id,
-      broadcast_id: item.broadcast_id,
-      metadata: item.metadata
+      transcript: item.transcript
     });
     setActiveTab('summary');
     setShowHistory(false);
@@ -345,13 +320,90 @@ export default function ContentSummarizer() {
     }, 1000);
   };
 
+  const checkExistingContent = async (url: string, contentType: 'space' | 'broadcast') => {
+    try {
+      // Extract content ID from URL
+      const contentId = url.includes('/spaces/') 
+        ? url.split('/spaces/')[1]?.split('?')[0]?.split('/')[0]
+        : url.includes('/broadcasts/')
+        ? url.split('/broadcasts/')[1]?.split('?')[0]?.split('/')[0]
+        : null;
+      
+      if (!contentId) return null;
+
+      const response = await axios.get(`/api/content-summarizer/history?contentId=${contentId}&contentType=${contentType}`);
+      const existingItems = (response.data as any)?.history || [];
+      
+      // Return the most recent one if found
+      return existingItems.length > 0 ? existingItems[0] : null;
+    } catch (error) {
+      console.error('Error checking existing content:', error);
+      return null;
+    }
+  };
+
   const startBackgroundTask = async () => {
+    // Start loading immediately
+    setIsLoading(true);
+    setCountdownActive(true);
+    setResult(null);
+    setError(null);
+
     // Clear any existing task
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
     clearTaskFromStorage();
+
+    // Check if content already exists in database
+    const existingContent = await checkExistingContent(url, contentType);
+    if (existingContent) {
+      // Show "Found existing content" message briefly
+      setError("✅ Found existing content - loading instantly!");
+      setTimeout(() => setError(null), 2000);
+      
+      // Create user-content relationship first (in background)
+      if (session?.user?.id) {
+        const contentId = url.includes('/spaces/') 
+          ? url.split('/spaces/')[1]?.split('?')[0]?.split('/')[0]
+          : url.split('/broadcasts/')[1]?.split('?')[0]?.split('/')[0];
+        
+        if (contentId) {
+          // Don't await this - let it run in background
+          fetch('/api/content-summarizer/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: session.user.id,
+              contentId,
+              contentType,
+              summary: existingContent.summary,
+              transcript: existingContent.transcript
+            })
+          }).catch(error => {
+            console.error('Failed to create user-content relationship:', error);
+          });
+        }
+      }
+      
+      // Load existing content and set up typewriter effect
+      setResult({
+        summary: existingContent.summary,
+        transcript: existingContent.transcript
+      });
+      setActiveTab('summary');
+      setIsLoading(false);
+      setCountdownActive(false);
+      
+      // Use setTimeout to ensure state updates happen in correct order
+      setTimeout(() => {
+        setIsFreshResult(true);
+        setTypewriterShown(false);
+      }, 100);
+      
+      return;
+    }
 
     // Create new task
     const task: Task = {
@@ -364,10 +416,6 @@ export default function ContentSummarizer() {
 
     setCurrentTask(task);
     saveTaskToStorage(task);
-    setIsLoading(true);
-    setCountdownActive(true);
-    setResult(null);
-    setError(null);
     setIsFreshResult(false);
     setTypewriterShown(false);
 
@@ -417,7 +465,7 @@ export default function ContentSummarizer() {
       sendNotification('Content Summarization Complete! 🎉', notificationBody);
 
     } catch (error) {
-      console.error('🐢 Slow or no connection detected, please try again:', error);
+      console.error('Something went wrong, please try again:', error);
       
       // Update task as error
       const errorTask: Task = {
@@ -431,7 +479,7 @@ export default function ContentSummarizer() {
       // Handle axios error
       if (error && typeof error === 'object' && 'isAxiosError' in error) {
         const axiosError = error as any;
-        setError(`🐢 Slow or no connection detected, please try again: ${axiosError.response?.status || 'Network error'}`);
+        setError(`Something went wrong, please try again: ${axiosError.response?.status || 'Network error'}`);
       } else {
         setError(error instanceof Error ? error.message : 'An error occurred');
       }
@@ -499,7 +547,10 @@ export default function ContentSummarizer() {
   // Typewriter effect logic
   useEffect(() => {
     if (isFreshResult && !typewriterShown) {
-      const duration = result?.summary ? (result.summary.length * 22) : 0;
+      const textForAnimation = (result?.summary && result.summary.trim().length > 0)
+        ? result.summary
+        : 'AI summary not available at this time.';
+      const duration = textForAnimation.length * 22;
       const timer = setTimeout(() => {
         setTypewriterShown(true);
       }, duration);
@@ -599,6 +650,62 @@ export default function ContentSummarizer() {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy: ', err);
+    }
+  };
+
+  // Cancel/stop the current processing
+  const handleCancelProcessing = async () => {
+    try {
+      // Call the terminate endpoint
+      await fetch(`${process.env.NEXT_PUBLIC_HELPER_APIS_URL}/terminate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      // Reset all loading states
+      setIsLoading(false);
+      setCountdownActive(false);
+      setCurrentTask(null);
+      setProgress(0);
+      setTimeLeft(0);
+      
+      // Clear any running intervals
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      
+      // Clear task from storage
+      clearTaskFromStorage();
+      
+      setError("Processing cancelled");
+      setTimeout(() => setError(null), 3000);
+    } catch (error) {
+      console.error('Error cancelling processing:', error);
+      setError("Failed to cancel processing");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Regenerate AI summary using existing transcript without redoing chunked processing
+  const handleRegenerateSummary = async () => {
+    if (!result?.transcript) return;
+    try {
+      setRegenerating(true);
+      const res = await axios.post('/api/content-summarizer/regenerate-summary', {
+        transcript: result.transcript,
+        contentType
+      }, { timeout: 300000 });
+      const data: any = res.data || {};
+      if (data.summary) {
+        setResult(prev => prev ? { ...prev, summary: data.summary } : prev);
+      }
+    } catch (e) {
+      console.error('Regenerate summary failed:', e);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -746,7 +853,7 @@ export default function ContentSummarizer() {
               <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-[#A259FF] rounded-full animate-pulse"></div>
                   <span className="text-white font-medium">
-                    <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to download and transcribe
+                    ⏳ <span className="font-bold">{Math.floor(timeLeft / 60)} minutes</span> left to Process.
                   </span>
               </div>
               <button 
@@ -780,9 +887,19 @@ export default function ContentSummarizer() {
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-900/20 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040]">
-            <div className="flex items-center gap-2 text-red-400">
-              <FiX className="w-4 h-4" />
+          <div className={`backdrop-blur-xl border rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-[4px_0px_6px_#00000040] ${
+            error.includes('✅') 
+              ? 'bg-green-900/20 border-green-500/30' 
+              : 'bg-red-900/20 border-red-500/30'
+          }`}>
+            <div className={`flex items-center gap-2 ${
+              error.includes('✅') ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {error.includes('✅') ? (
+                <FiCheckCircle className="w-4 h-4" />
+              ) : (
+                <FiX className="w-4 h-4" />
+              )}
               <span className="text-sm sm:text-base">{error}</span>
             </div>
           </div>
@@ -852,6 +969,13 @@ export default function ContentSummarizer() {
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       Processing
+                      <button
+                        onClick={handleCancelProcessing}
+                        className="ml-2 p-1 hover:bg-red-500/20 rounded transition-colors"
+                        title="Cancel processing"
+                      >
+                        <FiX className="w-3 h-3 text-red-400" />
+                      </button>
                     </>
                   ) : (
                     <>
@@ -917,12 +1041,7 @@ export default function ContentSummarizer() {
                             {item.contentType === 'space' ? 'Space' : 'Broadcast'}
                           </span>
                           <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                          {item.metadata?.speakers && (
-                            <span className="flex items-center gap-1">
-                              <FiUsers className="w-3 h-3" />
-                              {item.metadata.speakers} speakers
-                            </span>
-                          )}
+                          {/* metadata hidden */}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
@@ -948,7 +1067,7 @@ export default function ContentSummarizer() {
                         </button>
                       </div>
                       <p className="text-sm text-gray-300 col-span-2 truncate">
-                        {item.summary}
+                        {(item.summary && item.summary.trim().length > 0) ? item.summary : item.transcript}
                       </p>
                     </div>
                   </div>
@@ -970,30 +1089,8 @@ export default function ContentSummarizer() {
                   </h2>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400">
 
-                    {result.download && (
-                      <>
-                        <div className="flex items-center gap-1">
-                          <FiClock className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span>{formatDuration(result.download.duration)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FiFileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span>{(result.download.file_size / 1024 / 1024).toFixed(1)} MB</span>
-                        </div>
-                      </>
-                    )}
-                    {result.metadata?.speakers && (
-                      <div className="flex items-center gap-1">
-                        <FiUsers className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span>{result.metadata.speakers} speakers</span>
-                      </div>
-                    )}
-                    {result.metadata?.chapters && (
-                      <div className="flex items-center gap-1">
-                        <FiMessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span>{result.metadata.chapters} chapters</span>
-                      </div>
-                    )}
+                    {/* download metadata hidden */}
+                    {/* metadata hidden */}
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -1041,49 +1138,39 @@ export default function ContentSummarizer() {
                   <div className="bg-[rgba(24,26,32,0.2)] border border-[#2a2e35] rounded-lg p-4 sm:p-6">
                     <h3 className="font-semibold text-[#A259FF] mb-3 text-base sm:text-lg">AI Summary</h3>
                     <div className="text-gray-300 text-sm sm:text-base leading-relaxed prose prose-invert max-w-none">
-                      {result && result.summary && (
-                        isFreshResult && !typewriterShown ? (
+                      {isFreshResult && !typewriterShown ? (
                         <Typewriter 
-                          text={result.summary} 
+                          text={(result?.summary && result.summary.trim().length > 0) ? result.summary : 'AI summary not available at this time.'}
                           speed={10} 
                           className="prose prose-invert max-w-none"
                         />
                       ) : (
-                        <div dangerouslySetInnerHTML={{ 
+                        (result?.summary && result.summary.trim().length > 0) ? (
+                          <div dangerouslySetInnerHTML={{ 
                             __html: marked.parse(result.summary) 
-                        }} />
+                          }} />
+                        ) : (
+                          <div className="text-gray-400 text-sm">
+                            AI summary not available at this time.
+                          </div>
                         )
                       )}
                     </div>
                   </div>
-                  {result.metadata && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      {result.metadata.confidence && (
-                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Confidence</h4>
-                          <p className="text-sm sm:text-base text-gray-400">
-                            {(result.metadata.confidence * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      )}
-                      {result.metadata.speakers && (
-                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Speakers</h4>
-                          <p className="text-sm sm:text-base text-gray-400">
-                            {result.metadata.speakers} speakers detected
-                          </p>
-                        </div>
-                      )}
-                      {result.metadata.chapters && (
-                        <div className="bg-[rgba(24,26,32,0.2)] rounded-lg p-3 sm:p-4">
-                          <h4 className="font-medium text-white mb-2 text-sm sm:text-base">Chapters</h4>
-                          <p className="text-sm sm:text-base text-gray-400">
-                            {result.metadata.chapters} chapters identified
-                          </p>
-                        </div>
+                  {!result?.summary && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleRegenerateSummary}
+                        className="px-3 py-2 text-xs sm:text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors cursor-pointer"
+                      >
+                        Retry generating summary
+                      </button>
+                      {regenerating && (
+                        <span className="text-xs text-gray-400">Regenerating...</span>
                       )}
                     </div>
                   )}
+                  {/* metadata hidden */}
                 </div>
               ) : (
                 <div className="space-y-4">
