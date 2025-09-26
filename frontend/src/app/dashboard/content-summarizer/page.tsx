@@ -5,6 +5,7 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import { FiCopy, FiCheckCircle, FiX, FiSearch, FiChevronLeft, FiChevronRight, FiBell, FiBellOff, FiPlay, FiClock, FiFileText, FiSave, FiTrash2, FiEye, FiSettings } from 'react-icons/fi';
 import { MdHistory } from "react-icons/md";
+import { FaStop } from 'react-icons/fa';
 import { marked } from 'marked';
 import axios from 'axios';
 import { useSession } from 'next-auth/react';
@@ -657,7 +658,7 @@ export default function ContentSummarizer() {
   const handleCancelProcessing = async () => {
     try {
       // Call the terminate endpoint
-      await fetch(`${process.env.NEXT_PUBLIC_HELPER_APIS_URL}/terminate`, {
+      await fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/terminate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -974,7 +975,7 @@ export default function ContentSummarizer() {
                         className="ml-2 p-1 hover:bg-red-500/20 rounded transition-colors"
                         title="Cancel processing"
                       >
-                        <FiX className="w-3 h-3 text-red-400" />
+                        <FaStop className="w-3 h-3 text-white" />
                       </button>
                     </>
                   ) : (
