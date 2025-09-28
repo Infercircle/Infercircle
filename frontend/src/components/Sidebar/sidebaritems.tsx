@@ -36,7 +36,7 @@ const sidebarItems = [
       // { label: "Onchain Tracking", icon: FiSmile, href: "/dashboard/onchain-tracking" },
       { label: "ICO/IDO", icon: FiBox, href: "/dashboard/token-sales" },
       // { label: "Active IDO Projects", icon: FiLayers, href: "/dashboard/ido-projects" },
-      // { label: "Post TGE Projects", icon: FiLayers, href: "/dashboard/post-tge-projects" },
+      // { label: "TGE", icon: FiLayers, href: "/dashboard/tge" },
     ],
   },
   {
