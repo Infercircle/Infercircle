@@ -127,11 +127,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     let totalValue = 0;
     let weightedPriceChange = 0;
     const allWallets = [
-      ...wallets.eth.map(walletAddress => ({ addr: walletAddress, chain: 'eth' })),
-      ...wallets.sol.map(walletAddress => ({ addr: walletAddress, chain: 'sol' })),
-      ...wallets.btc.map(walletAddress => ({ addr: walletAddress, chain: 'btc' })),
-      ...wallets.tron.map(walletAddress => ({ addr: walletAddress, chain: 'tron' })),
-      ...wallets.ton.map(walletAddress => ({ addr: walletAddress, chain: 'ton' })),
+      ...(wallets?.eth || []).map(walletAddress => ({ addr: walletAddress, chain: 'eth' })),
+      ...(wallets?.sol || []).map(walletAddress => ({ addr: walletAddress, chain: 'sol' })),
+      ...(wallets?.btc || []).map(walletAddress => ({ addr: walletAddress, chain: 'btc' })),
+      ...(wallets?.tron || []).map(walletAddress => ({ addr: walletAddress, chain: 'tron' })),
+      ...(wallets?.ton || []).map(walletAddress => ({ addr: walletAddress, chain: 'ton' })),
     ];
     
     const newSharedPortfolioData: { [walletAddress: string]: any } = {};
@@ -228,7 +228,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         }
       }
       
-      setWallets(grouped);
+      // Ensure all properties are arrays before setting
+      const safeGrouped = {
+        eth: grouped.eth || [],
+        sol: grouped.sol || [],
+        btc: grouped.btc || [],
+        tron: grouped.tron || [],
+        ton: grouped.ton || []
+      };
+      
+      setWallets(safeGrouped);
       setWalletsLoaded(true);
     } catch (e) {
       setWallets({ eth: [], sol: [], btc: [], tron: [], ton: [] });
@@ -263,11 +272,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (isInitialized && walletsLoaded && connectedWallets > 0 && twitterId) {
       // Convert wallets to format expected by Web Worker
       const allWalletAddresses = [
-        ...wallets.eth,
-        ...wallets.sol,
-        ...wallets.btc,
-        ...wallets.tron,
-        ...wallets.ton
+        ...(wallets?.eth || []),
+        ...(wallets?.sol || []),
+        ...(wallets?.btc || []),
+        ...(wallets?.tron || []),
+        ...(wallets?.ton || [])
       ].filter(addr => addr && addr.trim() !== '');
 
       if (allWalletAddresses.length > 0) {
@@ -355,11 +364,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
             <Modal isOpen={walletModalOpen} onClose={closeWalletModal}>
               <WalletModalContent
-                eth={wallets.eth}
-                sol={wallets.sol}
-                btc={wallets.btc}
-                tron={wallets.tron}
-                ton={wallets.ton}
+                eth={wallets?.eth || []}
+                sol={wallets?.sol || []}
+                btc={wallets?.btc || []}
+                tron={wallets?.tron || []}
+                ton={wallets?.ton || []}
                 setWallets={setWallets as any}
                 onWalletAdded={handleWalletAdded}
                 refreshWallets={refreshWallets}
