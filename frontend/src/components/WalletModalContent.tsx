@@ -64,26 +64,42 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
 
   // Add new eth address
   const handleEthConfirm = async () => {
-    if (newEth.trim() && !eth.includes(newEth.trim())) {
-      setWallets(prev => ({ ...prev, eth: [...prev.eth, newEth.trim()] }));
-      showToast("EVM address added!", "success");
-      if (onWalletAdded) onWalletAdded(newEth.trim(), 'eth');
-      // Call backend to persist (fire and forget)
-      await fetch('/api/wallets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet_address: newEth.trim(), chain: 'eth', user_id: userId })
-      });
-      if (refreshWallets) await refreshWallets();
-      if (onWalletsChanged) onWalletsChanged();
+    try {
+      if (newEth.trim() && !eth.includes(newEth.trim())) {
+        setWallets(prev => ({ 
+          eth: [...(prev?.eth || []), newEth.trim()],
+          sol: prev?.sol || [],
+          btc: prev?.btc || [],
+          tron: prev?.tron || [],
+          ton: prev?.ton || []
+        }));
+        showToast("EVM address added!", "success");
+        if (onWalletAdded) onWalletAdded(newEth.trim(), 'eth');
+        // Call backend to persist (fire and forget)
+        await fetch('/api/wallets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet_address: newEth.trim(), chain: 'eth', user_id: userId })
+        });
+        if (refreshWallets) await refreshWallets();
+        if (onWalletsChanged) onWalletsChanged();
+      }
+      setNewEth("");
+      setAddingEth(false);
+    } catch (error) {
+      console.error('Error adding new EVM address', error);
     }
-    setNewEth("");
-    setAddingEth(false);
   };
   // Add new sol address
   const handleSolConfirm = async () => {
     if (newSol.trim() && !sol.includes(newSol.trim())) {
-      setWallets(prev => ({ ...prev, sol: [...prev.sol, newSol.trim()] }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: [...(prev?.sol || []), newSol.trim()],
+        btc: prev?.btc || [],
+        tron: prev?.tron || [],
+        ton: prev?.ton || []
+      }));
       showToast("Solana address added!", "success");
       if (onWalletAdded) onWalletAdded(newSol.trim(), 'sol');
       await fetch('/api/wallets', {
@@ -101,7 +117,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleEthEditConfirm = async (idx: number) => {
     if (editEthValue.trim()) {
       const oldAddress = eth[idx];
-      setWallets(prev => ({ ...prev, eth: prev.eth.map((a, i) => i === idx ? editEthValue.trim() : a) }));
+      setWallets(prev => ({ 
+        eth: (prev?.eth || []).map((a, i) => i === idx ? editEthValue.trim() : a),
+        sol: prev?.sol || [],
+        btc: prev?.btc || [],
+        tron: prev?.tron || [],
+        ton: prev?.ton || []
+      }));
       showToast("EVM address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
@@ -118,7 +140,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleSolEditConfirm = async (idx: number) => {
     if (editSolValue.trim()) {
       const oldAddress = sol[idx];
-      setWallets(prev => ({ ...prev, sol: prev.sol.map((a, i) => i === idx ? editSolValue.trim() : a) }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: (prev?.sol || []).map((a, i) => i === idx ? editSolValue.trim() : a),
+        btc: prev?.btc || [],
+        tron: prev?.tron || [],
+        ton: prev?.ton || []
+      }));
       showToast("Solana address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
@@ -134,7 +162,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   // Remove eth address
   const handleEthRemove = async (idx: number) => {
     const address = eth[idx];
-    setWallets(prev => ({ ...prev, eth: prev.eth.filter((_, i) => i !== idx) }));
+    setWallets(prev => ({ 
+      eth: (prev?.eth || []).filter((_, i) => i !== idx),
+      sol: prev?.sol || [],
+      btc: prev?.btc || [],
+      tron: prev?.tron || [],
+      ton: prev?.ton || []
+    }));
     showToast("EVM address removed!", "success");
     // Call backend to delete
     await fetch('/api/wallets', {
@@ -148,7 +182,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   // Remove sol address
   const handleSolRemove = async (idx: number) => {
     const address = sol[idx];
-    setWallets(prev => ({ ...prev, sol: prev.sol.filter((_, i) => i !== idx) }));
+    setWallets(prev => ({ 
+      eth: prev?.eth || [],
+      sol: (prev?.sol || []).filter((_, i) => i !== idx),
+      btc: prev?.btc || [],
+      tron: prev?.tron || [],
+      ton: prev?.ton || []
+    }));
     showToast("Solana address removed!", "success");
     await fetch('/api/wallets', {
       method: 'DELETE',
@@ -162,7 +202,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   // Add/edit/remove logic for each wallet type
   const handleBtcConfirm = async () => {
     if (newBtc.trim() && !btc.includes(newBtc.trim())) {
-      setWallets(prev => ({ ...prev, btc: [...prev.btc, newBtc.trim()] }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: [...(prev?.btc || []), newBtc.trim()],
+        tron: prev?.tron || [],
+        ton: prev?.ton || []
+      }));
       showToast("Bitcoin address added!", "success");
       if (onWalletAdded) onWalletAdded(newBtc.trim(), 'btc');
       await fetch('/api/wallets', {
@@ -179,7 +225,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleBtcEditConfirm = async (idx: number) => {
     if (editBtcValue.trim()) {
       const oldAddress = btc[idx];
-      setWallets(prev => ({ ...prev, btc: prev.btc.map((a, i) => i === idx ? editBtcValue.trim() : a) }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: (prev?.btc || []).map((a, i) => i === idx ? editBtcValue.trim() : a),
+        tron: prev?.tron || [],
+        ton: prev?.ton || []
+      }));
       showToast("Bitcoin address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
@@ -194,7 +246,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   };
   const handleBtcRemove = async (idx: number) => {
     const address = btc[idx];
-    setWallets(prev => ({ ...prev, btc: prev.btc.filter((_, i) => i !== idx) }));
+    setWallets(prev => ({ 
+      eth: prev?.eth || [],
+      sol: prev?.sol || [],
+      btc: (prev?.btc || []).filter((_, i) => i !== idx),
+      tron: prev?.tron || [],
+      ton: prev?.ton || []
+    }));
     showToast("Bitcoin address removed!", "success");
     await fetch('/api/wallets', {
       method: 'DELETE',
@@ -207,7 +265,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
 
   const handleTronConfirm = async () => {
     if (newTron.trim() && !tron.includes(newTron.trim())) {
-      setWallets(prev => ({ ...prev, tron: [...prev.tron, newTron.trim()] }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: prev?.btc || [],
+        tron: [...(prev?.tron || []), newTron.trim()],
+        ton: prev?.ton || []
+      }));
       showToast("TRON address added!", "success");
       if (onWalletAdded) onWalletAdded(newTron.trim(), 'tron');
       await fetch('/api/wallets', {
@@ -224,7 +288,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleTronEditConfirm = async (idx: number) => {
     if (editTronValue.trim()) {
       const oldAddress = tron[idx];
-      setWallets(prev => ({ ...prev, tron: prev.tron.map((a, i) => i === idx ? editTronValue.trim() : a) }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: prev?.btc || [],
+        tron: (prev?.tron || []).map((a, i) => i === idx ? editTronValue.trim() : a),
+        ton: prev?.ton || []
+      }));
       showToast("TRON address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
@@ -239,7 +309,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   };
   const handleTronRemove = async (idx: number) => {
     const address = tron[idx];
-    setWallets(prev => ({ ...prev, tron: prev.tron.filter((_, i) => i !== idx) }));
+    setWallets(prev => ({ 
+      eth: prev?.eth || [],
+      sol: prev?.sol || [],
+      btc: prev?.btc || [],
+      tron: (prev?.tron || []).filter((_, i) => i !== idx),
+      ton: prev?.ton || []
+    }));
     showToast("TRON address removed!", "success");
     await fetch('/api/wallets', {
       method: 'DELETE',
@@ -252,7 +328,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
 
   const handleTonConfirm = async () => {
     if (newTon.trim() && !ton.includes(newTon.trim())) {
-      setWallets(prev => ({ ...prev, ton: [...prev.ton, newTon.trim()] }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: prev?.btc || [],
+        tron: prev?.tron || [],
+        ton: [...(prev?.ton || []), newTon.trim()]
+      }));
       showToast("TON address added!", "success");
       if (onWalletAdded) onWalletAdded(newTon.trim(), 'ton');
       await fetch('/api/wallets', {
@@ -269,7 +351,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   const handleTonEditConfirm = async (idx: number) => {
     if (editTonValue.trim()) {
       const oldAddress = ton[idx];
-      setWallets(prev => ({ ...prev, ton: prev.ton.map((a, i) => i === idx ? editTonValue.trim() : a) }));
+      setWallets(prev => ({ 
+        eth: prev?.eth || [],
+        sol: prev?.sol || [],
+        btc: prev?.btc || [],
+        tron: prev?.tron || [],
+        ton: (prev?.ton || []).map((a, i) => i === idx ? editTonValue.trim() : a)
+      }));
       showToast("TON address updated!", "success");
       await fetch('/api/wallets', {
         method: 'PUT',
@@ -284,7 +372,13 @@ const WalletModalContent: React.FC<WalletModalContentProps> = ({ eth, sol, btc, 
   };
   const handleTonRemove = async (idx: number) => {
     const address = ton[idx];
-    setWallets(prev => ({ ...prev, ton: prev.ton.filter((_, i) => i !== idx) }));
+    setWallets(prev => ({ 
+      eth: prev?.eth || [],
+      sol: prev?.sol || [],
+      btc: prev?.btc || [],
+      tron: prev?.tron || [],
+      ton: (prev?.ton || []).filter((_, i) => i !== idx)
+    }));
     showToast("TON address removed!", "success");
     await fetch('/api/wallets', {
       method: 'DELETE',

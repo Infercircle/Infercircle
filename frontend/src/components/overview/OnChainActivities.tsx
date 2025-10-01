@@ -141,11 +141,11 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
   const hasValidWallets = () => {
     if (!wallets) return false;
     return (
-      wallets.eth.length > 0 ||
-      wallets.sol.length > 0 ||
-      wallets.btc.length > 0 ||
-      wallets.tron.length > 0 ||
-      wallets.ton.length > 0
+      ((wallets.eth && wallets.eth.length) && wallets.eth.length > 0) ||
+      ((wallets.sol && wallets.sol.length) && wallets.sol.length > 0) ||
+      ((wallets.btc && wallets.btc.length) && wallets.btc.length > 0) ||
+      ((wallets.tron && wallets.tron.length) && wallets.tron.length > 0) ||
+      ((wallets.ton && wallets.ton.length) && wallets.ton.length > 0)
     );
   };
 

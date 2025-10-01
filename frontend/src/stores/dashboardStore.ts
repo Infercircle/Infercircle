@@ -177,11 +177,11 @@ export const useDashboardStore = create<DashboardState>()(
       updateConnectedWallets: () => {
         const { wallets } = get();
         const connectedWallets = 
-          wallets.eth.length +
-          wallets.sol.length +
-          wallets.btc.length +
-          wallets.tron.length +
-          wallets.ton.length;
+          (wallets.eth?.length || 0) +
+          (wallets.sol?.length || 0) +
+          (wallets.btc?.length || 0) +
+          (wallets.tron?.length || 0) +
+          (wallets.ton?.length || 0);
         set({ connectedWallets });
       },
       
