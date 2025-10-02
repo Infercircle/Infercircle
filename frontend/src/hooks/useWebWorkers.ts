@@ -5,6 +5,7 @@ export const useWebWorkers = () => {
   const portfolioWorkerRef = useRef<Worker | null>(null);
   const sentimentWorkerRef = useRef<Worker | null>(null);
   const isInitializedRef = useRef(false);
+  const sentimentSyncStartedRef = useRef(false);
 
   const {
     setNetWorth,
@@ -12,7 +13,9 @@ export const useWebWorkers = () => {
     setSharedPortfolioData,
     setCuratedTweets,
     selectedAsset,
-    allElites
+    allElites,
+    netWorth,
+    assets
   } = useDashboardStore();
 
   // Initialize Web Workers
@@ -85,17 +88,23 @@ export const useWebWorkers = () => {
         
         switch (type) {
           case 'TWEETS_UPDATE':
-            console.log('🔄 Tweets updated via Web Worker');
+            console.log('🔄 Tweets updated via Web Worker for asset:', data.assetKey);
             
-            // Update session storage with asset-specific cache key
-            sessionStorage.setItem(`tweets_${data.assetKey}`, JSON.stringify({
+            // Store in sessionStorage with the correct key format
+            const sessionStorageKey = `tweets_${data.assetKey}`;
+            sessionStorage.setItem(sessionStorageKey, JSON.stringify({
               tweets: data.tweets,
-              timestamp: data.timestamp
+              timestamp: data.timestamp,
+              assetKey: data.assetKey
             }));
             
-            // Notify components about the update via custom event
+            // Notify Display component about the update
             window.dispatchEvent(new CustomEvent('tweets-updated', { 
-              detail: { assetKey: data.assetKey, tweets: data.tweets }
+              detail: { 
+                assetKey: data.assetKey, 
+                tweets: data.tweets,
+                timestamp: data.timestamp
+              }
             }));
             break;
             
@@ -148,7 +157,7 @@ export const useWebWorkers = () => {
   }, []);
 
   // Start sentiment background sync
-  const startSentimentSync = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
+  const startSentimentSync = useCallback((config: { selectedAsset?: any; allElites?: string[], assetList? : any[] }) => {
     if (!sentimentWorkerRef.current) return;
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
@@ -156,7 +165,9 @@ export const useWebWorkers = () => {
     sentimentWorkerRef.current.postMessage({
       type: 'START_SYNC',
       data: { 
-        ...config,
+        selectedAsset: config.selectedAsset,
+        allElites: config.allElites,
+        assetList: config.assetList,
         apiBase: API_BASE
       }
     });
@@ -173,7 +184,7 @@ export const useWebWorkers = () => {
   }, []);
 
   // Update sentiment worker config when selectedAsset changes
-  const updateSentimentConfig = useCallback((config: { selectedAsset?: any; allElites?: string[] }) => {
+  const updateSentimentConfig = useCallback((config: { selectedAsset?: any; allElites?: string[], assetList?: any[] }) => {
     if (!sentimentWorkerRef.current) return;
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
@@ -184,6 +195,16 @@ export const useWebWorkers = () => {
         ...config,
         apiBase: API_BASE
       }
+    });
+  }, []);
+
+  // Update asset list for background tweet fetching
+  const updateAssetList = useCallback((assets: any[]) => {
+    if (!sentimentWorkerRef.current) return;
+
+    sentimentWorkerRef.current.postMessage({
+      type: 'UPDATE_ASSET_LIST',
+      data: { assetList: assets }
     });
   }, []);
 
@@ -200,37 +221,39 @@ export const useWebWorkers = () => {
         sentimentWorkerRef.current.terminate();
       }
       isInitializedRef.current = false;
+      sentimentSyncStartedRef.current = false;
     };
   }, [initializeWorkers]);
 
-  // Auto-start portfolio sync when wallets are available
-  useEffect(() => {
-    // For now, we'll need wallet addresses to be passed in when using this hook
-    // This will be handled by the dashboard components
-  }, []);
-
   // Auto-start sentiment sync when selectedAsset or allElites changes
   useEffect(() => {
-    if (isInitializedRef.current) {
-      const config = {
-        selectedAsset,
-        allElites: Array.from(allElites) // Convert Set to Array
-      };
+    if (isInitializedRef.current && !sentimentSyncStartedRef.current) {
+      const persistedData = sessionStorage.getItem('portfolio_worker_cache');
+      if (persistedData) {
+        const { assets } = JSON.parse(persistedData);
+        const config = {
+          selectedAsset,
+          allElites: Array.from(allElites), // Convert Set to Array
+          assetList: assets || []
+        };
       
-      if (selectedAsset || (allElites && allElites.size > 0)) {
-        startSentimentSync(config);
-      } else {
-        // Update config even if no asset selected (for curated tweets)
-        updateSentimentConfig(config);
+        if (selectedAsset || (allElites && allElites.size > 0)) {
+          startSentimentSync(config);
+          sentimentSyncStartedRef.current = true;
+        } else {
+          // Update config even if no asset selected (for curated tweets)
+          updateSentimentConfig(config);
+        }
       }
     }
-  }, [selectedAsset, allElites, startSentimentSync, updateSentimentConfig]);
+  }, [selectedAsset, allElites, startSentimentSync, updateSentimentConfig, assets]);
 
   return {
     startPortfolioSync,
     startSentimentSync,
     stopAllSync,
     updateSentimentConfig,
+    updateAssetList,
     isInitialized: isInitializedRef.current
   };
 };

@@ -27,8 +27,6 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Session: ", session);
-    console.log("User: ", session?.user);
     if (session?.user && 'id' in session.user) {
       const fetchedUser = session.user as User;
       setUser(fetchedUser);
