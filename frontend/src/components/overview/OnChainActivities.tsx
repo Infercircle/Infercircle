@@ -170,7 +170,6 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
     // Check for cached data first
     const sessionKey = `dashboard_assets_${twitterId}`;
     const persistedData = sessionStorage.getItem(sessionKey);
-    
     if (persistedData) {
       try {
         const { assets: cachedAssets, chainSummaries: cachedChainSummaries } = JSON.parse(persistedData);
@@ -198,8 +197,7 @@ const OnChainActivities: React.FC<OnChainActivitiesProps> = ({ refreshKey = 0, o
             startPortfolioSync(allWalletAddresses);
           }
         }
-        
-        return; // Skip API call since we have cached data
+        if(cachedAssets && cachedAssets.length>0 && cachedChainSummaries && cachedChainSummaries.length>0) return; // Skip API call since we have cached data
       } catch (error) {
         console.error('Error loading persisted OnChainActivities data:', error);
       }

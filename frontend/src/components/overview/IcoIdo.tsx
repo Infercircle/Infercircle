@@ -141,10 +141,12 @@ const IcoIdo = () => {
       try {
         const { data: cachedData } = JSON.parse(persistedData);
         // Always use cached data for instant loading
-        setIcoIdoData(cachedData);
-        setHasPersistedData(true);
-        setLoading(false);
-        return; // Skip API call
+        if(cachedData){
+          setIcoIdoData(cachedData);
+          setHasPersistedData(true);
+          setLoading(false);
+          return; // Skip API call
+        }
       } catch (error) {
         console.error('Error loading persisted ICO/IDO data:', error);
       }
@@ -240,7 +242,7 @@ const IcoIdo = () => {
               </tr>
             </thead>
             <tbody className="overflow-hidden">
-              {icoIdoData.length>0 && icoIdoData.map((item, idx) => {
+              {icoIdoData && icoIdoData.length>0 && icoIdoData.map((item, idx) => {
                 const statusColors = getStatusColors(selectedFilter);
                 return (
                   <tr key={idx} className="border-b border-[#23262F] last:border-0 hover:bg-[#23262F]/40 transition">
