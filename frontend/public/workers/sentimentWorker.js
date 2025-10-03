@@ -56,10 +56,8 @@ class SentimentWorker {
 
   // New method to fetch tweets for all assets in background
   async fetchTweetsForAllAssets() {
-    console.log('Worker: Fetching tweets for all assets in background...====================');
     
     const { assetList } = this.config;
-    console.log(assetList);
 
     if (!assetList || assetList.length === 0) {
       return;
@@ -173,10 +171,6 @@ class SentimentWorker {
         timestamp: Date.now(),
         assetKey: cacheKey
       };
-      console.log("===========================================");
-      console.log("successfully fetched tweets for ", asset.symbol, processedTweets.length);
-      console.log("===========================================");
-      console.log(sessionData);
       
       // Store in sessionStorage (accessible by main thread)
       try {

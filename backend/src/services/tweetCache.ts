@@ -49,7 +49,9 @@ export class TweetCacheService {
     this.initRedis();
 
     // Log cache stats periodically
-    this.startCacheStatsLogging();
+    if(process.env.NODE_ENV !== "PRODUCTION"){
+      this.startCacheStatsLogging();
+    }
   }
 
   private async initRedis() {
