@@ -59,67 +59,92 @@ export class CacheWarmupService {
     });
   }
 
-  // Background processing - runs completely async without blocking
+  // Ultimate fire-and-forget - no promises, no waiting, just fire everything
   private performWarmupInBackground(limit: number): void {
-    const startTime = Date.now();
-    let completed = 0;
-    let skipped = 0;
-    let failed = 0;
-
-    // Flatten all queries for parallel processing
-    const allQueries = this.popularAssets.flatMap(asset => 
-      asset.queries.map(query => ({ query, assetName: asset.name }))
-    );
-
-    console.log(`🔥 Processing ${allQueries.length} queries in parallel...`);
-
-    // Process all queries in parallel without any blocking
-    const processPromises = allQueries.map((item, index) => {
-      return new Promise<void>((resolve) => {
-        // Stagger requests to avoid overwhelming the API
-        setTimeout(() => {
-          setImmediate(async () => {
-            try {
-              // Check cache first
-              const cached = await tweetCacheService.getCachedTweets(item.query, limit);
-              if (cached) {
-                skipped++;
-                resolve();
-                return;
-              }
+    console.log("🔥 Firing all warmup requests - completely non-blocking");
+    
+    // Fire trending assets in background
+    setImmediate(() => {
+      fetch('https://api.cryptorank.io/v0/coins/trending/by-clicks?period=7D&limit=20&locale=en')
+        .then(res => res.json())
+        .then(data => {
+          console.log(`� Fetched ${data.data.length} trending assets, firing warmup requests...`);
+          data.data.forEach((item: any, index: number) => {
+            if(item.name && item.symbol){
+              const queries = [
+                `${item.name.toLowerCase()} $${item.symbol.toLowerCase()}`,
+                `${item.name.toLowerCase()} crypto`,
+                `${item.name} $${item.symbol}`
+              ];
               
-              // Fire the warmup request and immediately resolve - don't wait for it
-              this.fetchAndCacheTweetsBackground(item.query, limit)
-                .then(() => {
-                  completed++;
-                  console.log(`🚀 Warmup initiated for: ${item.query} (${completed}/${allQueries.length - skipped})`);
-                })
-                .catch((error) => {
-                  failed++;
-                  console.error(`❌ Failed to initiate warmup for ${item.query}:`, error.message);
+              setTimeout(() => {
+                queries.forEach((query, qIndex) => {
+                  setTimeout(() => {
+                    this.fireWarmupRequest(query, limit);
+                  }, qIndex * 100);
                 });
-              
-              // Resolve immediately - don't wait for the HTTP request to complete
-              resolve();
-            } catch (error) {
-              failed++;
-              console.error(`❌ Error processing ${item.query}:`, error);
-              resolve();
+              }, index * 200);
             }
           });
+        })
+        .catch(error => console.error("❌ Trending assets error:", error));
+    });
+
+    // Fire trending assets by views in background
+    setImmediate(() => {
+      fetch('https://api.cryptorank.io/v0/coins/trending/by-views?period=7D&limit=20&locale=en')
+        .then(res => res.json())
+        .then(data => {
+          console.log(`👀 Fetched ${data.data.length} trending by views assets, firing warmup requests...`);
+          data.data.forEach((item: any, index: number) => {
+            if(item.name && item.symbol){
+              const queries = [
+                `${item.name.toLowerCase()} $${item.symbol.toLowerCase()}`,
+                `${item.name.toLowerCase()} crypto`,
+                `${item.name} $${item.symbol}`
+              ];
+              
+              setTimeout(() => {
+                queries.forEach((query, qIndex) => {
+                  setTimeout(() => {
+                    this.fireWarmupRequest(query, limit);
+                  }, qIndex * 100);
+                });
+              }, index * 300); // Slightly different timing to avoid rate limits
+            }
+          });
+        })
+        .catch(error => console.error("❌ Trending by views error:", error));
+    });
+    
+    // Fire static assets in background
+    setImmediate(() => {
+      const allQueries = this.popularAssets.flatMap(asset => asset.queries);
+      console.log(`🔥 Firing ${allQueries.length} static asset warmup requests...`);
+      
+      allQueries.forEach((query, index) => {
+        setTimeout(() => {
+          this.fireWarmupRequest(query, limit);
         }, index * 100);
       });
     });
+    
+    // Immediately mark as not running since we're not waiting for anything
+    this.isWarmupRunning = false;
+    console.log("🚀 All warmup requests fired in background");
+  }
 
-    // Let all promises run in background - don't await
-    Promise.allSettled(processPromises).then(() => {
-      const duration = Date.now() - startTime;
-      console.log(`🔥 Cache warmup completed in ${duration}ms`);
-      console.log(`📊 Completed: ${completed}, Skipped: ${skipped}, Failed: ${failed}`);
-      this.isWarmupRunning = false;
-    }).catch((error) => {
-      console.error("❌ Warmup background processing failed:", error);
-      this.isWarmupRunning = false;
+  // Ultra-simple fire-and-forget warmup request
+  private fireWarmupRequest(query: string, limit: number): void {
+    // Don't even check cache - just fire the request
+    fetch(`${process.env.BASE_URL}/twitter/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        query: query, 
+        limit: limit,
+        product: 'Latest'
+      })
     });
   }
 

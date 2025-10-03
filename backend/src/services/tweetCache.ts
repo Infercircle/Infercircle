@@ -60,7 +60,7 @@ export class TweetCacheService {
         host: process.env.REDIS_HOST as string,
         password: process.env.REDIS_PASSWORD as string,
         port: parseInt(process.env.REDIS_PORT || '6379'),
-        tls: true
+        tls: { rejectUnauthorized: false } ,
       }) : new Redis(redisUrl);
 
       this.redis.on('connect', () => {

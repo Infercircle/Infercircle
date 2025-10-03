@@ -51,6 +51,9 @@ interface DashboardState {
   totalPriceChange: number;
   loadingNetWorth: boolean;
   
+  // Assets data
+  assets: Asset[];
+  
   // Wallet data
   wallets: WalletData;
   walletsLoaded: boolean;
@@ -81,6 +84,11 @@ interface DashboardState {
   setNetWorth: (netWorth: number) => void;
   setTotalPriceChange: (change: number) => void;
   setLoadingNetWorth: (loading: boolean) => void;
+  
+  // Assets actions
+  setAssets: (assets: Asset[]) => void;
+  updateAssets: (updater: (assets: Asset[]) => Asset[]) => void;
+  
   setWallets: (wallets: WalletData) => void;
   setWalletsLoaded: (loaded: boolean) => void;
   setSharedPortfolioData: (data: SharedPortfolioData) => void;
@@ -110,6 +118,7 @@ const initialState = {
   netWorth: 0,
   totalPriceChange: 0,
   loadingNetWorth: true,
+  assets: [],
   wallets: { eth: [], sol: [], btc: [], tron: [], ton: [] },
   walletsLoaded: false,
   connectedWallets: 0,
@@ -134,6 +143,11 @@ export const useDashboardStore = create<DashboardState>()(
       setNetWorth: (netWorth) => set({ netWorth }),
       setTotalPriceChange: (totalPriceChange) => set({ totalPriceChange }),
       setLoadingNetWorth: (loadingNetWorth) => set({ loadingNetWorth }),
+      
+      // Assets actions
+      setAssets: (assets) => set({ assets }),
+      updateAssets: (updater) => 
+        set((state) => ({ assets: updater(state.assets) })),
       
       setWallets: (wallets) => {
         set({ wallets });
@@ -177,11 +191,11 @@ export const useDashboardStore = create<DashboardState>()(
       updateConnectedWallets: () => {
         const { wallets } = get();
         const connectedWallets = 
-          wallets.eth.length +
-          wallets.sol.length +
-          wallets.btc.length +
-          wallets.tron.length +
-          wallets.ton.length;
+          (wallets.eth?.length || 0) +
+          (wallets.sol?.length || 0) +
+          (wallets.btc?.length || 0) +
+          (wallets.tron?.length || 0) +
+          (wallets.ton?.length || 0);
         set({ connectedWallets });
       },
       

@@ -17,17 +17,13 @@ class PortfolioWorker {
     
     this.postMessage({ type: 'LOG', message: 'Starting background portfolio sync...' });
     
+    this.fetchAndUpdatePortfolioData();
     // Start periodic fetching every 2 minutes
     const intervalId = setInterval(() => {
       this.fetchAndUpdatePortfolioData();
     }, 2 * 60 * 1000); // 2 minutes
     
     this.intervals.set('portfolio', intervalId);
-    
-    // Initial fetch after 30 seconds
-    setTimeout(() => {
-      this.fetchAndUpdatePortfolioData();
-    }, 30000);
   }
 
   stopBackgroundSync() {

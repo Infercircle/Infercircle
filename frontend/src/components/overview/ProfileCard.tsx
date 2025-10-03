@@ -7,6 +7,7 @@ import { updateUserFollowersCount } from "@/actions/server";
 import { FiRefreshCw } from "react-icons/fi";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import { updateUserImageInDB } from "@/actions/server";
 
 interface ProfileCardProps {
   netWorth?: number;
@@ -23,6 +24,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
     const [eliteError, setEliteError] = useState<string | null>(null);
     const [hasBeenProcessed, setHasBeenProcessed] = useState<boolean | null>(null);
     const [followersCount, setFollowersCount] = useState<number | null>(session?.user.followersCount || null);
+    const [image, setImage] = useState<string>(session?.user.image || "");
   
     // Fetch elite curators using original method for now
          // Check if user has been processed and fetch elite curators
@@ -220,6 +222,22 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
     const user = (session)?.user as User;
 
     useEffect(() => {
+      if(user){
+        fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user`,{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: user.username }),
+        }).then((data) => data.json())
+          .then((data)=>{
+            if(user.id && data.profile_image_url && image != data.profile_image_url){
+              setImage(data.profile_image_url);
+              updateUserImageInDB(data.profile_image_url, user.id);
+            }
+          });
+      }
+
       if (user && user.followersCount) {
         fetch(`${process.env.NEXT_PUBLIC_HELPERS_API_URL}/twitter/user`, {
           method: 'POST',
@@ -252,7 +270,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image || undefined}
+            src={image}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />
@@ -339,7 +357,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ netWorth = 0, totalPriceChang
         {/* Avatar */}
         <div className="w-16 h-16 aspect-square rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img
-            src={user?.image || undefined}
+            src={image}
             alt="Profile Avatar"
             className="w-full h-full object-cover rounded-full"
           />
