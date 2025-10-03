@@ -61,7 +61,7 @@ router.post("/stream", asyncHandler(async (req: Request, res: Response) => {
     }
 
     // If not cached, fetch from external API
-    const helperRes = await fetch("https://helper-apis-and-scrappers.onrender.com/twitter/search", {
+    const helperRes = await fetch(`${process.env.HELPER_APIS_URL}/twitter/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, limit, product })

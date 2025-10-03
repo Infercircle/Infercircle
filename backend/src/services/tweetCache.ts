@@ -136,7 +136,7 @@ export class TweetCacheService {
 
   async cacheTweets(query: string, limit: number, tweets: any[], offset: number = 0, isElite: boolean = false): Promise<void> {
     const key = isElite ? query : this.generateCacheKey(query, limit, offset);
-    if(this.total_elite_keys > 100){
+    if(this.total_elite_keys > 100 && isElite){
       return;
     }
     try {
