@@ -38,7 +38,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInferAI = pathname === "/dashboard/inferai";
   const isOverviewPage = pathname === "/dashboard";
-  const showWallet = !isInferAI && pathname !== "/dashboard/content-summarizer";
+  const showWallet = !isInferAI && pathname !== "/dashboard/content-summarizer" &&
+  pathname !== "/dashboard/tge";
   const showMobileMenu = pathname.startsWith("/dashboard");
   const { data: session, status } = useSession();
   const router = useRouter();

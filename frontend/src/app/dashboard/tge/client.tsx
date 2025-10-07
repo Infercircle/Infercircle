@@ -154,10 +154,52 @@ export default function TGEPageClient({
 
   const allPlatforms=React.useMemo(()=>[...new Set(projects.flatMap(r=>r.infoPlatforms))].sort(),[projects]);
 
-  const badgeClass=(sel:boolean,on:string,off:string)=>(sel?on:off)+" rounded px-2 py-1 text-xs";
+  const getStatusBadgeClass = (status: ProjectStatus, compact: boolean = false, isSelected: boolean = false) => {
+    const base = compact ? "px-2 py-1 text-xs" : "px-2.5 py-1.5 text-sm";
+    switch (status) {
+      case "active":
+        return isSelected
+          ? `${base} rounded bg-green-600 text-white`
+          : `${base} rounded bg-green-500/20 text-green-300`;
+      case "ended":
+        return isSelected
+          ? `${base} rounded bg-zinc-600 text-white`
+          : `${base} rounded bg-zinc-500/20 text-zinc-300`;
+      default:
+        return isSelected
+          ? `${base} rounded bg-zinc-600 text-white`
+          : `${base} rounded bg-zinc-500/20 text-zinc-300`;
+    }
+  };
+
+  const getTypeBadgeClass = (type: ProjectType, compact: boolean = false, isSelected: boolean = false) => {
+    const base = compact ? "px-2 py-1 text-xs" : "px-2.5 py-1.5 text-sm";
+    switch (type) {
+      case "Pre-TGE":
+        return isSelected
+          ? `${base} rounded bg-blue-600 text-white`
+          : `${base} rounded bg-blue-500/20 text-blue-300`;
+      case "Post-TGE":
+        return isSelected
+          ? `${base} rounded bg-purple-600 text-white`
+          : `${base} rounded bg-purple-500/20 text-purple-300`;
+      case "Community Build Opportunities":
+        return isSelected
+          ? `${base} rounded bg-orange-600 text-white`
+          : `${base} rounded bg-orange-500/20 text-orange-300`;
+      case "Campaign":
+        return isSelected
+          ? `${base} rounded bg-pink-600 text-white`
+          : `${base} rounded bg-pink-500/20 text-pink-300`;
+      default:
+        return isSelected
+          ? `${base} rounded bg-gray-600 text-white`
+          : `${base} rounded bg-gray-500/20 text-gray-300`;
+    }
+  };
 
   return (
-    <div className="p-6 text-white min-h-screen">
+    <div className="text-white min-h-screen">
       <div className="max-w-7xl mx-auto flex flex-col gap-4">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -199,11 +241,11 @@ export default function TGEPageClient({
                     <h3 className="mb-2 text-sm font-medium text-white">Status</h3>
                     <div className="flex flex-wrap gap-2">
                       {STATUS_OPTIONS.map(o=>{
-                        const sel=statusFilters.includes(o.key);
+                        const isSelected = statusFilters.includes(o.key);
                         return(
                           <button
                             key={o.key}
-                            className={badgeClass(sel,"bg-green-600 text-white","bg-green-500/20 text-green-300")}
+                            className={`${getStatusBadgeClass(o.key as ProjectStatus, true, isSelected)} border border-transparent`}
                             onClick={()=>handleStatusToggle(o.key)}
                           >
                             {o.label}
@@ -217,11 +259,11 @@ export default function TGEPageClient({
                     <h3 className="mb-2 text-sm font-medium text-white">Type</h3>
                     <div className="flex flex-wrap gap-2">
                       {TYPE_OPTIONS.map(o=>{
-                        const sel=typeFilters.includes(o.key);
+                        const isSelected = typeFilters.includes(o.key);
                         return(
                           <button
                             key={o.key}
-                            className={badgeClass(sel,"bg-blue-600 text-white","bg-blue-500/20 text-blue-300")}
+                            className={`${getTypeBadgeClass(o.key as ProjectType, true, isSelected)} border border-transparent`}
                             onClick={()=>handleTypeToggle(o.key)}
                           >
                             {o.label}
@@ -293,7 +335,8 @@ export default function TGEPageClient({
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full border-y border-[#2a2e35] rounded-t-lg">  
+        {/* FIXED: Removed overflow-x-auto from outer div, added height constraint */}
+        <div className="w-full border-y border-[#2a2e35] rounded-t-lg max-h-[100vh] overflow-auto">  
           {apiError && (
             <div className="p-3 mb-2 bg-red-500/10 border border-red-500/20 rounded-t-lg">
               <div className="flex items-center gap-2 text-red-300 text-sm">
@@ -306,11 +349,12 @@ export default function TGEPageClient({
               </div>
             </div>
           )}
-          <table className="min-w-[1280px] text-left text-sm">
-            <thead className="bg-[#151820] text-[#A3A3A3]">
+          <table className="min-w-[1280px] text-left text-sm w-full">
+            {/* UPDATED: Made header sticky */}
+            <thead className="bg-[#151820] text-[#A3A3A3] sticky top-0 z-30">
               <tr>
-                <th className="sticky left-0 z-20 w-8 px-2 py-3 bg-[#151820] font-semibold">#</th>
-                <th className="sticky z-10 w-52 px-4 py-3 bg-[#151820] font-semibold">Projects</th>
+                <th className="sticky left-0 z-40 w-8 px-2 py-3 bg-[#151820] font-semibold">#</th>
+                <th className="sticky left-8 z-40 w-52 px-4 py-3 bg-[#151820] font-semibold">Projects</th>
                 <th className="w-28 px-4 py-3 font-semibold">Type</th>
                 <th className="w-64 px-4 py-3 font-semibold">Backers (VCs)</th>
                 <th className="w-36 px-4 py-3 font-semibold">Amount Raised</th>
@@ -325,7 +369,7 @@ export default function TGEPageClient({
                   <td className="sticky left-0 z-10 w-8 px-2 py-3 bg-black group-hover:bg-[#151820] text-[#A3A3A3] whitespace-nowrap">
                     <span className="px-1 py-1 text-xs font-medium rounded bg-[rgba(21,24,32,0.6)]">{idx+1}</span>
                   </td>
-                  <td className="sticky z-10 w-52 px-4 py-3 bg-black group-hover:bg-[#151820] text-white whitespace-nowrap">
+                  <td className="sticky left-8 z-10 w-52 px-4 py-3 bg-black group-hover:bg-[#151820] text-white whitespace-nowrap">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         src={platformImages.projects[row.project]||""}
@@ -344,11 +388,7 @@ export default function TGEPageClient({
                     </div>
                   </td>
                   <td className="w-28 px-4 py-3 font-medium">
-                    <span className={badgeClass(
-                      typeFilters.includes(row.type),
-                      "bg-orange-600 text-white",
-                      "bg-orange-500/20 text-orange-300"
-                    )}>
+                    <span className={getTypeBadgeClass(row.type, true)}>
                       {getTypeDisplayName(row.type)}
                     </span>
                   </td>
@@ -417,11 +457,7 @@ export default function TGEPageClient({
                     </div>
                   </td>
                   <td className="w-28 px-4 py-3 font-medium">
-                    <span className={badgeClass(
-                      statusFilters.includes(row.status),
-                      "bg-green-600 text-white",
-                      "bg-green-500/20 text-green-300"
-                    )}>
+                    <span className={getStatusBadgeClass(row.status, true)}>
                       {STATUS_OPTIONS.find(s=>s.key===row.status)?.label}
                     </span>
                   </td>
@@ -499,8 +535,4 @@ export default function TGEPageClient({
       </Modal>
     </div>
   );
-}
-
-function badgeClass(sel:boolean,on:string,off:string){
-  return (sel?on:off)+" rounded px-2 py-1 text-xs";
 }
