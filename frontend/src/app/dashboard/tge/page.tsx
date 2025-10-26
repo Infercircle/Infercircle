@@ -15,15 +15,21 @@ interface PlatformImages {
 // 🔥 SSR: Fetch projects data on every request (secure API calls)
 async function fetchProjects() {
   const helperApiUrl = process.env.NEXT_PUBLIC_HELPERS_API_URL || 'https://helper-apis-and-scrappers.onrender.com';
-  const apiKey = 'ak_pro_Jpo05NPhS_VEMIDrAOr-ayWHrsg5q3CO';
+  const apiKey = process.env.TGE_API_KEY;
   
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
     const response = await fetch(`${helperApiUrl}/v1/projects`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`
       },
-      cache: 'no-store' // Force fresh data on each request (SSR equivalent)
+      cache: 'no-store', // Force fresh data on each request (SSR equivalent)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Projects API failed: ${response.status}`);
@@ -41,9 +47,21 @@ async function fetchProjects() {
     };
   } catch (error) {
     console.error('Error fetching projects:', error);
+    
+    let errorMessage = 'Failed to fetch projects';
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout - API took too long to respond';
+      } else if (error.message.includes('fetch failed')) {
+        errorMessage = 'Network error - Unable to connect to API';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return {
       data: [],
-      error: error instanceof Error ? error.message : 'Failed to fetch projects'
+      error: errorMessage
     };
   }
 }
@@ -53,9 +71,15 @@ async function fetchPlatformImages() {
   const helperApiUrl = process.env.NEXT_PUBLIC_HELPERS_API_URL || 'https://helper-apis-and-scrappers.onrender.com';
   
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
     const response = await fetch(`${helperApiUrl}/v1/platform-images`, {
-      next: { revalidate: 3600 } // Cache for 1 hour (SSG equivalent)
+      next: { revalidate: 3600 }, // Cache for 1 hour (SSG equivalent)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`Images API failed: ${response.status}`);

@@ -114,8 +114,8 @@ export default function Home() {
       {/* Split Screen Layout */}
       <div className="flex min-h-[calc(100vh-80px)]">
         {/* Left Side - Hero Section */}
-        <div className="hidden md:flex lg:w-1/2 flex-col justify-center px-4 md:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a]">
-          <div className="max-w-lg lg:max-w-xl xl:max-w-2xl">
+        <div className="hidden md:flex lg:w-1/2 flex-col justify-center items-center px-4 md:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a]">
+          <div className="max-w-lg lg:max-w-xl xl:max-w-2xl w-full">
             {/* Hero Content */}
             <div className="space-y-6 lg:space-y-8 xl:space-y-10">
               <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
@@ -210,7 +210,7 @@ export default function Home() {
                         <span className="mr-3">
                           {getProviderIcon(provider.id)}
                         </span>
-                        Sign in with {provider.id === 'twitter' ? 'X (formerly Twitter)' : provider.name}
+                        Sign in with {provider.id === 'twitter' ? 'X' : provider.name}
                       </Button>
                     ))}
 

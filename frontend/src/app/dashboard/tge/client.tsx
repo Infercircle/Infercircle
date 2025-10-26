@@ -358,8 +358,8 @@ export default function TGEPageClient({
                 <th className="w-28 px-4 py-3 font-semibold">Type</th>
                 <th className="w-64 px-4 py-3 font-semibold">Backers (VCs)</th>
                 <th className="w-36 px-4 py-3 font-semibold">Amount Raised</th>
-                <th className="w-40 px-4 py-3 font-semibold">Rewards</th>
-                <th className="w-44 px-4 py-3 font-semibold">InfoFi Platform</th>
+                <th className="w-36 px-4 py-3 font-semibold">Rewards</th>
+                <th className="w-50 px-4 py-3 font-semibold">InfoFi Platform</th>
                 <th className="w-28 px-4 py-3 font-semibold">Status</th>
               </tr>
             </thead>
@@ -424,14 +424,14 @@ export default function TGEPageClient({
                       </Tippy>
                     </div>
                   </td>
-                  <td className="w-40 px-4 py-3 text-sm font-medium text-white">
-                    <div className="min-w-0 max-w-40">
+                  <td className="w-36 px-4 py-3 text-sm font-medium text-white">
+                    <div className="min-w-0 max-w-36">
                       <Tippy content={row.reward} disabled={!row.reward}>
                         <span className="block truncate">{row.reward}</span>
                       </Tippy>
                     </div>
                   </td>
-                  <td className="w-44 px-4 py-3 font-medium text-[#ffffffcc]">
+                  <td className="w-50 px-4 py-3 font-medium text-[#ffffffcc]">
                     <div className="flex flex-wrap gap-1.5 min-w-0">
                       {row.infoPlatforms.slice(0,1).map(p=>(
                         <span key={p} className="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-[rgba(42,46,53,0.35)] min-w-0">
