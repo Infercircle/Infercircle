@@ -100,12 +100,12 @@ export default function TgeSlugPageClient({
 
   const description = metadata?.description || "No description available for this project.";
   
-  const raiseTypes = React.useMemo(() => {
+  const raiseTypes = (() => {
     const rounds = (projectData?.backers || [])
       .map((b: any) => (b?.round || '').trim())
       .filter((v: string) => v);
     return Array.from(new Set(rounds)).join(', ');
-  }, [projectData?.backers]);
+  })();
 
   const parseDescription = (html: string) => {
     return html.replace(/<[^>]*>/g, '').trim();
