@@ -18,7 +18,7 @@ function getZerionHeaders() {
   } as Record<string, string>;
 }
 
-// Zerion portfolio endpoint passthrough (official API)
+// Zerion portfolio endpoint
 router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Response) => {
   const { address } = req.params;
   const headers = getZerionHeaders();
@@ -38,7 +38,6 @@ router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Respons
       { headers, params }
     );
 
-    // Transform Zerion portfolio response to simplified shape expected by frontend
     const payload: any = response.data;
     const attributes: any = payload?.data?.attributes || {};
 
@@ -72,7 +71,7 @@ router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Respons
   }
 }));
 
-// Zerion positions endpoint passthrough (official API)
+// Zerion positions 
 router.get("/positions/:address", asyncHandler(async (req: Request, res: Response) => {
   const { address } = req.params;
   const headers = getZerionHeaders();
@@ -94,7 +93,7 @@ router.get("/positions/:address", asyncHandler(async (req: Request, res: Respons
       { headers, params }
     );
 
-    // Transform Zerion positions response into simplified array shape
+  
     const payload: any = response.data;
     const items: any[] = Array.isArray(payload?.data) ? payload.data : [];
 
