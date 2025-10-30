@@ -18,33 +18,7 @@ function getZerionHeaders() {
   } as Record<string, string>;
 }
 
-// Balances/portfolio summary for an address via Zerion API
-router.get("/address/:address", asyncHandler(async (req: Request, res: Response) => {
-  const { address } = req.params;
-  const headers = getZerionHeaders();
-
-  if (!headers) {
-    return res.status(500).json({ error: "ZERION_API_KEY is not configured" });
-  }
-
-  try {
-    const response = await axios.get(
-      `${ZERION_API_BASE}/v1/wallets/${address}/portfolio`,
-      { headers, params: req.query }
-    );
-    res.status(response.status).json(response.data);
-  } catch (error: any) {
-    if (error.response) {
-      res.status(error.response.status).json({
-        error: error.response.data || "Zerion API request failed",
-      });
-    } else {
-      res.status(500).json({ error: error.message || "Unknown error" });
-    }
-  }
-}));
-
-// Zerion portfolio endpoint passthrough
+// Zerion portfolio endpoint passthrough (official API)
 router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Response) => {
   const { address } = req.params;
   const headers = getZerionHeaders();
@@ -54,9 +28,14 @@ router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Respons
   }
 
   try {
+    const params = {
+      currency: (req.query as any)?.currency || 'usd',
+      'filter[positions]': (req.query as any)?.['filter[positions]'] || 'only_simple',
+      ...req.query,
+    } as Record<string, any>;
     const response = await axios.get(
       `${ZERION_API_BASE}/v1/wallets/${address}/portfolio`,
-      { headers, params: req.query }
+      { headers, params }
     );
 
     // Transform Zerion portfolio response to simplified shape expected by frontend
@@ -93,7 +72,7 @@ router.get("/portfolio/:address", asyncHandler(async (req: Request, res: Respons
   }
 }));
 
-// Zerion positions endpoint passthrough
+// Zerion positions endpoint passthrough (official API)
 router.get("/positions/:address", asyncHandler(async (req: Request, res: Response) => {
   const { address } = req.params;
   const headers = getZerionHeaders();
@@ -103,9 +82,16 @@ router.get("/positions/:address", asyncHandler(async (req: Request, res: Respons
   }
 
   try {
+    const params = {
+      currency: (req.query as any)?.currency || 'usd',
+      'filter[positions]': (req.query as any)?.['filter[positions]'] || 'only_simple',
+      'filter[trash]': (req.query as any)?.['filter[trash]'] || 'only_non_trash',
+      sort: (req.query as any)?.sort || 'value',
+      ...req.query,
+    } as Record<string, any>;
     const response = await axios.get(
-      `${ZERION_API_BASE}/v1/wallets/${address}/positions`,
-      { headers, params: req.query }
+      `${ZERION_API_BASE}/v1/wallets/${address}/positions/`,
+      { headers, params }
     );
 
     // Transform Zerion positions response into simplified array shape
